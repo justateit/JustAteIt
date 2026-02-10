@@ -1,15 +1,17 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import {
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 export default function RecordExperience() {
@@ -20,6 +22,49 @@ export default function RecordExperience() {
   const [isRestaurant, setIsRestaurant] = useState(true);
   const [isHomeCooked, setIsHomeCooked] = useState(false);
   const [rating, setRating] = useState(4);
+
+  const [uploading, setUploading] = useState(false);
+  const [imageUri, setImageUri] = useState(null);
+  const API_BASE_URL = 'http://100.70.89.132:8000';
+
+  const handleUpload = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (result.canceled) return;
+    setUploading(true);
+
+    try {
+      const manipResult = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 1200 } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.WEBP }
+      );
+
+      const formData = new FormData();
+      formData.append('file', {
+        uri: manipResult.uri,
+        name: 'upload.webp',
+        type: 'image/webp',
+      });
+
+      const response = await fetch(`${API_BASE_URL}/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      setImageUri(data.url); 
+      alert('Upload Successful!');
+    } catch (error) {
+      alert('Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const renderStars = () => {
     return (
@@ -148,9 +193,10 @@ export default function RecordExperience() {
             <Text style={styles.actionButtonText}>Analyze Flavor Chemistry</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.uploadButton}>
-            <Ionicons name="camera-outline" size={18} color="#666" />
-            <Text style={styles.uploadButtonText}>Upload Photo</Text>
+          <TouchableOpacity style={styles.uploadButton} onPress={handleUpload} disabled={uploading}>
+            <Ionicons name={uploading ? "cloud-upload-outline" : "camera-outline"} size={18} color={uploading ? "#FF6B4A" : "#666"} />
+              <Text style={[styles.uploadButtonText, uploading && {color: '#FF6B4A'}]}>
+              {uploading ? 'Optimizing...' : 'Upload Photo'}</Text>
           </TouchableOpacity>
         </View>
 

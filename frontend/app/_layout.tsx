@@ -14,7 +14,6 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      {/* Wrapping in a fragment can help satisfy stricter child type requirements */}
       <>
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
