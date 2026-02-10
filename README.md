@@ -40,7 +40,8 @@ Keep secrets out of git; add `.env` to `.gitignore`.
 
 ## Next steps / Suggestions
 
-- Implement the Expo camera "Snap It" feature and an upload flow to Supabase (I can generate this if you'd like).
+- Implement the Expo camera "Snap It" feature and an upload flow to Supabase.
 - Add sample seed data for MongoDB and basic integration tests for API endpoints.
 
 ---
+
