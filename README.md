@@ -1,4 +1,4 @@
-# justate
+# Just Ate It
 
 A hybrid stack - the "JustAte It" food tracker app. This repository splits responsibilities into a mobile frontend (Expo React Native) and a backend API (Node.js + Express). Auth is handled by Clerk, primary data is stored in MongoDB Atlas, and images are stored in Supabase Storage.
 
@@ -44,4 +44,5 @@ Keep secrets out of git; add `.env` to `.gitignore`.
 - Add sample seed data for MongoDB and basic integration tests for API endpoints.
 
 ---
+
 
