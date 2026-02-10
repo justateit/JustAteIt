@@ -1,0 +1,48 @@
+# justate-clone
+
+A hybrid stack inspired by the "JustAte It" food tracker app. This repository splits responsibilities into a mobile frontend (Expo React Native) and a backend API (Node.js + Express). Auth is handled by Clerk, primary data is stored in MongoDB Atlas, and images are stored in Supabase Storage.
+
+## High-level architecture
+
+```mermaid
+graph TD
+    User[Mobile User] -->|Opens App| Frontend[Expo React Native]
+    Frontend -->|Auth Request| Clerk[Clerk Auth]
+    Frontend -->|API Requests + Clerk Token| Backend[Node.js API on AWS]
+    Backend -->|Verify Token| Clerk
+    Backend -->|Read/Write Data| MongoDB[MongoDB Atlas]
+    Frontend -->|Upload/Download Images| Supabase[Supabase Storage]
+```
+
+## What’s in this repo
+
+- `backend/` — Node.js + Express API (expects `MONGODB_URI`, Clerk secret, etc.)
+- `frontend/` — Expo React Native app (uses Clerk Expo integration and Supabase for image storage)
+
+## Quick start (local)
+
+1. Create the project root and subfolders if they don't exist (you may already have them from scaffolding):
+
+```powershell
+# from your workspace root
+md .\justate-clone; md .\justate-clone\backend; md .\justate-clone\frontend
+```
+
+2. Backend: follow `backend/README.md` to install dependencies and run locally.
+3. Frontend: follow `frontend/README.md` to install dependencies and run the Expo app.
+
+## Environment files
+
+- `backend/.env` should contain sensitive server keys (MongoDB connection, Clerk secret key, etc.).
+- `frontend/.env` (or use environment variables in Expo) should contain public keys (Clerk publishable key, Supabase URL/anon key).
+
+Keep secrets out of git; add `.env` to `.gitignore`.
+
+## Next steps / Suggestions
+
+- Implement the Expo camera "Snap It" feature and an upload flow to Supabase (I can generate this if you'd like).
+- Add sample seed data for MongoDB and basic integration tests for API endpoints.
+
+---
+
+If you'd like, I can now generate the Expo camera component that uploads photos to Supabase and calls the backend endpoints (Snap It feature).
