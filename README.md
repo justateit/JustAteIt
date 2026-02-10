@@ -1,48 +1,50 @@
-# justate-clone
+# Frontend (Expo React Native)
 
-A hybrid stack inspired by the "JustAte It" food tracker app. This repository splits responsibilities into a mobile frontend (Expo React Native) and a backend API (Node.js + Express). Auth is handled by Clerk, primary data is stored in MongoDB Atlas, and images are stored in Supabase Storage.
+This directory contains the Expo app (React Native) for the JustAte clone. It uses Clerk for authentication and Supabase for storing food images.
 
-## High-level architecture
+## Prerequisites
 
-```mermaid
-graph TD
-    User[Mobile User] -->|Opens App| Frontend[Expo React Native]
-    Frontend -->|Auth Request| Clerk[Clerk Auth]
-    Frontend -->|API Requests + Clerk Token| Backend[Node.js API on AWS]
-    Backend -->|Verify Token| Clerk
-    Backend -->|Read/Write Data| MongoDB[MongoDB Atlas]
-    Frontend -->|Upload/Download Images| Supabase[Supabase Storage]
+- Node.js (LTS)
+- Expo CLI (optional globally) or use `npx`
+- An Expo-compatible mobile device or emulator
+
+## Environment
+
+Create `frontend/.env` (or use Expo's app config env) with the following public values:
+
+```
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_xxx
+EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=anon_xxx
+API_URL=http://<YOUR_BACKEND_HOST>:5000/api
 ```
 
-## What’s in this repo
+The Clerk publishable key is safe to keep on the client; the Clerk secret key must go to the backend only.
 
-- `backend/` — Node.js + Express API (expects `MONGODB_URI`, Clerk secret, etc.)
-- `frontend/` — Expo React Native app (uses Clerk Expo integration and Supabase for image storage)
+## Install & run (local)
 
-## Quick start (local)
-
-1. Create the project root and subfolders if they don't exist (you may already have them from scaffolding):
+Open a PowerShell terminal in `frontend/`:
 
 ```powershell
-# from your workspace root
-md .\justate-clone; md .\justate-clone\backend; md .\justate-clone\frontend
+cd .\justate-clone\frontend
+npm install
+npx expo start
 ```
 
-2. Backend: follow `backend/README.md` to install dependencies and run locally.
-3. Frontend: follow `frontend/README.md` to install dependencies and run the Expo app.
+Follow the Expo UI to open the app on your device (QR code) or run on an emulator.
 
-## Environment files
+## Key integrations
 
-- `backend/.env` should contain sensitive server keys (MongoDB connection, Clerk secret key, etc.).
-- `frontend/.env` (or use environment variables in Expo) should contain public keys (Clerk publishable key, Supabase URL/anon key).
+- Clerk: Wrap the app with `ClerkProvider` (see `app/_layout.tsx`). Use `useAuth()` to get the user and the token for backend requests.
+- Supabase: Use `@supabase/supabase-js` for uploading and fetching images. Use a public/anon key for client storage access; secure any admin operations server-side.
+- Backend: Use Axios (or fetch) and include the Clerk JWT in the `Authorization: Bearer <token>` header for protected endpoints.
 
-Keep secrets out of git; add `.env` to `.gitignore`.
+## Notes & tips
 
-## Next steps / Suggestions
+- For image uploads, keep uploads to Supabase Storage and save the returned public URL (or path) in the MongoDB food document.
+- If testing locally and your backend is on the same machine, use the host IP (or `adb reverse` for Android emulators) — `localhost` inside the phone/emulator may not point to your dev machine.
 
-- Implement the Expo camera "Snap It" feature and an upload flow to Supabase (I can generate this if you'd like).
-- Add sample seed data for MongoDB and basic integration tests for API endpoints.
+## Snap It (camera) feature
 
----
+I can scaffold a camera component that uses `expo-camera` to capture an image, uploads it to Supabase, and then creates the food record via the backend. Tell me if you want that generated now.
 
-If you'd like, I can now generate the Expo camera component that uploads photos to Supabase and calls the backend endpoints (Snap It feature).
