@@ -25,21 +25,32 @@ export default function RecordExperience() {
 
   const [uploading, setUploading] = useState(false);
   const [imageUri, setImageUri] = useState(null);
-  const API_BASE_URL = 'http://100.70.89.132:8000';
+  const API_BASE_URL = Platform.OS === 'web'
+  ? 'http://localhost:8000'
+  : 'https://unossified-impressively-arya.ngrok-free.dev';
 
   const handleUpload = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 1,
+      exif: true,
     });
 
     if (result.canceled) return;
     setUploading(true);
 
     try {
+      const asset = result.assets[0];
+      const exifData = asset.exif;
+      let latitude = exifData?.GPSLatitude ?? null;
+      let longitude = exifData?.GPSLongitude ?? null;
+
+      if (latitude != null && exifData?.GPSLatitudeRef === 'S') latitude = -latitude;
+      if (longitude != null && exifData?.GPSLongitudeRef === 'W') longitude = -longitude;
+
       const manipResult = await ImageManipulator.manipulateAsync(
-        result.assets[0].uri,
+        asset.uri,
         [{ resize: { width: 1200 } }],
         { compress: 0.7, format: ImageManipulator.SaveFormat.WEBP }
       );
@@ -51,12 +62,29 @@ export default function RecordExperience() {
         type: 'image/webp',
       });
 
+      if (latitude != null && longitude != null) {
+        formData.append('latitude', latitude.toString());
+        formData.append('longitude', longitude.toString());
+      }
+
       const response = await fetch(`${API_BASE_URL}/upload`, {
         method: 'POST',
         body: formData,
+        headers: {
+          'ngrok-skip-browser-warning': 'true',
+        },
       });
 
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(JSON.stringify(err));
+      }
+
       const data = await response.json();
+      if (data.restaurant_name) {
+       setVenue(data.restaurant_name);
+       setCity(data.location || '');
+      }
       setImageUri(data.url); 
       alert('Upload Successful!');
     } catch (error) {

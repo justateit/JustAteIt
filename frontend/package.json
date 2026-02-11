@@ -13,6 +13,7 @@
     "@react-navigation/bottom-tabs": "^7.0.0",
     "@react-navigation/elements": "^2.0.0",
     "@react-navigation/native": "^7.0.0",
+    "exifr": "^7.1.3",
     "expo": "^54.0.33",
     "expo-haptics": "~15.0.8",
     "expo-image": "~3.0.11",

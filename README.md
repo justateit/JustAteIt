@@ -64,7 +64,14 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 2. Start the app
 
    ```bash
-   npx expo start
+   cd frontend
+   npx expo start --tunnel
+   cd backend
+   python s3-Server.py
+   cd ..
+   ./ngrok config add-authtoken TOKEN  
+   ./ngrok http 8000  
+
    ```
 
 In the output, you'll find options to open the app in a
