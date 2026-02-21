@@ -1,3 +1,3 @@
-import RecordExperience from './record-experience';
+import LoadingScreen from './Loadingscreen';
 
-export default RecordExperience;
+export default LoadingScreen;
