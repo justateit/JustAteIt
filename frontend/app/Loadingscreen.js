@@ -225,7 +225,7 @@ export default function LoadingScreen() {
 
   useEffect(() => {
     try {
-      const asset = Asset.fromModule(require('../assets/video/logo.mp4'));
+      const asset = Asset.fromModule(require('../assets/video/logo1.mp4'));
       const uri = asset.uri;
       console.log('[LoadingScreen] videoUri:', uri);
       setVideoUri(uri);
