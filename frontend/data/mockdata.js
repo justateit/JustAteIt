@@ -1,0 +1,78 @@
+export const trendingDishes = [
+    {
+        id: '1',
+        title: 'Charred Octopus',
+        restaurant: 'PUJOL',
+        date: '2023-10-05',
+        rating: 5,
+        image: require('../assets/images/charred_octopus.jpg'),
+        location: 'MEXICO CITY',
+    },
+    {
+        id: '2',
+        title: 'Spicy Cumin Lamb',
+        restaurant: "XI'AN FAMOUS FOODS",
+        date: '2023-10-10',
+        rating: 5,
+        image: require('../assets/images/spicy_cumin_lamb.jpg'),
+        location: 'NEW YORK',
+    },
+    {
+        id: '3',
+        title: 'Uni & Truffle Toast',
+        restaurant: 'ATOMIX',
+        date: '2023-10-08',
+        rating: 4.5,
+        image: require('../assets/images/uni_truffle_toast.jpg'),
+        location: 'NEW YORK',
+    },
+    {
+        id: '4',
+        title: 'Smoked Eel & Beetroot',
+        restaurant: 'SEPTIME',
+        date: '2023-10-12',
+        rating: 4,
+        image: require('../assets/images/smoked_eel_beetroot.jpg'),
+        location: 'PARIS',
+    },
+]
+
+
+export const freshLogs = [
+    {
+        id: '1',
+        title: 'Uni & Truffle Toast',
+        restaurant: 'ATOMIX',
+        date: '2023-10-08',
+        rating: 4.5,
+        image: require('../assets/images/uni_truffle_toast.jpg'),
+        location: 'NEW YORK',
+    },
+    {
+        id: '2',
+        title: 'Smoked Eel & Beetroot',
+        restaurant: 'SEPTIME',
+        date: '2023-10-12',
+        rating: 4,
+        image: require('../assets/images/smoked_eel_beetroot.jpg'),
+        location: 'PARIS',
+    },
+    {
+        id: '3',
+        title: 'Charred Octopus',
+        restaurant: 'PUJOL',
+        date: '2023-10-05',
+        rating: 5,
+        image: require('../assets/images/charred_octopus.jpg'),
+        location: 'MEXICO CITY',
+    },
+    {
+        id: '4',
+        title: 'Spicy Cumin Lamb',
+        restaurant: "XI'AN FAMOUS FOODS",
+        date: '2023-10-10',
+        rating: 5,
+        image: require('../assets/images/spicy_cumin_lamb.jpg'),
+        location: 'NEW YORK',
+    },
+]

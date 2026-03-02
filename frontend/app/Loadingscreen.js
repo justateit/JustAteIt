@@ -3,12 +3,12 @@ import { useFonts } from 'expo-font';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    Dimensions,
-    Platform,
-    StatusBar,
-    StyleSheet,
-    Text,
-    View,
+  Dimensions,
+  Platform,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 
@@ -138,10 +138,10 @@ const buildChromaHtml = (videoSrc) => `
 //Web platform - WebGL
 function WebChromaVideo({ src, width: vidW, height: vidH, onEnded }) {
   const canvasRef = useRef(null);
-  const videoRef  = useRef(null);
+  const videoRef = useRef(null);
 
   useEffect(() => {
-    const video  = videoRef.current;
+    const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
     const gl = canvas.getContext('webgl');
@@ -159,33 +159,33 @@ function WebChromaVideo({ src, width: vidW, height: vidH, onEnded }) {
     const buf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
     gl.bufferData(gl.ARRAY_BUFFER,
-      new Float32Array([-1,-1,0,1, 1,-1,1,1, -1,1,0,0, 1,1,1,0]),
+      new Float32Array([-1, -1, 0, 1, 1, -1, 1, 1, -1, 1, 0, 0, 1, 1, 1, 0]),
       gl.STATIC_DRAW);
-    const aPos = gl.getAttribLocation(prog,'a_pos');
-    const aUV  = gl.getAttribLocation(prog,'a_uv');
+    const aPos = gl.getAttribLocation(prog, 'a_pos');
+    const aUV = gl.getAttribLocation(prog, 'a_uv');
     gl.enableVertexAttribArray(aPos); gl.enableVertexAttribArray(aUV);
-    gl.vertexAttribPointer(aPos,2,gl.FLOAT,false,16,0);
-    gl.vertexAttribPointer(aUV, 2,gl.FLOAT,false,16,8);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 16, 0);
+    gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 16, 8);
 
     const tex = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     const dpr = window.devicePixelRatio || 1;
-    canvas.width  = vidW * dpr;
+    canvas.width = vidW * dpr;
     canvas.height = vidH * dpr;
     gl.viewport(0, 0, canvas.width, canvas.height);
 
     let raf;
     function render() {
       if (video.readyState >= 2) {
-        gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,video);
-        gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+        gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       }
       raf = requestAnimationFrame(render);
     }
@@ -196,7 +196,7 @@ function WebChromaVideo({ src, width: vidW, height: vidH, onEnded }) {
     });
 
     raf = requestAnimationFrame(render);
-    video.play().catch(()=>{});
+    video.play().catch(() => { });
 
     return () => cancelAnimationFrame(raf);
   }, [src, vidW, vidH, onEnded]);
