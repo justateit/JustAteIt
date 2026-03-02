@@ -1,5 +1,5 @@
 # Frontend (Expo React Native)
-
+Krutarth-AuthScreens-Clerk-MongoSyncCommit
 This directory contains the Expo app (React Native) for the JustAte clone. It uses Clerk for authentication and Supabase for storing food images.
 
 ## Prerequisites
