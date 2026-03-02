@@ -1,5 +1,5 @@
 # Frontend (Expo React Native)
-Krutarth-AuthScreens-Clerk-MongoSyncCommit
+
 This directory contains the Expo app (React Native) for the JustAte clone. It uses Clerk for authentication and Supabase for storing food images.
 
 ## Prerequisites
@@ -47,4 +47,5 @@ Follow the Expo UI to open the app on your device (QR code) or run on an emulato
 ## Snap It (camera) feature
 
 I can scaffold a camera component that uses `expo-camera` to capture an image, uploads it to Supabase, and then creates the food record via the backend. Tell me if you want that generated now.
+
 
