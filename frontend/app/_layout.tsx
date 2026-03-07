@@ -1,37 +1,49 @@
-import BottomNav from '@/components/BottomNav';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View } from 'react-native';
-import 'react-native-reanimated';
+import { ClerkProvider, useAuth } from '@clerk/clerk-expo';
+import { Slot, useRouter, useSegments } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import { useEffect } from 'react';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
-export const unstable_settings = {
-  anchor: '(tabs)',
+// Securely store the token on the Android device
+const tokenCache = {
+  async getToken(key: string) {
+    try { return SecureStore.getItemAsync(key); } catch (err) { return null; }
+  },
+  async saveToken(key: string, value: string) {
+    try { return SecureStore.setItemAsync(key, value); } catch (err) { return; }
+  },
+};
+
+const InitialLayout = () => {
+  const { isLoaded, isSignedIn } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    
+    // Check if the user is trying to access an auth screen
+    const inAuthGroup = segments[0] === '(auth)';
+    
+    if (isSignedIn && inAuthGroup) {
+      router.replace('/'); // Send to home if signed in
+    } else if (!isSignedIn && !inAuthGroup) {
+      router.replace('/(auth)/sign-in'); // Force sign in
+    }
+  }, [isSignedIn, segments, isLoaded]);
+
+  return <Slot />;
 };
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  if (!CLERK_PUBLISHABLE_KEY) {
+    throw new Error('Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env');
+  }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <View style={styles.container}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="record-experience" options={{ headerShown: false }} />
-        </Stack>
-        <StatusBar style="auto" />
-        <BottomNav />
-      </View>
-    </ThemeProvider>
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
+      <InitialLayout />
+    </ClerkProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
