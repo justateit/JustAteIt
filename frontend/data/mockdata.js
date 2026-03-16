@@ -109,13 +109,13 @@ export const topRatedSpots = [
         id: '1',
         name: 'Septime',
         location: 'PARIS',
-        loggedCount: 11`    r`,
+        loggedCount: 1
     },
     {
         id: '2',
         name: "Xi'an Famous Foods",
         location: 'NEW YORK',
-        loggedCount: 1,
+        loggedCount: 1
     },
     {
         id: '3',
