@@ -72,7 +72,7 @@ export default function HomeScreen() {
       />
       {/* Explore Cities Section */}
       <ExploreCitiesCard
-        onPress={() => router.push('/explore')}
+        onPress={() => router.push('/global_venues')}
       />
 
     </ScrollView>
