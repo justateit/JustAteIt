@@ -90,7 +90,7 @@ When you're ready, run:
 ```bash
 git pull
 npm install --legacy-peer-deps
-npx expo start --clear
+npx expo start --tunnel
 ```
 
 This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
