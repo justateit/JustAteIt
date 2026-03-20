@@ -17,7 +17,7 @@ const VIDEO_W = Math.min(width * 0.35, 200);
 const VIDEO_H = VIDEO_W * (9 / 16);
 
 function goToApp() {
-  router.replace('/record-experience');
+  router.replace('/(tabs)');
 }
 
 // KEY_COLOR = rgba(122, 150, 108) / 255

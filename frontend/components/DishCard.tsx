@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 
 const DishCard = ({ id, title, restaurant, date, rating, image, location }: Dish) => {
@@ -12,7 +13,8 @@ const DishCard = ({ id, title, restaurant, date, rating, image, location }: Dish
                     <Image
                         source={typeof image === 'string' ? { uri: image } : image}
                         style={{ width: 190, height: 250, borderRadius: 12 }}
-                        resizeMode="cover"
+                        contentFit="cover"
+                        transition={200}
                     />
                     {/* Dark Overlay */}
                     <View style={{

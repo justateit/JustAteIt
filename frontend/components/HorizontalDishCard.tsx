@@ -1,7 +1,8 @@
-import { Ionicons } from '@expo/vector-icons'
-import { Link } from 'expo-router'
-import React from 'react'
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { Link } from 'expo-router';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 
 const HorizontalDishCard = ({ id, title, restaurant, date, rating, image, location }: Dish) => {
@@ -12,7 +13,8 @@ const HorizontalDishCard = ({ id, title, restaurant, date, rating, image, locati
                     <Image
                         source={typeof image === 'string' ? { uri: image } : image}
                         style={{ width: '100%', height: '100%' }}
-                        resizeMode="cover"
+                        contentFit="cover"
+                        transition={200}
                     />
                     {/* Dark Overlay */}
                     <View style={{

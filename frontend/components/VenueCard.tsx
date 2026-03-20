@@ -1,6 +1,7 @@
+import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface City {
     id: string;
@@ -16,7 +17,8 @@ const VenueCard = ({ id, name, image, venuesLogged }: City) => {
                     <Image
                         source={typeof image === 'string' ? { uri: image } : image}
                         style={{ width: '100%', height: 220 }}
-                        resizeMode="cover"
+                        contentFit="cover"
+                        transition={200}
                     />
                     {/* Dark Overlay */}
                     <View style={{

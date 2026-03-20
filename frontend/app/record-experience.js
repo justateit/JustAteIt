@@ -343,6 +343,20 @@ export default function RecordExperience() {
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
+      {/* Orange light leak — top-right */}
+      <LinearGradient
+        colors={['transparent', 'transparent', 'rgba(255,107,74,0.13)']}
+        start={{ x: 0, y: 1 }}
+        end={{ x: 1, y: 0 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+      {/* Orange light leak — bottom-left */}
+      <LinearGradient
+        colors={['rgba(255,140,80,0.09)', 'transparent', 'transparent']}
+        start={{ x: 0, y: 1 }}
+        end={{ x: 1, y: 0 }}
+        style={StyleSheet.absoluteFillObject}
+      />
 
       <SafeAreaView style={styles.safeArea}>
         <ScrollView
@@ -445,36 +459,38 @@ export default function RecordExperience() {
             </View>
           </AnimatedSection>
 
-          {/* Venue and City Inputs */}
-          <AnimatedSection scrollY={scrollY} delay={320}>
-            <View style={styles.row}>
-              <View style={styles.halfWidth}>
-                <Text style={styles.fieldLabel}>VENUE</Text>
-                <View style={styles.glassInputSmall}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Name"
-                    placeholderTextColor="rgba(60, 60, 67, 0.3)"
-                    value={venue}
-                    onChangeText={setVenue}
-                  />
+          {/* Venue and City Inputs — hidden when Home Cooked */}
+          {isRestaurant && (
+            <AnimatedSection scrollY={scrollY} delay={320}>
+              <View style={styles.row}>
+                <View style={styles.halfWidth}>
+                  <Text style={styles.fieldLabel}>VENUE</Text>
+                  <View style={styles.glassInputSmall}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Name"
+                      placeholderTextColor="rgba(60, 60, 67, 0.3)"
+                      value={venue}
+                      onChangeText={setVenue}
+                    />
+                  </View>
                 </View>
-              </View>
 
-              <View style={styles.halfWidth}>
-                <Text style={styles.fieldLabel}>CITY</Text>
-                <View style={styles.glassInputSmall}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Location"
-                    placeholderTextColor="rgba(60, 60, 67, 0.3)"
-                    value={city}
-                    onChangeText={setCity}
-                  />
+                <View style={styles.halfWidth}>
+                  <Text style={styles.fieldLabel}>CITY</Text>
+                  <View style={styles.glassInputSmall}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Location"
+                      placeholderTextColor="rgba(60, 60, 67, 0.3)"
+                      value={city}
+                      onChangeText={setCity}
+                    />
+                  </View>
                 </View>
               </View>
-            </View>
-          </AnimatedSection>
+            </AnimatedSection>
+          )}
 
           {/* Sensory Notes Glass Card */}
           <AnimatedSection scrollY={scrollY} delay={400}>

@@ -7,15 +7,33 @@ import { freshLogs, trendingDishes } from '@/data/mockdata';
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
+  const [search, setSearch] = useState('');
   const [fontsLoaded] = useFonts({
     'LibreBaskerville': require('@/assets/fonts/LibreBaskerville-VariableFont_wght.ttf'),
     'LibreBaskervilleItalic': require('@/assets/fonts/LibreBaskerville-Italic-VariableFont_wght.ttf'),
   });
 
   if (!fontsLoaded) return null;
+
+  const q = search.toLowerCase();
+  const filteredTrending = q
+    ? trendingDishes.filter(d =>
+      d.title.toLowerCase().includes(q) ||
+      d.restaurant.toLowerCase().includes(q) ||
+      d.location.toLowerCase().includes(q)
+    )
+    : trendingDishes;
+  const filteredLogs = q
+    ? freshLogs.filter(d =>
+      d.title.toLowerCase().includes(q) ||
+      d.restaurant.toLowerCase().includes(q) ||
+      d.location.toLowerCase().includes(q)
+    )
+    : freshLogs;
 
   return (
     <ScrollView
@@ -29,9 +47,8 @@ export default function HomeScreen() {
       <Text style={styles.title}>Discover</Text>
       <Text style={{ fontSize: 14, color: '#737588ff', marginBottom: 35 }}>CURATED TASTES & LOCAL GEMS</Text>
       <SearchBar
-        value=""
-        onChangeText={() => { }}
-        onPress={() => { }}
+        value={search}
+        onChangeText={setSearch}
         placeholder="Search dishes, flavors, cities..."
       />
 
@@ -45,7 +62,7 @@ export default function HomeScreen() {
         <Text style={styles.sectionText}>TRENDING IN PARIS</Text>
       </View>
       <FlatList
-        data={trendingDishes}
+        data={filteredTrending}
         horizontal
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item.id}
@@ -63,7 +80,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
       <FlatList
-        data={freshLogs}
+        data={filteredLogs}
         showsVerticalScrollIndicator={false}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <HorizontalDishCard {...item} />}
