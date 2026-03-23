@@ -224,6 +224,14 @@ export default function LoadingScreen() {
   });
 
   useEffect(() => {
+    const timeout = setTimeout(() => {
+      console.log('[LoadingScreen] fallback timeout fired');
+      router.replace('/(tabs)');
+    }, 6000);
+    return () => clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
     try {
       const asset = Asset.fromModule(require('../assets/video/logo1.mp4'));
       const uri = asset.uri;
