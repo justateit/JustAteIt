@@ -31,6 +31,7 @@ export default function RootLayout() {
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="record-experience" options={{ headerShown: false }} />
           <Stack.Screen name="profile" options={{ headerShown: false }} />
+          <Stack.Screen name="search" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style="auto" />
         <RootBottomNav />
