@@ -9,16 +9,14 @@ import {
   StyleSheet,
   Text,
   View,
+  TouchableOpacity,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { useAuth } from '@clerk/clerk-expo';
 
 const { width } = Dimensions.get('window');
 const VIDEO_W = Math.min(width * 0.35, 200);
 const VIDEO_H = VIDEO_W * (9 / 16);
-
-function goToApp() {
-  router.replace('/(tabs)');
-}
 
 // KEY_COLOR = rgba(122, 150, 108) / 255
 const FRAG_SHADER = `
@@ -218,15 +216,28 @@ function WebChromaVideo({ src, width: vidW, height: vidH, onEnded }) {
 
 export default function LoadingScreen() {
   const [videoUri, setVideoUri] = useState(null);
+  const [videoEnded, setVideoEnded] = useState(false);
+  const [showAuthOptions, setShowAuthOptions] = useState(false);
+  const { isLoaded, isSignedIn } = useAuth();
 
   const [fontsLoaded] = useFonts({
     Carattere: require('../assets/fonts/Carattere-Regular.ttf'),
   });
 
   useEffect(() => {
+    if (videoEnded && isLoaded) {
+      if (isSignedIn) {
+        router.replace('/(tabs)');
+      } else {
+        setShowAuthOptions(true);
+      }
+    }
+  }, [videoEnded, isLoaded, isSignedIn]);
+
+  useEffect(() => {
     const timeout = setTimeout(() => {
       console.log('[LoadingScreen] fallback timeout fired');
-      router.replace('/(tabs)');
+      setVideoEnded(true);
     }, 6000);
     return () => clearTimeout(timeout);
   }, []);
@@ -254,7 +265,7 @@ export default function LoadingScreen() {
   }, [videoUri]);
 
   const handleWebViewMessage = useCallback((event) => {
-    if (event.nativeEvent.data === 'VIDEO_ENDED') goToApp();
+    if (event.nativeEvent.data === 'VIDEO_ENDED') setVideoEnded(true);
   }, []);
 
   if (!fontsLoaded) return null;
@@ -264,9 +275,18 @@ export default function LoadingScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#EDEAE4" />
       <Text style={styles.brandText}>JustAteIt</Text>
 
-      {videoUri ? (
+      {showAuthOptions ? (
+        <View style={styles.authButtonsWrapper}>
+          <TouchableOpacity style={styles.authButtonPrimary} onPress={() => router.push('/sign-in')}>
+            <Text style={styles.authButtonTextPrimary}>Sign In</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.authButtonSecondary} onPress={() => router.push('/sign-up')}>
+            <Text style={styles.authButtonTextSecondary}>Sign Up</Text>
+          </TouchableOpacity>
+        </View>
+      ) : videoUri ? (
         Platform.OS === 'web' ? (
-          <WebChromaVideo src={videoUri} width={VIDEO_W} height={VIDEO_H} onEnded={goToApp} />
+          <WebChromaVideo src={videoUri} width={VIDEO_W} height={VIDEO_H} onEnded={() => setVideoEnded(true)} />
         ) : (
           <View style={styles.videoWrapper}>
             <WebView
@@ -318,5 +338,40 @@ const styles = StyleSheet.create({
   webview: {
     flex: 1,
     backgroundColor: 'transparent',
+  },
+  authButtonsWrapper: {
+    marginTop: 20,
+    width: '80%',
+    maxWidth: 300,
+  },
+  authButtonPrimary: {
+    backgroundColor: '#EC3750',
+    paddingVertical: 16,
+    borderRadius: 30,
+    alignItems: 'center',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  authButtonTextPrimary: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  authButtonSecondary: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#EC3750',
+    paddingVertical: 14,
+    borderRadius: 30,
+    alignItems: 'center',
+  },
+  authButtonTextSecondary: {
+    color: '#EC3750',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
