@@ -2,6 +2,7 @@ import { DiningFrequencyCard, TasteDNACard } from '@/components/ProfileCards';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import {
     Image,
     Platform,
@@ -53,6 +54,7 @@ const journalData = [
 ];
 
 export default function App() {
+    const router = useRouter();
     return (
         <SafeAreaView style={styles.safeArea}>
             <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -62,7 +64,7 @@ export default function App() {
                     <TouchableOpacity>
                         <Text style={styles.headerText}>View Saved Drafts</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.settingsButton}>
+                    <TouchableOpacity style={styles.settingsButton} onPress={() => router.push('/settings')}>
                         <Feather name="settings" size={20} color="#666" />
                     </TouchableOpacity>
                 </View>

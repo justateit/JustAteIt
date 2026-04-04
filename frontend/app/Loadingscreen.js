@@ -270,21 +270,34 @@ export default function LoadingScreen() {
 
   if (!fontsLoaded) return null;
 
+  // ── Auth landing screen (after animation, not signed in) ──────────────────
+  if (showAuthOptions) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#EDEAE4" />
+        <Text style={styles.brandText}>JustAteIt</Text>
+        <View style={styles.authBottom}>
+          <TouchableOpacity
+            style={styles.loginBtn}
+            onPress={() => router.push('/sign-in')}
+          >
+            <Text style={styles.loginBtnText}>LOGIN</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/sign-up')}>
+            <Text style={styles.createAccountText}>Create an account</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // ── Loading / animation screen ─────────────────────────────────────────────
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#EDEAE4" />
       <Text style={styles.brandText}>JustAteIt</Text>
 
-      {showAuthOptions ? (
-        <View style={styles.authButtonsWrapper}>
-          <TouchableOpacity style={styles.authButtonPrimary} onPress={() => router.push('/sign-in')}>
-            <Text style={styles.authButtonTextPrimary}>Sign In</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.authButtonSecondary} onPress={() => router.push('/sign-up')}>
-            <Text style={styles.authButtonTextSecondary}>Sign Up</Text>
-          </TouchableOpacity>
-        </View>
-      ) : videoUri ? (
+      {videoUri ? (
         Platform.OS === 'web' ? (
           <WebChromaVideo src={videoUri} width={VIDEO_W} height={VIDEO_H} onEnded={() => setVideoEnded(true)} />
         ) : (
@@ -324,7 +337,6 @@ const styles = StyleSheet.create({
     fontSize: 54,
     color: '#111111',
     letterSpacing: 0.5,
-    marginBottom: 18,
     textShadowColor: 'rgba(0,0,0,0.06)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 1,
@@ -334,44 +346,42 @@ const styles = StyleSheet.create({
     height: VIDEO_H,
     backgroundColor: 'transparent',
     overflow: 'hidden',
+    marginTop: 18,
   },
   webview: {
     flex: 1,
     backgroundColor: 'transparent',
   },
-  authButtonsWrapper: {
-    marginTop: 20,
-    width: '80%',
-    maxWidth: 300,
-  },
-  authButtonPrimary: {
-    backgroundColor: '#EC3750',
-    paddingVertical: 16,
-    borderRadius: 30,
+  // Auth landing screen
+  authBottom: {
+    position: 'absolute',
+    bottom: 48,
+    left: 28,
+    right: 28,
     alignItems: 'center',
-    marginBottom: 16,
+    gap: 16,
+  },
+  loginBtn: {
+    backgroundColor: '#111',
+    borderRadius: 30,
+    paddingVertical: 17,
+    alignItems: 'center',
+    width: '100%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  authButtonTextPrimary: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: 'bold',
+  loginBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 2,
   },
-  authButtonSecondary: {
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: '#EC3750',
-    paddingVertical: 14,
-    borderRadius: 30,
-    alignItems: 'center',
-  },
-  authButtonTextSecondary: {
-    color: '#EC3750',
-    fontSize: 18,
-    fontWeight: 'bold',
+  createAccountText: {
+    color: '#E86A33',
+    fontSize: 15,
+    fontWeight: '500',
   },
 });
