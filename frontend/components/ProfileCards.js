@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@clerk/clerk-expo';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useMemo, useState } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
+import { getFlavorProfile } from '../utils/flavorProfileApi';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -140,8 +142,8 @@ const RADAR_LABELS = [
     { label: 'Sweet', angle: 126 },  // bottom-left
     { label: 'Texture', angle: 198 },  // top-left
 ];
-// Scores 0-1 for each axis (Spice, Acid, Umami, Sweet, Texture)
-const SCORES = [0.35, 0.5, 0.7, 0.3, 0.45];
+// Default scores shown while data is loading
+const DEFAULT_SCORES = [0.35, 0.5, 0.7, 0.3, 0.45];
 
 function toRad(deg) { return (deg * Math.PI) / 180; }
 
@@ -187,8 +189,8 @@ function RadarRing({ fraction, r, color = 'rgba(255,255,255,0.08)' }) {
 }
 
 /** Filled polygon for the score shape */
-function RadarShape({ r }) {
-    const points = RADAR_LABELS.map((l, i) => radarPoint(l.angle, SCORES[i], r));
+function RadarShape({ r, scores }) {
+    const points = RADAR_LABELS.map((l, i) => radarPoint(l.angle, scores[i], r));
     const n = points.length;
 
     return (
@@ -237,7 +239,24 @@ function RadarShape({ r }) {
 }
 
 export function TasteDNACard() {
-    const R = RADAR_SIZE * 0.38; // max radius
+    const { userId } = useAuth();
+    const R = RADAR_SIZE * 0.38;
+
+    const [scores, setScores]           = useState(DEFAULT_SCORES);
+    const [personality, setPersonality] = useState('"Umami Seeker"');
+    const [loading, setLoading]         = useState(true);
+
+    useEffect(() => {
+        if (!userId) return;
+        getFlavorProfile(userId)
+            .then(data => {
+                const dims = ['spice', 'acid', 'umami', 'sweet', 'texture'];
+                setScores(dims.map(d => data.profile[d] ?? 0.5));
+                setPersonality(`"${data.personality}"`);
+            })
+            .catch(err => console.warn('[TasteDNA] fetch failed, using defaults:', err))
+            .finally(() => setLoading(false));
+    }, [userId]);
 
     return (
         <View style={styles.glassCard}>
@@ -300,7 +319,7 @@ export function TasteDNACard() {
                         );
                     })}
                     {/* Score shape */}
-                    <RadarShape r={R} />
+                    <RadarShape r={R} scores={scores} />
                     {/* Labels */}
                     {RADAR_LABELS.map((l, i) => {
                         const tip = radarPoint(l.angle, 1.3, R);
@@ -326,7 +345,9 @@ export function TasteDNACard() {
                 </View>
 
                 {/* Personality label */}
-                <Text style={styles.dnaPersonality}>"Umami Seeker"</Text>
+                {loading
+                    ? <ActivityIndicator size="small" color="#FF6B4A" style={{ marginTop: 10 }} />
+                    : <Text style={styles.dnaPersonality}>{personality}</Text>}
             </View>
 
             <View style={styles.glassBorder} />
