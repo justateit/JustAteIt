@@ -9,16 +9,14 @@ import {
   StyleSheet,
   Text,
   View,
+  TouchableOpacity,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { useAuth } from '@clerk/clerk-expo';
 
 const { width } = Dimensions.get('window');
 const VIDEO_W = Math.min(width * 0.35, 200);
 const VIDEO_H = VIDEO_W * (9 / 16);
-
-function goToApp() {
-  router.replace('/(tabs)');
-}
 
 // KEY_COLOR = rgba(122, 150, 108) / 255
 const FRAG_SHADER = `
@@ -218,15 +216,28 @@ function WebChromaVideo({ src, width: vidW, height: vidH, onEnded }) {
 
 export default function LoadingScreen() {
   const [videoUri, setVideoUri] = useState(null);
+  const [videoEnded, setVideoEnded] = useState(false);
+  const [showAuthOptions, setShowAuthOptions] = useState(false);
+  const { isLoaded, isSignedIn } = useAuth();
 
   const [fontsLoaded] = useFonts({
     Carattere: require('../assets/fonts/Carattere-Regular.ttf'),
   });
 
   useEffect(() => {
+    if (videoEnded && isLoaded) {
+      if (isSignedIn) {
+        router.replace('/(tabs)');
+      } else {
+        setShowAuthOptions(true);
+      }
+    }
+  }, [videoEnded, isLoaded, isSignedIn]);
+
+  useEffect(() => {
     const timeout = setTimeout(() => {
       console.log('[LoadingScreen] fallback timeout fired');
-      router.replace('/(tabs)');
+      setVideoEnded(true);
     }, 6000);
     return () => clearTimeout(timeout);
   }, []);
@@ -254,11 +265,33 @@ export default function LoadingScreen() {
   }, [videoUri]);
 
   const handleWebViewMessage = useCallback((event) => {
-    if (event.nativeEvent.data === 'VIDEO_ENDED') goToApp();
+    if (event.nativeEvent.data === 'VIDEO_ENDED') setVideoEnded(true);
   }, []);
 
   if (!fontsLoaded) return null;
 
+  // ── Auth landing screen (after animation, not signed in) ──────────────────
+  if (showAuthOptions) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#EDEAE4" />
+        <Text style={styles.brandText}>JustAteIt</Text>
+        <View style={styles.authBottom}>
+          <TouchableOpacity
+            style={styles.loginBtn}
+            onPress={() => router.push('/sign-in')}
+          >
+            <Text style={styles.loginBtnText}>LOGIN</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/sign-up')}>
+            <Text style={styles.createAccountText}>Create an account</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // ── Loading / animation screen ─────────────────────────────────────────────
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#EDEAE4" />
@@ -266,7 +299,7 @@ export default function LoadingScreen() {
 
       {videoUri ? (
         Platform.OS === 'web' ? (
-          <WebChromaVideo src={videoUri} width={VIDEO_W} height={VIDEO_H} onEnded={goToApp} />
+          <WebChromaVideo src={videoUri} width={VIDEO_W} height={VIDEO_H} onEnded={() => setVideoEnded(true)} />
         ) : (
           <View style={styles.videoWrapper}>
             <WebView
@@ -304,7 +337,6 @@ const styles = StyleSheet.create({
     fontSize: 54,
     color: '#111111',
     letterSpacing: 0.5,
-    marginBottom: 18,
     textShadowColor: 'rgba(0,0,0,0.06)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 1,
@@ -314,9 +346,42 @@ const styles = StyleSheet.create({
     height: VIDEO_H,
     backgroundColor: 'transparent',
     overflow: 'hidden',
+    marginTop: 18,
   },
   webview: {
     flex: 1,
     backgroundColor: 'transparent',
+  },
+  // Auth landing screen
+  authBottom: {
+    position: 'absolute',
+    bottom: 48,
+    left: 28,
+    right: 28,
+    alignItems: 'center',
+    gap: 16,
+  },
+  loginBtn: {
+    backgroundColor: '#111',
+    borderRadius: 30,
+    paddingVertical: 17,
+    alignItems: 'center',
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  loginBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 2,
+  },
+  createAccountText: {
+    color: '#E86A33',
+    fontSize: 15,
+    fontWeight: '500',
   },
 });

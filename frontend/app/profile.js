@@ -54,6 +54,7 @@ const journalData = [
 ];
 
 export default function App() {
+    const router = useRouter();
     return (
         <SafeAreaView style={styles.safeArea}>
             <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -64,7 +65,7 @@ export default function App() {
                         onPress={() => router.push('/saved_drafts')}>
                         <Text style={styles.headerText}>View Saved Drafts</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.settingsButton}>
+                    <TouchableOpacity style={styles.settingsButton} onPress={() => router.push('/settings')}>
                         <Feather name="settings" size={20} color="#666" />
                     </TouchableOpacity>
                 </View>
