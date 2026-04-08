@@ -1,9 +1,11 @@
+import { useUser } from '@clerk/clerk-expo';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { submitLog } from '../utils/flavorProfileApi';
 import {
   Animated,
   Dimensions,
@@ -125,6 +127,8 @@ function AnimatedSection({ children, scrollY, delay = 0 }) {
 }
 
 export default function RecordExperience() {
+  const { user } = useUser();
+
   const [dish, setDish] = useState('');
   const [venue, setVenue] = useState('');
   const [city, setCity] = useState('');
@@ -133,6 +137,7 @@ export default function RecordExperience() {
   const [rating, setRating] = useState(0);
 
   const [uploading, setUploading] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [imageUri, setImageUri] = useState(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
@@ -221,6 +226,42 @@ export default function RecordExperience() {
       alert('Upload failed');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleArchive = async () => {
+    if (!dish.trim()) {
+      alert('Please enter a dish name before archiving.');
+      return;
+    }
+    if (!user) {
+      alert('You must be signed in to save a log.');
+      return;
+    }
+    setArchiving(true);
+    try {
+      await submitLog(user.id, {
+        dish: dish.trim(),
+        venue: venue.trim() || null,
+        city: city.trim() || null,
+        is_restaurant: isRestaurant,
+        sensory_notes: sensoryNotes.trim() || null,
+        rating: rating > 0 ? rating : null,
+        image_url: imageUri || null,
+      });
+      alert('Log archived! ✓');
+      // Reset form
+      setDish('');
+      setVenue('');
+      setCity('');
+      setSensoryNotes('');
+      setRating(0);
+      setImageUri(null);
+    } catch (err) {
+      console.error('[Archive]', err);
+      alert('Failed to save log. Check your connection and try again.');
+    } finally {
+      setArchiving(false);
     }
   };
 
@@ -542,12 +583,18 @@ export default function RecordExperience() {
                 <Text style={styles.discardButtonText}>DISCARD</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.archiveButton}>
+              <TouchableOpacity
+                style={[styles.archiveButton, archiving && { opacity: 0.6 }]}
+                onPress={handleArchive}
+                disabled={archiving}
+              >
                 <LinearGradient
                   colors={['#FFF', '#F0F0F0']}
                   style={styles.archiveGradient}
                 >
-                  <Text style={styles.archiveButtonText}>ARCHIVE LOG</Text>
+                  <Text style={styles.archiveButtonText}>
+                    {archiving ? 'SAVING...' : 'ARCHIVE LOG'}
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>

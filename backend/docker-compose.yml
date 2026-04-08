@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  api_gateway:
+    build: 
+      context: .
+      dockerfile: api_gateway/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - USER_SERVICE_URL=http://user_service:8001
+      - CATALOG_SERVICE_URL=http://catalog_service:8002
+      - MEDIA_SERVICE_URL=http://media_service:8003
+      # Note: Make sure your .env has CLERK_SECRET_KEY mapped here
+    env_file:
+      - .env
+    depends_on:
+      - user_service
+      - catalog_service
+      - media_service
+
+  user_service:
+    build:
+      context: .
+      dockerfile: services/user_service/Dockerfile
+    expose:
+      - "8001"
+    env_file:
+      - .env
+
+  catalog_service:
+    build:
+      context: .
+      dockerfile: services/catalog_service/Dockerfile
+    expose:
+      - "8002"
+    env_file:
+      - .env
+
+  media_service:
+    build:
+      context: .
+      dockerfile: services/media_service/Dockerfile
+    expose:
+      - "8003"
+    env_file:
+      - .env

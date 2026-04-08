@@ -1,46 +1,41 @@
 """
-flavor_profile.py — JustAteIt Flavor Profile API
+flavor_profile.py — JustAteIt Flavor Profile + Logs + Users API
 Runs on port 8001 (separate from the S3 image-upload server on port 8000).
 
 Formula:
     P_new = P_old + α [ |signal|(0.5 - P_old) + signal(F_dish - 0.5) ]
     where signal = (R - 3) / 2   maps ratings  1→-1, 3→0, 5→+1
           α      = adaptive learning rate that shrinks as the user reviews more dishes
-    This is a nonlinear update equation that is used to update the user's flavor profile based on their ratings.
 """
 
-from typing import Dict
+from typing import Dict, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
+from db import get_db
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Constants & Mock Data
+# Constants & Dish Catalog
 # ─────────────────────────────────────────────────────────────────────────────
 
 FLAVOR_DIMS = ["spice", "acid", "umami", "sweet", "texture"]
 
-# Mock in-memory user profiles  →  swap for a DB query when Supabase is wired up
-# Each entry: { dim: float[0,1], ..., "review_count": int }
-MOCK_PROFILES: Dict[str, dict] = {
-    "default": {
-        "spice":        0.35,
-        "acid":         0.50,
-        "umami":        0.70,
-        "sweet":        0.30,
-        "texture":      0.45,
-        "review_count": 12,
-    }
+DEFAULT_PROFILE = {
+    "spice":        0.35,
+    "acid":         0.50,
+    "umami":        0.70,
+    "sweet":        0.30,
+    "texture":      0.45,
+    "review_count": 0,
 }
 
-# Mock dish flavor fingerprints  →  swap for a dishes table lookup
-# Each dish maps every dimension to a score in [0, 1]
+# Dish flavor fingerprints — swap for a dishes table later
 MOCK_DISHES: Dict[str, dict] = {
-    "dish_001": {"spice": 0.90, "acid": 0.30, "umami": 0.60, "sweet": 0.10, "texture": 0.70},  # very spicy
-    "dish_002": {"spice": 0.10, "acid": 0.20, "umami": 0.40, "sweet": 0.90, "texture": 0.30},  # very sweet
-    "dish_003": {"spice": 0.50, "acid": 0.80, "umami": 0.50, "sweet": 0.20, "texture": 0.60},  # acidic / bright
-    "dish_004": {"spice": 0.30, "acid": 0.40, "umami": 0.90, "sweet": 0.30, "texture": 0.80},  # deep umami
+    "dish_001": {"spice": 0.90, "acid": 0.30, "umami": 0.60, "sweet": 0.10, "texture": 0.70},
+    "dish_002": {"spice": 0.10, "acid": 0.20, "umami": 0.40, "sweet": 0.90, "texture": 0.30},
+    "dish_003": {"spice": 0.50, "acid": 0.80, "umami": 0.50, "sweet": 0.20, "texture": 0.60},
+    "dish_004": {"spice": 0.30, "acid": 0.40, "umami": 0.90, "sweet": 0.30, "texture": 0.80},
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -48,32 +43,18 @@ MOCK_DISHES: Dict[str, dict] = {
 # ─────────────────────────────────────────────────────────────────────────────
 
 def update_dimension(P_old: float, R: float, F_dish: float, alpha: float) -> float:
-    """
-    Apply the update formula to a single flavor dimension.
-
-    Args:
-        P_old   Current user preference for this dimension  [0, 1]
-        R       Star rating the user gave                   [1, 5]
-        F_dish  Dish's score for this dimension             [0, 1]
-        alpha   Learning rate
-
-    Returns:
-        P_new clamped to [0, 1]
-    """
-    signal          = (R - 3) / 2                        # -1 … +1
-    regression_term = abs(signal) * (0.5 - P_old)        # pulls toward neutral on extreme ratings
-    learning_term   = signal * (F_dish - 0.5)            # pushes toward dish flavor if liked
+    signal          = (R - 3) / 2
+    regression_term = abs(signal) * (0.5 - P_old)
+    learning_term   = signal * (F_dish - 0.5)
     P_new           = P_old + alpha * (regression_term + learning_term)
     return max(0.0, min(1.0, P_new))
 
 
 def adaptive_alpha(review_count: int) -> float:
-    """Learning rate starts at ~0.3 and halves every ~10 reviews, floors at 0.02."""
     return max(0.02, 0.3 / (review_count + 1))
 
 
 def personality_label(profile: dict) -> str:
-    """Derive a human-readable flavour personality from the dominant dimension."""
     scores   = {d: profile[d] for d in FLAVOR_DIMS}
     dominant = max(scores, key=scores.get)
     return {
@@ -86,10 +67,29 @@ def personality_label(profile: dict) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Supabase Helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def ensure_user(user_id: str):
+    """Upsert a bare user row so FK constraints are never violated."""
+    db = get_db()
+    db.table("users").upsert({"id": user_id}).execute()
+
+
+def _get_profile_row(user_id: str) -> dict:
+    """Fetch the flavor_profiles row, or return defaults if missing."""
+    db = get_db()
+    res = db.table("flavor_profiles").select("*").eq("user_id", user_id).execute()
+    if res.data:
+        return dict(res.data[0])
+    return {**DEFAULT_PROFILE, "user_id": user_id}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # FastAPI App
 # ─────────────────────────────────────────────────────────────────────────────
 
-app = FastAPI(title="JustAteIt — Flavor Profile API", version="0.1.0")
+app = FastAPI(title="JustAteIt — Data API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -100,7 +100,7 @@ app.add_middleware(
 )
 
 
-# ── Request / Response models ─────────────────────────────────────────────────
+# ── Request / Response Models ─────────────────────────────────────────────────
 
 class RatingPayload(BaseModel):
     user_id: str
@@ -115,15 +115,42 @@ class ProfileResponse(BaseModel):
     personality:  str
 
 
-# ── Endpoints ─────────────────────────────────────────────────────────────────
+class LogPayload(BaseModel):
+    user_id:       str
+    dish:          str
+    venue:         Optional[str] = None
+    city:          Optional[str] = None
+    is_restaurant: bool = True
+    sensory_notes: Optional[str] = None
+    rating:        Optional[float] = None
+    image_url:     Optional[str] = None
+
+
+class UserPayload(BaseModel):
+    id:         str   # Clerk user_id
+    username:   Optional[str] = None
+    bio:        Optional[str] = None
+    avatar_url: Optional[str] = None
+
+
+# ── Flavor Profile Endpoints ──────────────────────────────────────────────────
 
 @app.get("/flavor-profile/{user_id}", response_model=ProfileResponse)
 def get_flavor_profile(user_id: str):
-    """
-    Return the current flavor profile for a user.
-    Falls back to the default mock profile if the user hasn't reviewed anything yet.
-    """
-    profile = MOCK_PROFILES.get(user_id, MOCK_PROFILES["default"])
+    """Return the current flavor profile for a user from Supabase."""
+    ensure_user(user_id)
+    profile = _get_profile_row(user_id)
+
+    # If the row didn't exist, insert defaults now
+    db = get_db()
+    res = db.table("flavor_profiles").select("user_id").eq("user_id", user_id).execute()
+    if not res.data:
+        db.table("flavor_profiles").insert({
+            "user_id": user_id,
+            **{d: DEFAULT_PROFILE[d] for d in FLAVOR_DIMS},
+            "review_count": 0,
+        }).execute()
+
     return {
         "user_id":      user_id,
         "profile":      {d: round(profile[d], 4) for d in FLAVOR_DIMS},
@@ -134,13 +161,7 @@ def get_flavor_profile(user_id: str):
 
 @app.post("/flavor-profile/update", response_model=ProfileResponse)
 def update_flavor_profile(payload: RatingPayload):
-    """
-    Submit a rating for a dish and recalculate the user's flavor profile.
-
-    The formula applied per dimension:
-        P_new = P_old + α[ |signal|(0.5 - P_old) + signal(F_dish - 0.5) ]
-    where signal = (R - 3) / 2
-    """
+    """Submit a dish rating and recalculate the user's flavor profile."""
     if not (1 <= payload.rating <= 5):
         raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
 
@@ -151,19 +172,23 @@ def update_flavor_profile(payload: RatingPayload):
             detail=f"Dish '{payload.dish_id}' not found. Available: {list(MOCK_DISHES.keys())}"
         )
 
-    # Load or initialise profile
-    profile      = dict(MOCK_PROFILES.get(payload.user_id, MOCK_PROFILES["default"]))
+    db = get_db()
+    ensure_user(payload.user_id)
+    profile      = _get_profile_row(payload.user_id)
     review_count = int(profile.get("review_count", 0))
     alpha        = adaptive_alpha(review_count)
 
-    # Update every flavor dimension
     for dim in FLAVOR_DIMS:
-        P_old          = profile.get(dim, 0.5)
-        F_dish         = dish.get(dim, 0.5)
-        profile[dim]   = update_dimension(P_old, payload.rating, F_dish, alpha)
-
+        profile[dim] = update_dimension(
+            profile.get(dim, 0.5), payload.rating, dish.get(dim, 0.5), alpha
+        )
     profile["review_count"] = review_count + 1
-    MOCK_PROFILES[payload.user_id] = profile
+
+    db.table("flavor_profiles").upsert({
+        "user_id":      payload.user_id,
+        **{d: profile[d] for d in FLAVOR_DIMS},
+        "review_count": profile["review_count"],
+    }).execute()
 
     print(f"[FlavorProfile] {payload.user_id} rated {payload.dish_id} "
           f"★{payload.rating} | α={alpha:.3f} | personality={personality_label(profile)}")
@@ -180,6 +205,56 @@ def update_flavor_profile(payload: RatingPayload):
 def get_mock_dishes():
     """Dev helper — list all mock dish IDs and their flavor fingerprints."""
     return MOCK_DISHES
+
+
+# ── Log / Journal Endpoints ───────────────────────────────────────────────────
+
+@app.post("/logs")
+def create_log(payload: LogPayload):
+    """Save a new food journal entry to Supabase."""
+    db = get_db()
+    ensure_user(payload.user_id)
+
+    log_data = payload.model_dump()
+    res = db.table("logs").insert(log_data).execute()
+
+    print(f"[Logs] Saved entry for {payload.user_id}: {payload.dish} @ {payload.venue}")
+    return {"success": True, "log": res.data[0] if res.data else None}
+
+
+@app.get("/logs/{user_id}")
+def get_logs(user_id: str):
+    """Fetch all journal entries for a user, newest first."""
+    db = get_db()
+    res = (
+        db.table("logs")
+        .select("*")
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return {"logs": res.data, "count": len(res.data)}
+
+
+# ── User Profile Endpoints ────────────────────────────────────────────────────
+
+@app.post("/users")
+def upsert_user(payload: UserPayload):
+    """Create or update a user profile row (call this on first sign-in)."""
+    db = get_db()
+    data = {k: v for k, v in payload.model_dump().items() if v is not None}
+    db.table("users").upsert(data).execute()
+    return {"success": True}
+
+
+@app.get("/users/{user_id}")
+def get_user(user_id: str):
+    """Fetch a user's profile data."""
+    db = get_db()
+    res = db.table("users").select("*").eq("id", user_id).execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="User not found")
+    return res.data[0]
 
 
 # ─────────────────────────────────────────────────────────────────────────────

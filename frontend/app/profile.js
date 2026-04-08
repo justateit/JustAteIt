@@ -1,9 +1,12 @@
 import { DiningFrequencyCard, TasteDNACard } from '@/components/ProfileCards';
 import { Feather, FontAwesome } from '@expo/vector-icons';
+import { useUser } from '@clerk/clerk-expo';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
     Image,
     Platform,
     ScrollView,
@@ -13,48 +16,30 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { getLogs } from '../utils/flavorProfileApi';
 
-const journalData = [
-    {
-        id: '1',
-        month: 'OCT',
-        day: '11',
-        title: 'Smoked Eel ...',
-        subtitle: 'SEPTIME - PARIS',
-        rating: '4.8',
-        image: 'https://images.unsplash.com/photo-1505935428862-770b6f24f629?w=200&q=80',
-    },
-    {
-        id: '2',
-        month: 'NOV',
-        day: '30',
-        title: 'Uni & Truffle ...',
-        subtitle: 'ATOMIX - NEW YORK',
-        rating: '5',
-        image: 'https://images.unsplash.com/photo-1505935428862-770b6f24f629?w=200&q=80',
-    },
-    {
-        id: '3',
-        month: 'JAN',
-        day: '14',
-        title: 'Charred Octo ...',
-        subtitle: 'PUJOL - MEXICO C ...',
-        rating: '4.0',
-        image: 'https://images.unsplash.com/photo-1505935428862-770b6f24f629?w=200&q=80',
-    },
-    {
-        id: '4',
-        month: 'FEB',
-        day: '9',
-        title: 'Tonkotsu Ra...',
-        subtitle: 'ICHIRAN - TOKYO',
-        rating: '4.7',
-        image: 'https://images.unsplash.com/photo-1505935428862-770b6f24f629?w=200&q=80',
-    },
-];
+const MONTH_NAMES = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+function formatLogDate(isoString) {
+    const d = new Date(isoString);
+    return { month: MONTH_NAMES[d.getMonth()], day: String(d.getDate()) };
+}
 
 export default function App() {
     const router = useRouter();
+    const { user } = useUser();
+
+    const [logs, setLogs]       = useState([]);
+    const [logsLoading, setLogsLoading] = useState(true);
+
+    useEffect(() => {
+        if (!user?.id) return;
+        getLogs(user.id)
+            .then(data => setLogs(data.logs ?? []))
+            .catch(err => console.warn('[Profile] getLogs failed:', err))
+            .finally(() => setLogsLoading(false));
+    }, [user?.id]);
+
     return (
         <SafeAreaView style={styles.safeArea}>
             <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -73,7 +58,7 @@ export default function App() {
                 <View style={styles.profileSection}>
                     <View style={styles.avatarContainer}>
                         <Image
-                            source={{ uri: 'https://images.unsplash.com/photo-1542223616-740d5dff7f56?w=400&q=80' }}
+                            source={{ uri: user?.imageUrl || 'https://images.unsplash.com/photo-1542223616-740d5dff7f56?w=400&q=80' }}
                             style={styles.avatar}
                         />
                         <View style={styles.editBadge}>
@@ -81,8 +66,12 @@ export default function App() {
                         </View>
                     </View>
 
-                    <Text style={styles.name}>Julienne Bruno</Text>
-                    <Text style={styles.handle}>@julienne</Text>
+                    <Text style={styles.name}>
+                        {user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'Food Explorer' : 'Food Explorer'}
+                    </Text>
+                    <Text style={styles.handle}>
+                        @{user?.username ?? user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] ?? 'explorer'}
+                    </Text>
 
                     <Text style={styles.bio}>
                         Chasing fermentation across the globe. Seeking{'\n'}the perfect balance of acid and fat.
@@ -102,15 +91,15 @@ export default function App() {
                         />
                         <View style={styles.statsContainer}>
                             <View style={styles.statItem}>
-                                <Text style={styles.statNumber}>4</Text>
+                                <Text style={styles.statNumber}>{logs.length}</Text>
                                 <Text style={styles.statLabel}>DISHES</Text>
                             </View>
                             <View style={styles.statItem}>
-                                <Text style={styles.statNumber}>1204</Text>
+                                <Text style={styles.statNumber}>—</Text>
                                 <Text style={styles.statLabel}>FOLLOWERS</Text>
                             </View>
                             <View style={styles.statItem}>
-                                <Text style={styles.statNumber}>89</Text>
+                                <Text style={styles.statNumber}>—</Text>
                                 <Text style={styles.statLabel}>FOLLOWING</Text>
                             </View>
                         </View>
@@ -132,32 +121,46 @@ export default function App() {
                 </View>
 
                 <View style={styles.journalListContainer}>
-                    {journalData.map((item, index) => (
-                        <View
-                            key={item.id}
-                            style={[
-                                styles.journalItem,
-                                index === journalData.length - 1 && styles.lastJournalItem
-                            ]}
-                        >
-                            <View style={styles.dateContainer}>
-                                <Text style={styles.monthText}>{item.month}</Text>
-                                <Text style={styles.dayText}>{item.day}</Text>
-                            </View>
+                    {logsLoading ? (
+                        <ActivityIndicator size="small" color="#E86A33" style={{ marginVertical: 24 }} />
+                    ) : logs.length === 0 ? (
+                        <Text style={styles.emptyText}>No logs yet. Start by archiving an experience!</Text>
+                    ) : (
+                        logs.map((item, index) => {
+                            const { month, day } = formatLogDate(item.created_at);
+                            const subtitle = [item.venue, item.city].filter(Boolean).join(' · ').toUpperCase();
+                            return (
+                                <View
+                                    key={item.id}
+                                    style={[
+                                        styles.journalItem,
+                                        index === logs.length - 1 && styles.lastJournalItem
+                                    ]}
+                                >
+                                    <View style={styles.dateContainer}>
+                                        <Text style={styles.monthText}>{month}</Text>
+                                        <Text style={styles.dayText}>{day}</Text>
+                                    </View>
 
-                            <Image source={{ uri: item.image }} style={styles.journalImage} />
+                                    {item.image_url ? (
+                                        <Image source={{ uri: item.image_url }} style={styles.journalImage} />
+                                    ) : (
+                                        <View style={[styles.journalImage, styles.journalImagePlaceholder]} />
+                                    )}
 
-                            <View style={styles.journalTextContainer}>
-                                <Text style={styles.journalItemTitle}>{item.title}</Text>
-                                <Text style={styles.journalItemSubtitle}>{item.subtitle}</Text>
-                            </View>
+                                    <View style={styles.journalTextContainer}>
+                                        <Text style={styles.journalItemTitle} numberOfLines={1}>{item.dish}</Text>
+                                        <Text style={styles.journalItemSubtitle} numberOfLines={1}>{subtitle || '—'}</Text>
+                                    </View>
 
-                            <View style={styles.ratingContainer}>
-                                <Text style={styles.ratingText}>{item.rating}</Text>
-                                <FontAwesome name="star" size={14} color="#C4C4C4" />
-                            </View>
-                        </View>
-                    ))}
+                                    <View style={styles.ratingContainer}>
+                                        <Text style={styles.ratingText}>{item.rating ?? '—'}</Text>
+                                        <FontAwesome name="star" size={14} color="#C4C4C4" />
+                                    </View>
+                                </View>
+                            );
+                        })
+                    )}
                 </View>
 
                 {/* Bottom padding for scrollability */}
@@ -371,4 +374,14 @@ const styles = StyleSheet.create({
         color: '#000',
         fontWeight: '500',
     },
-});
+    emptyText: {
+        textAlign: 'center',
+        color: '#AAA',
+        fontSize: 14,
+        paddingVertical: 24,
+        fontStyle: 'italic',
+    },
+    journalImagePlaceholder: {
+        backgroundColor: '#F0F0F0',
+    },
+});
