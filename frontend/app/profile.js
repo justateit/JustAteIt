@@ -2,6 +2,7 @@ import { DiningFrequencyCard, TasteDNACard } from '@/components/ProfileCards';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import {
     Image,
     Platform,
@@ -59,7 +60,8 @@ export default function App() {
 
                 {/* Header */}
                 <View style={styles.header}>
-                    <TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => router.push('/saved_drafts')}>
                         <Text style={styles.headerText}>View Saved Drafts</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.settingsButton}>
