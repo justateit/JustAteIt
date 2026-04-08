@@ -57,6 +57,7 @@ export default function RootLayout() {
               <Stack.Screen name="record-experience" options={{ headerShown: false }} />
               <Stack.Screen name="profile" options={{ headerShown: false }} />
               <Stack.Screen name="search" options={{ headerShown: false }} /> 
+              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
               <Stack.Screen name="sign-in" options={{ headerShown: false }} />
               <Stack.Screen name="sign-up" options={{ headerShown: false }} />
               <Stack.Screen name="reset-password" options={{ headerShown: false }} />

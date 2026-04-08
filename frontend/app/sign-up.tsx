@@ -4,9 +4,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView,
+  ActivityIndicator, Alert, KeyboardAvoidingView,
   Platform, ScrollView, StyleSheet, Text, TextInput,
-  TouchableOpacity, TouchableWithoutFeedback, View,
+  TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -19,13 +19,16 @@ function GlassScreen({ children }: { children: React.ReactNode }) {
     <LinearGradient colors={BG} style={styles.gradient}>
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-            <View style={styles.flex}>
-              <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                {children}
-              </ScrollView>
-            </View>
-          </TouchableWithoutFeedback>
+          <View style={styles.flex}>
+            <ScrollView
+              contentContainerStyle={styles.scroll}
+              keyboardShouldPersistTaps="always"
+              keyboardDismissMode="on-drag"
+              showsVerticalScrollIndicator={false}
+            >
+              {children}
+            </ScrollView>
+          </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </LinearGradient>

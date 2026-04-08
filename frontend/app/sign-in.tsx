@@ -6,7 +6,6 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -14,7 +13,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -51,13 +49,13 @@ export default function SignInScreen() {
     <LinearGradient colors={['#100B06', '#1E1109', '#120904']} style={styles.gradient}>
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-            <View style={styles.flex}>
-              <ScrollView
-                contentContainerStyle={styles.scroll}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-              >
+          <View style={styles.flex}>
+            <ScrollView
+              contentContainerStyle={styles.scroll}
+              keyboardShouldPersistTaps="always"
+              keyboardDismissMode="on-drag"
+              showsVerticalScrollIndicator={false}
+            >
                 {/* Header */}
                 <View style={styles.header}>
                   <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -140,9 +138,8 @@ export default function SignInScreen() {
                 <TouchableOpacity style={styles.createRow} onPress={() => router.push('/sign-up')}>
                   <Text style={styles.orangeLink}>Create an account</Text>
                 </TouchableOpacity>
-              </ScrollView>
-            </View>
-          </TouchableWithoutFeedback>
+            </ScrollView>
+          </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </LinearGradient>
