@@ -1,6 +1,6 @@
 import { DiningFrequencyCard, TasteDNACard } from '@/components/ProfileCards';
-import { Feather, FontAwesome } from '@expo/vector-icons';
 import { useUser } from '@clerk/clerk-expo';
+import { Feather, FontAwesome } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -18,7 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getLogs } from '../utils/flavorProfileApi';
 
-const MONTH_NAMES = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const MONTH_NAMES = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
 function formatLogDate(isoString) {
     const d = new Date(isoString);
@@ -29,7 +29,7 @@ export default function App() {
     const router = useRouter();
     const { user } = useUser();
 
-    const [logs, setLogs]       = useState([]);
+    const [logs, setLogs] = useState([]);
     const [logsLoading, setLogsLoading] = useState(true);
 
     useEffect(() => {
@@ -46,7 +46,8 @@ export default function App() {
 
                 {/* Header */}
                 <View style={styles.header}>
-                    <TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => router.push('/saved_drafts')}>
                         <Text style={styles.headerText}>View Saved Drafts</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.settingsButton} onPress={() => router.push('/settings')}>
@@ -384,4 +385,4 @@ const styles = StyleSheet.create({
     journalImagePlaceholder: {
         backgroundColor: '#F0F0F0',
     },
-});
+});

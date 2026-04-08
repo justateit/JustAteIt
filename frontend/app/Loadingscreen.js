@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useAuth } from '@clerk/clerk-expo';
+import { hasCompletedOnboarding } from '../utils/onboardingStorage';
 
 const { width } = Dimensions.get('window');
 const VIDEO_W = Math.min(width * 0.35, 200);
@@ -225,13 +226,30 @@ export default function LoadingScreen() {
   });
 
   useEffect(() => {
-    if (videoEnded && isLoaded) {
-      if (isSignedIn) {
-        router.replace('/(tabs)');
-      } else {
-        setShowAuthOptions(true);
-      }
+    if (!videoEnded || !isLoaded) return;
+    if (isSignedIn) {
+      router.replace('/(tabs)');
+      return;
     }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const done = await hasCompletedOnboarding();
+        if (cancelled) return;
+        if (!done) {
+          router.replace('/onboarding');
+        } else {
+          setShowAuthOptions(true);
+        }
+      } catch {
+        if (!cancelled) setShowAuthOptions(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [videoEnded, isLoaded, isSignedIn]);
 
   useEffect(() => {

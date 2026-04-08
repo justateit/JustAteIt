@@ -5,6 +5,7 @@ import { Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View
 
 const { width } = Dimensions.get('window');
 const gap = width * 0.3
+
 const HorizontalDishCard = ({ id, title, restaurant, date, rating, image, location, tastingNotes, chemistryInsight, tags }: Dish) => {
     const [modalVisible, setModalVisible] = useState(false);
 
