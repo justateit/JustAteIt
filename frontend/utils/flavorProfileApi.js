@@ -7,8 +7,8 @@
  */
 
 const BASE_URL =
-  process.env.EXPO_PUBLIC_FLAVOR_API_URL?.replace(/\/$/, '') ||
-  'http://localhost:8001';
+  process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '') ||
+  'http://localhost:8000';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Flavor Profile
@@ -19,7 +19,7 @@ const BASE_URL =
  * @param {string} userId  - Clerk user ID
  */
 export async function getFlavorProfile(userId) {
-  const res = await fetch(`${BASE_URL}/flavor-profile/${encodeURIComponent(userId)}`);
+  const res = await fetch(`${BASE_URL}/api/v1/flavor-profiles/${encodeURIComponent(userId)}`);
   if (!res.ok) throw new Error(`getFlavorProfile failed: ${res.status}`);
   return res.json();
 }
@@ -31,7 +31,7 @@ export async function getFlavorProfile(userId) {
  * @param {number} rating   - Star rating 1–5
  */
 export async function submitRating(userId, dishId, rating) {
-  const res = await fetch(`${BASE_URL}/flavor-profile/update`, {
+  const res = await fetch(`${BASE_URL}/api/v1/flavor-profiles/update`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_id: userId, dish_id: dishId, rating }),
@@ -53,7 +53,7 @@ export async function submitRating(userId, dishId, rating) {
  * @param {{ dish, venue, city, is_restaurant, sensory_notes, rating, image_url }} logData
  */
 export async function submitLog(userId, logData) {
-  const res = await fetch(`${BASE_URL}/logs`, {
+  const res = await fetch(`${BASE_URL}/api/v1/reviews`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_id: userId, ...logData }),
@@ -71,7 +71,7 @@ export async function submitLog(userId, logData) {
  * @returns {Promise<{ logs: Array, count: number }>}
  */
 export async function getLogs(userId) {
-  const res = await fetch(`${BASE_URL}/logs/${encodeURIComponent(userId)}`);
+  const res = await fetch(`${BASE_URL}/api/v1/reviews/${encodeURIComponent(userId)}`);
   if (!res.ok) throw new Error(`getLogs failed: ${res.status}`);
   return res.json();
 }
@@ -87,7 +87,7 @@ export async function getLogs(userId) {
  * @param {{ username?, bio?, avatar_url? }} userData
  */
 export async function upsertUser(userId, userData = {}) {
-  const res = await fetch(`${BASE_URL}/users`, {
+  const res = await fetch(`${BASE_URL}/api/v1/users`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id: userId, ...userData }),
@@ -104,7 +104,7 @@ export async function upsertUser(userId, userData = {}) {
  * @param {string} userId
  */
 export async function getUser(userId) {
-  const res = await fetch(`${BASE_URL}/users/${encodeURIComponent(userId)}`);
+  const res = await fetch(`${BASE_URL}/api/v1/users/${encodeURIComponent(userId)}`);
   if (!res.ok) throw new Error(`getUser failed: ${res.status}`);
   return res.json();
 }

@@ -1,110 +1,81 @@
+# Just Ate It 🍴
 
-# Just Ate It
+JustAteIt is a production-grade, microservices-powered food tracking application. It features an **Expo (React Native)** frontend and a **Python FastAPI** backend architecture deployed on **AWS ECS Fargate**.
 
-A hybrid stack - the "JustAte It" food tracker app. This repository splits responsibilities into a mobile frontend (Expo React Native) and a backend API (Node.js + Express). Auth is handled by Clerk, primary data is stored in MongoDB Atlas, and images are stored in Supabase Storage.
+## 🏗️ Architecture Overhaul
 
-## High-level architecture
+The project has transitioned from a monolithic local setup to a modern, cloud-native microservices stack:
 
-```mermaid
-graph TD
-    User[Mobile User] -->|Opens App| Frontend[Expo React Native]
-    Frontend -->|Auth Request| Clerk[Clerk Auth]
-    Frontend -->|API Requests + Clerk Token| Backend[Node.js API on AWS]
-    Backend -->|Verify Token| Clerk
-    Backend -->|Read/Write Data| MongoDB[MongoDB Atlas]
-    Frontend -->|Upload/Download Images| Supabase[Supabase Storage]
-```
-
-## What’s in this repo
-
-- `backend/` — Node.js + Express API (expects `MONGODB_URI`, Clerk secret, etc.)
-- `frontend/` — Expo React Native app (uses Clerk Expo integration and Supabase for image storage)
-
-## Quick start (local)
-
-1. Create the project root and subfolders if they don't exist (you may already have them from scaffolding):
-
-```powershell
-# from your workspace root
-md .\justate-clone; md .\justate-clone\backend; md .\justate-clone\frontend
-```
-
-2. Backend: follow `backend/README.md` to install dependencies and run locally.
-3. Frontend: follow `frontend/README.md` to install dependencies and run the Expo app.
-
-## Environment files
-
-- `backend/.env` should contain sensitive server keys (MongoDB connection, Clerk secret key, etc.).
-- `frontend/.env` (or use environment variables in Expo) should contain public keys (Clerk publishable key, Supabase URL/anon key).
-
-Keep secrets out of git; add `.env` to `.gitignore`.
-
-## Next steps / Suggestions
-
-- Implement the Expo camera "Snap It" feature and an upload flow to Supabase.
-- Add sample seed data for MongoDB and basic integration tests for API endpoints.
+- **Mobile Frontend**: React Native (Expo) featuring Clerk Authentication.
+- **Microservices (FastAPI)**:
+  - `api_gateway`: The unified entry point with 60s timeouts and robust proxying.
+  - `user_service`: Manages flavor profiles and user metadata.
+  - `catalog_service`: Manages reviews, venues (via Google Places API), and dishes.
+  - `media_service`: Handshakes with AWS S3 for secure image storage.
+- **Infrastructure**:
+  - **AWS Fargate**: Serverless container execution.
+  - **AWS RDS (Postgres)**: Persistent RDBMS data storage.
+  - **AWS S3**: Scalable media storage for food photos.
+  - **CloudWatch**: Universal logging and instrumentation for all services.
 
 ---
 
+## 🚀 Cloud Deployment Workflow
 
+To deploy the backend to AWS, follow these steps in the `backend/` directory:
 
-=======
-# Welcome to your Expo app 👋
-
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
-
-## Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   cd frontend
-   npx expo start --tunnel
-   cd backend
-   python s3-Server.py
-   cd ..
-   ./ngrok config add-authtoken TOKEN  
-   ./ngrok http 8000  
-
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## HOW TO PULL
-
-When you're ready, run:
-
-```bash
-git pull
-npm install --legacy-peer-deps
-npx expo start --tunnel
+### 1. Synchronize Environment Variables
+Sync your local `.env` keys (S3, RDS, AWS) to the AWS Task Definition blueprint:
+```powershell
+python inject_env.py
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Build & Push Images
+Compile the Docker containers and push them to AWS ECR:
+```powershell
+# For all services
+.\deploy.ps1 -AwsAccountId YOUR_ACCOUNT_ID
 
-## Learn more
+# For a specific service (e.g., api_gateway)
+.\deploy.ps1 -AwsAccountId YOUR_ACCOUNT_ID -ServiceName "api_gateway"
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+### 3. Launch Ephemeral Stack
+Start the serverless Fargate task. This will provide you with a live Public IP address:
+```powershell
+.\run_ephemeral_cloud.ps1 -SubnetId "YOUR_SUBNET" -SecurityGroupId "YOUR_SG" -LifespanMinutes 10
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+---
 
-## Join the community
+## 🛠️ Critical Commands
 
-Join our community of developers creating universal apps.
+### 🔍 Find the Live Public IP
+If you lose your terminal output, run this to find the IP for your `frontend/.env`:
+```powershell
+(aws ec2 describe-network-interfaces --region us-east-2 | ConvertFrom-Json).NetworkInterfaces | Where-Object { $_.Association.PublicIp } | ForEach-Object { Write-Host "✅ Live IP Found: http://$($_.Association.PublicIp):8000" -ForegroundColor Green }
+```
+> [!NOTE]
+> Usually, the API will be the IP address that is **NOT** the fixed RDS database IP.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### 🛑 Emergency Stop (Stop Billing)
+To manually kill all running cloud clusters and stop AWS billing immediately:
+```powershell
+aws ecs list-tasks --cluster justateit-prod-cluster --region us-east-2 | ConvertFrom-Json | Select-Object -ExpandProperty taskArns | ForEach-Object { aws ecs stop-task --cluster justateit-prod-cluster --task $_ --region us-east-2 | Out-Null }
+```
+
+### 📱 Frontend Connection
+Update `frontend/.env` with the live Gateway IP:
+```env
+EXPO_PUBLIC_API_URL=http://<LIVE_IP>:8000
+```
+Then restart Expo:
+```bash
+npx expo start
+```
+
+---
+
+## 🛡️ Security & Performance
+- **Timeouts**: The API Gateway is configured with a **60s** timeout to support high-res photo uploads.
+- **Logging**: All services use Revision 3 with **Universal Logging** enabled (`awslogs`).

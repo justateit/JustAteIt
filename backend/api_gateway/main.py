@@ -25,15 +25,18 @@ async def proxy_request(service_url: str, path: str, request: Request):
     """Forwards the request to the target microservice."""
     url = f"{service_url}/{path}"
     
-    # We will build out Clerk Auth Verification here in the future
+    # We increase the timeout to 60 seconds for large photo uploads
+    timeout = httpx.Timeout(60.0, connect=10.0)
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=timeout) as client:
         try:
-             # Forward the body and headers
-             body = await request.body()
+             # Gather headers and remove host to prevent mismatches
              headers = dict(request.headers)
-             headers.pop("host", None) # prevent Host header mismatches
+             headers.pop("host", None)
+             headers.pop("content-length", None) # Let httpx recalculate for safety
 
+             # Forward the request using the raw body, bypassing chunked encoding bugs
+             body = await request.body()
              response = await client.request(
                  method=request.method,
                  url=url,
@@ -41,10 +44,17 @@ async def proxy_request(service_url: str, path: str, request: Request):
                  content=body,
                  params=request.query_params
              )
-             return JSONResponse(status_code=response.status_code, content=response.json())
-        except httpx.RequestError as exc:
+             
+             return JSONResponse(
+                 status_code=response.status_code, 
+                 content=response.json() if response.content else {"message": "Empty response"}
+             )
+        except httpx.TimeoutException:
+             print(f"TIMEOUT: {request.method} {url} timed out after 60s")
+             raise HTTPException(status_code=504, detail="Gateway Timeout")
+        except Exception as exc:
              print(f"Proxy error to {url}: {exc}")
-             raise HTTPException(status_code=503, detail="Service Unavailable")
+             raise HTTPException(status_code=503, detail=f"Service Unavailable: {str(exc)}")
 
 # -- API Routing rules --
 

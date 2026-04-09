@@ -42,3 +42,12 @@ app-example
 # generated native folders
 /ios
 /android
+
+# deployment & debug artifacts
+backend/temp-task-def.json
+backend/test-payload.json
+backend/aws-error.txt
+backend/*.jpg
+backend/*.png
+backend/test_upload.jpg
+*.log

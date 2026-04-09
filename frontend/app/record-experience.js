@@ -141,9 +141,7 @@ export default function RecordExperience() {
   const [imageUri, setImageUri] = useState(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
-  const API_BASE_URL = Platform.OS === 'web'
-    ? 'http://localhost:8000'
-    : 'https://unossified-impressively-arya.ngrok-free.dev';
+  const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 
   const scrollY = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -207,7 +205,7 @@ export default function RecordExperience() {
         formData.append('longitude', longitude.toString());
       }
 
-      const response = await fetch(`${API_BASE_URL}/upload`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/media/upload`, {
         method: 'POST',
         body: formData,
         headers: { 'ngrok-skip-browser-warning': 'true' },
