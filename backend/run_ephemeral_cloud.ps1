@@ -74,7 +74,19 @@ while ($true) {
 
 Write-Host "`n✅ TASK IS LIVE!" -ForegroundColor Green
 Write-Host "🌐 Your API Gateway is accessible at: http://$PublicIp:8000" -ForegroundColor Yellow
-Write-Host "Paste this IP into your frontend .env file right now!"
+
+# 3. AUTO-SYNC: Update the frontend .env file automatically
+$FrontendEnv = Join-Path (Get-Item -Path $PSScriptRoot).Parent.FullName "frontend\.env"
+if (Test-Path $FrontendEnv) {
+    Write-Host "🔄 Auto-syncing IP to frontend .env..." -ForegroundColor Gray
+    $Content = Get-Content $FrontendEnv
+    $NewContent = $Content -replace 'EXPO_PUBLIC_API_URL=http://[^:]+:8000', "EXPO_PUBLIC_API_URL=http://$($PublicIp):8000" `
+                           -replace 'EXPO_PUBLIC_FLAVOR_API_URL=http://[^:]+:8000', "EXPO_PUBLIC_FLAVOR_API_URL=http://$($PublicIp):8000"
+    $NewContent | Set-Content $FrontendEnv
+    Write-Host "✨ Frontend .env updated successfully!" -ForegroundColor Green
+} else {
+    Write-Host "⚠️ Could not find frontend .env at $FrontendEnv. Please update manually." -ForegroundColor Red
+}
 
 # 3. Wait out the timer
 Write-Host "`n⏱️ Timer started. The task will self-destruct in $LifespanMinutes minutes..."

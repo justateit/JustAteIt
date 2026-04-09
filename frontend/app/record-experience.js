@@ -29,95 +29,60 @@ const SCREEN_HEIGHT = Dimensions.get('window').height;
  */
 function AnimatedSection({ children, scrollY, delay = 0 }) {
   const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(28)).current;
-  const isVisible = useRef(false);
+  const translateY = useRef(new Animated.Value(20)).current;
+  const isAnimated = useRef(false);
   const layoutY = useRef(0);
-  const viewRef = useRef(null);
 
-  const handleLayout = useCallback((e) => {
-    // This gives us position relative to ScrollView content
+  const handleLayout = (e) => {
     layoutY.current = e.nativeEvent.layout.y;
-  }, []);
+    // If we haven't animated yet and we're near the top, trigger it now.
+    if (!isAnimated.current && layoutY.current < SCREEN_HEIGHT * 0.8) {
+      triggerAnimation();
+    }
+  };
+
+  const triggerAnimation = () => {
+    if (isAnimated.current) return;
+    isAnimated.current = true;
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 500,
+        delay,
+        useNativeDriver: true,
+      }),
+      Animated.spring(translateY, {
+        toValue: 0,
+        delay,
+        tension: 40,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
 
   useEffect(() => {
     const listenerId = scrollY.addListener(({ value }) => {
-      // Calculate where the element sits relative to the screen
-      // layoutY = position in scrollview content, value = scroll offset
       const elementScreenY = layoutY.current - value;
-
-      // Visible when the element is between top and 90% down the screen
-      const enterThreshold = SCREEN_HEIGHT * 0.92;
-      const exitAbove = -100;
-
-      const shouldBeVisible =
-        elementScreenY < enterThreshold && elementScreenY > exitAbove;
-
-      if (shouldBeVisible && !isVisible.current) {
-        isVisible.current = true;
-        Animated.parallel([
-          Animated.timing(opacity, {
-            toValue: 1,
-            duration: 450,
-            delay,
-            useNativeDriver: true,
-          }),
-          Animated.spring(translateY, {
-            toValue: 0,
-            delay,
-            tension: 50,
-            friction: 8,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      } else if (!shouldBeVisible && isVisible.current) {
-        isVisible.current = false;
-        Animated.parallel([
-          Animated.timing(opacity, {
-            toValue: 0,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(translateY, {
-            toValue: 28,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-        ]).start();
+      if (elementScreenY < SCREEN_HEIGHT * 0.9 && !isAnimated.current) {
+        triggerAnimation();
       }
     });
 
-    return () => scrollY.removeListener(listenerId);
-  }, [scrollY, opacity, translateY, delay]);
-
-  // Fire once on mount for items already on screen
-  useEffect(() => {
+    // Initial check: if we're likely on screen, just show it.
+    // We use a small timeout to let onLayout potentially fire first.
     const timer = setTimeout(() => {
-      const elementScreenY = layoutY.current;
-      if (elementScreenY < SCREEN_HEIGHT * 0.92 && elementScreenY >= 0) {
-        isVisible.current = true;
-        Animated.parallel([
-          Animated.timing(opacity, {
-            toValue: 1,
-            duration: 450,
-            delay,
-            useNativeDriver: true,
-          }),
-          Animated.spring(translateY, {
-            toValue: 0,
-            delay,
-            tension: 50,
-            friction: 8,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      }
-    }, 50);
-    return () => clearTimeout(timer);
+       if (!isAnimated.current) triggerAnimation();
+    }, 100 + delay);
+
+    return () => {
+      scrollY.removeListener(listenerId);
+      clearTimeout(timer);
+    };
   }, []);
 
   return (
     <Animated.View
-      ref={viewRef}
       onLayout={handleLayout}
       style={{ opacity, transform: [{ translateY }] }}
     >
