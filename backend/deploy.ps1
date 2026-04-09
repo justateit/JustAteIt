@@ -25,19 +25,19 @@ Write-Host "Logging into AWS ECR..." -ForegroundColor Cyan
 aws ecr get-login-password --region $AwsRegion | docker login --username AWS --password-stdin $RegistryUrl
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Failed to login to AWS ECR. Make sure your AWS CLI is configured." -ForegroundColor Red
+    Write-Host "Failed to login to AWS ECR. Make sure your AWS CLI is configured." -ForegroundColor Red
     exit 1
 }
 
 function Deploy-Service ([string]$Name, [string]$DockerfilePath) {
-    Write-Host "`n🚀 DEPLOYING $Name" -ForegroundColor Cyan
+    Write-Host "DEPLOYING $Name" -ForegroundColor Cyan
     $ImageName = "justateit-$Name"
     $FullImageUrl = "${RegistryUrl}/${ImageName}:latest"
 
     Write-Host "1. Building Docker image..."
     docker build -t $ImageName -f $DockerfilePath .
     
-    if ($LASTEXITCODE -ne 0) { Write-Host "❌ Build failed."; exit 1 }
+    if ($LASTEXITCODE -ne 0) { Write-Host "Build failed."; exit 1 }
 
     Write-Host "2. Tagging image..."
     docker tag "$ImageName`:latest" $FullImageUrl
@@ -45,13 +45,13 @@ function Deploy-Service ([string]$Name, [string]$DockerfilePath) {
     Write-Host "3. Pushing to AWS ECR..."
     docker push $FullImageUrl
 
-    if ($LASTEXITCODE -ne 0) { Write-Host "❌ Push failed."; exit 1 }
+    if ($LASTEXITCODE -ne 0) { Write-Host "Push failed."; exit 1 }
 
     Write-Host "4. Updating AWS ECS Service to pull new image..."
     # Note: Assumes ECS service names match the script keys exactly
     aws ecs update-service --cluster $ClusterName --service $Name --force-new-deployment | Out-Null
     
-    Write-Host "✅ $Name deployed successfully!" -ForegroundColor Green
+    Write-Host "$Name deployed successfully!" -ForegroundColor Green
 }
 
 if ($ServiceName -eq "all") {
@@ -62,6 +62,6 @@ if ($ServiceName -eq "all") {
     if ($Services.ContainsKey($ServiceName)) {
         Deploy-Service -Name $ServiceName -DockerfilePath $Services[$ServiceName]
     } else {
-        Write-Host "❌ Invalid service name. Pick one of: api_gateway, user_service, catalog_service, media_service, all" -ForegroundColor Red
+        Write-Host "Invalid service name. Pick one of: api_gateway, user_service, catalog_service, media_service, all" -ForegroundColor Red
     }
 }

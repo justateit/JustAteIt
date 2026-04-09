@@ -12,7 +12,7 @@ param (
 $ClusterName = "justateit-prod-cluster"
 $TaskFamily = "justateit-backend-task"
 
-Write-Host "🚀 Launching an Ephemeral Fargate Task for $LifespanMinutes minutes..." -ForegroundColor Cyan
+Write-Host "Launching an Ephemeral Fargate Task for $LifespanMinutes minutes..." -ForegroundColor Cyan
 
 # 1. Start a standalone task (Bypassing the expensive 'Service' and 'Load Balancer' completely)
 $TaskJson = aws ecs run-task `
@@ -25,11 +25,11 @@ $TaskJson = aws ecs run-task `
 $TaskArn = $TaskJson.tasks[0].taskArn
 
 if (-not $TaskArn) {
-    Write-Host "❌ Failed to launch task. Check your AWS permissions." -ForegroundColor Red
+    Write-Host "Failed to launch task. Check your AWS permissions." -ForegroundColor Red
     exit 1
 }
 
-Write-Host "⏳ Task spinning up. Waiting for AWS to provision a Public IP (can take up to 60 seconds)..."
+Write-Host "Task spinning up. Waiting for AWS to provision a Public IP (can take up to 60 seconds)..."
 
 # 2. Fetch the Public IP address attached to this task using a retry loop
 $PublicIp = $null
@@ -43,7 +43,7 @@ while ($true) {
     $StoppedReason = $TaskDetails.tasks[0].stoppedReason
 
     if ($LastStatus -eq "STOPPED") {
-        Write-Host "`n❌ FATAL EROR: AWS instantly killed your container on boot." -ForegroundColor Red
+        Write-Host "FATAL EROR: AWS instantly killed your container on boot." -ForegroundColor Red
         Write-Host "AWS Failure Reason: $StoppedReason" -ForegroundColor Yellow
         exit 1
     }
@@ -66,30 +66,30 @@ while ($true) {
     }
 
     if ($Attempts -gt 15) {
-        Write-Host "❌ Timed out waiting for Public IP." -ForegroundColor Red
+        Write-Host "Timed out waiting for Public IP." -ForegroundColor Red
         aws ecs stop-task --cluster $ClusterName --task $TaskArn --region us-east-2 | Out-Null
         exit 1
     }
 }
 
-Write-Host "`n✅ TASK IS LIVE!" -ForegroundColor Green
-Write-Host "🌐 Your API Gateway is accessible at: http://$PublicIp:8000" -ForegroundColor Yellow
+Write-Host "TASK IS LIVE!" -ForegroundColor Green
+Write-Host "Your API Gateway is accessible at: http://$PublicIp:8000" -ForegroundColor Yellow
 
 # 3. AUTO-SYNC: Update the frontend .env file automatically
 $FrontendEnv = Join-Path (Get-Item -Path $PSScriptRoot).Parent.FullName "frontend\.env"
 if (Test-Path $FrontendEnv) {
-    Write-Host "🔄 Auto-syncing IP to frontend .env..." -ForegroundColor Gray
+    Write-Host "Auto-syncing IP to frontend .env..." -ForegroundColor Gray
     $Content = Get-Content $FrontendEnv
     $NewContent = $Content -replace 'EXPO_PUBLIC_API_URL=http://[^:]+:8000', "EXPO_PUBLIC_API_URL=http://$($PublicIp):8000" `
                            -replace 'EXPO_PUBLIC_FLAVOR_API_URL=http://[^:]+:8000', "EXPO_PUBLIC_FLAVOR_API_URL=http://$($PublicIp):8000"
     $NewContent | Set-Content $FrontendEnv
-    Write-Host "✨ Frontend .env updated successfully!" -ForegroundColor Green
+    Write-Host "Frontend .env updated successfully!" -ForegroundColor Green
 } else {
-    Write-Host "⚠️ Could not find frontend .env at $FrontendEnv. Please update manually." -ForegroundColor Red
+    Write-Host "Could not find frontend .env at $FrontendEnv. Please update manually." -ForegroundColor Red
 }
 
 # 3. Wait out the timer
-Write-Host "`n⏱️ Timer started. The task will self-destruct in $LifespanMinutes minutes..."
+Write-Host "Timer started. The task will self-destruct in $LifespanMinutes minutes..." -ForegroundColor Red
 $SecondsLeft = $LifespanMinutes * 60
 while ($SecondsLeft -gt 0) {
     Start-Sleep -Seconds 60
@@ -98,6 +98,6 @@ while ($SecondsLeft -gt 0) {
 }
 
 # 4. Terminate the task to stop billing
-Write-Host "`n💀 Time is up. Sending kill signal to AWS Fargate..." -ForegroundColor Red
+Write-Host "Time is up. Sending kill signal to AWS Fargate..." -ForegroundColor Red
 aws ecs stop-task --cluster $ClusterName --task $TaskArn --region us-east-2 | Out-Null
-Write-Host "✅ Task destroyed. Billing has stopped." -ForegroundColor Green
+Write-Host "Task destroyed. Billing has stopped." -ForegroundColor Green
