@@ -13,10 +13,13 @@ The project has transitioned from a monolithic local setup to a modern, cloud-na
   - `catalog_service`: Manages reviews, venues (via Google Places API), and dishes.
   - `media_service`: Handshakes with AWS S3 for secure image storage.
 - **Infrastructure**:
-  - **AWS Fargate**: Serverless container execution.
-  - **AWS RDS (Postgres)**: Persistent RDBMS data storage.
-  - **AWS S3**: Scalable media storage for food photos.
-  - **CloudWatch**: Universal logging and instrumentation for all services.
+  - **AWS ECS (Elastic Container Service)**: Orchestrates the containerized microservices lifecycle, managing task definitions and cluster scheduling.
+  - **AWS Fargate**: Serverless compute engine used to execute containers without managing underlying EC2 instances.
+  - **AWS ECR (Elastic Container Registry)**: Private Docker registry for hosting, versioning, and deploying service images.
+  - **AWS RDS (Postgres)**: Persistent RDBMS for relational data storage and flavor profile persistence.
+  - **AWS S3**: Scalable object storage for high-resolution food photo media.
+  - **AWS VPC (Virtual Private Cloud)**: Provides an isolated network environment with custom subnets and security groups to secure cross-service traffic.
+  - **CloudWatch**: Centralized logging aggregate for all microservice streams via `awslogs`.
 
 ---
 
