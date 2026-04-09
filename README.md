@@ -43,10 +43,14 @@ Compile the Docker containers and push them to AWS ECR:
 .\deploy.ps1 -AwsAccountId YOUR_ACCOUNT_ID -ServiceName "api_gateway"
 ```
 
-### 3. Launch Ephemeral Stack
-Start the serverless Fargate task. This will provide you with a live Public IP address:
+### 3. One-Click Launch
+Start the serverless Fargate task. The script will automatically find the live IP, sync it to your `frontend/.env`, and spawn the Expo Metro Bundler in a new window:
 ```powershell
-.\run_ephemeral_cloud.ps1 -SubnetId "YOUR_SUBNET" -SecurityGroupId "YOUR_SG" -LifespanMinutes 10
+# Standard launch (Simulator testing)
+.\run_ephemeral_cloud.ps1 -SubnetId "YOUR_SUBNET" -SecurityGroupId "YOUR_SG"
+
+# Physical Device launch (Bypasses network blocks/firewalls)
+.\run_ephemeral_cloud.ps1 -SubnetId "YOUR_SUBNET" -SecurityGroupId "YOUR_SG" -Tunnel
 ```
 
 ---
@@ -54,12 +58,10 @@ Start the serverless Fargate task. This will provide you with a live Public IP a
 ## 🛠️ Critical Commands
 
 ### 🔍 Find the Live Public IP
-If you lose your terminal output, run this to find the IP for your `frontend/.env`:
+The launch script handles this automatically, but if you need to find it manually:
 ```powershell
 (aws ec2 describe-network-interfaces --region us-east-2 | ConvertFrom-Json).NetworkInterfaces | Where-Object { $_.Association.PublicIp } | ForEach-Object { Write-Host "✅ Live IP Found: http://$($_.Association.PublicIp):8000" -ForegroundColor Green }
 ```
-> [!NOTE]
-> Usually, the API will be the IP address that is **NOT** the fixed RDS database IP.
 
 ### 🛑 Emergency Stop (Stop Billing)
 To manually kill all running cloud clusters and stop AWS billing immediately:
@@ -67,15 +69,6 @@ To manually kill all running cloud clusters and stop AWS billing immediately:
 aws ecs list-tasks --cluster justateit-prod-cluster --region us-east-2 | ConvertFrom-Json | Select-Object -ExpandProperty taskArns | ForEach-Object { aws ecs stop-task --cluster justateit-prod-cluster --task $_ --region us-east-2 | Out-Null }
 ```
 
-### 📱 Frontend Connection
-Update `frontend/.env` with the live Gateway IP:
-```env
-EXPO_PUBLIC_API_URL=http://<LIVE_IP>:8000
-```
-Then restart Expo:
-```bash
-npx expo start
-```
 
 ---
 

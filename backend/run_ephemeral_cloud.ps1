@@ -6,7 +6,10 @@ param (
     [string]$SubnetId,
     
     [Parameter(Mandatory=$true)]
-    [string]$SecurityGroupId
+    [string]$SecurityGroupId,
+
+    [Parameter(Mandatory=$false)]
+    [switch]$Tunnel
 )
 
 $ClusterName = "justateit-prod-cluster"
@@ -84,6 +87,14 @@ if (Test-Path $FrontendEnv) {
                            -replace 'EXPO_PUBLIC_FLAVOR_API_URL=http://[^:]+:8000', "EXPO_PUBLIC_FLAVOR_API_URL=http://$($PublicIp):8000"
     $NewContent | Set-Content $FrontendEnv
     Write-Host "Frontend .env updated successfully!" -ForegroundColor Green
+
+    # 4. AUTO-START: Launch Expo automatically in a new window
+    $FrontendDir = Join-Path (Get-Item -Path $PSScriptRoot).Parent.FullName "frontend"
+    if (Test-Path $FrontendDir) {
+        $ExpoCmd = if ($Tunnel) { "npx expo start --tunnel" } else { "npx expo start" }
+        Write-Host "Launching Expo Metro Bundler (Mode: $(if ($Tunnel) { "Tunnel" } else { "LAN" })) in a new window..." -ForegroundColor Cyan
+        Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd `"$FrontendDir`"; $ExpoCmd"
+    }
 } else {
     Write-Host "Could not find frontend .env at $FrontendEnv. Please update manually." -ForegroundColor Red
 }
