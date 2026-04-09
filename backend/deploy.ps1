@@ -48,10 +48,17 @@ function Deploy-Service ([string]$Name, [string]$DockerfilePath) {
     if ($LASTEXITCODE -ne 0) { Write-Host "Push failed."; exit 1 }
 
     Write-Host "4. Updating AWS ECS Service to pull new image..."
-    # Note: Assumes ECS service names match the script keys exactly
-    aws ecs update-service --cluster $ClusterName --service $Name --force-new-deployment | Out-Null
+    # Note: Assumes ECS service names match the script keys exactly. 
+    # In Ephemeral Mode, the service might not exist yet, so we ignore errors here.
+    aws ecs update-service --cluster $ClusterName --service $Name --force-new-deployment --region $AwsRegion 2>$null | Out-Null
     
-    Write-Host "$Name deployed successfully!" -ForegroundColor Green
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "   (Note: Service update not required/possible for $Name. Image is now live in ECR.)" -ForegroundColor Gray
+    } else {
+        Write-Host "   $Name service update triggered!" -ForegroundColor Green
+    }
+    
+    Write-Host "$Name deployment step complete!" -ForegroundColor Green
 }
 
 if ($ServiceName -eq "all") {

@@ -76,6 +76,21 @@ export async function getLogs(userId) {
   return res.json();
 }
 
+/**
+ * Fetch a nearby restaurant from Google Places based on lat/lng.
+ * @param {number} lat
+ * @param {number} lng
+ */
+export async function getNearbyVenue(lat, lng) {
+  const res = await fetch(`${BASE_URL}/api/v1/venues/nearby`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lat, lng }),
+  });
+  if (!res.ok) throw new Error(`getNearbyVenue failed: ${res.status}`);
+  return res.json();
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Users
 // ─────────────────────────────────────────────────────────────────────────────

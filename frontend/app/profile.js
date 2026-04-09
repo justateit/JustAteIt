@@ -121,43 +121,52 @@ export default function App() {
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.journalListContainer}>
+                <View style={styles.journalFeedContainer}>
                     {logsLoading ? (
-                        <ActivityIndicator size="small" color="#E86A33" style={{ marginVertical: 24 }} />
+                        <ActivityIndicator size="small" color="#E86A33" style={{ marginVertical: 40 }} />
                     ) : logs.length === 0 ? (
-                        <Text style={styles.emptyText}>No logs yet. Start by archiving an experience!</Text>
+                        <View style={styles.emptyJournalContainer}>
+                            <FontAwesome name="file-text-o" size={40} color="#DDD" />
+                            <Text style={styles.emptyText}>No logs yet. Start by archiving an experience!</Text>
+                        </View>
                     ) : (
-                        logs.map((item, index) => {
+                        logs.map((item) => {
                             const { month, day } = formatLogDate(item.created_at);
-                            const subtitle = [item.venue, item.city].filter(Boolean).join(' · ').toUpperCase();
+                            const locationStr = [item.venue_name, item.city].filter(Boolean).join(' · ');
+                            
                             return (
-                                <View
-                                    key={item.id}
-                                    style={[
-                                        styles.journalItem,
-                                        index === logs.length - 1 && styles.lastJournalItem
-                                    ]}
-                                >
-                                    <View style={styles.dateContainer}>
-                                        <Text style={styles.monthText}>{month}</Text>
-                                        <Text style={styles.dayText}>{day}</Text>
+                                <View key={item.id} style={styles.feedCard}>
+                                    {/* Card Header: Date & Location */}
+                                    <View style={styles.feedCardHeader}>
+                                        <View style={styles.feedBadgeDate}>
+                                            <Text style={styles.feedBadgeMonth}>{month}</Text>
+                                            <Text style={styles.feedBadgeDay}>{day}</Text>
+                                        </View>
+                                        <View style={styles.feedCardTitleContainer}>
+                                            <Text style={styles.feedDishName} numberOfLines={1}>{item.dish_name}</Text>
+                                            <Text style={styles.feedVenueName} numberOfLines={1}>{locationStr || 'Untracked Location'}</Text>
+                                        </View>
+                                        <View style={styles.feedRatingBadge}>
+                                            <Text style={styles.feedRatingText}>{item.rating || '—'}</Text>
+                                            <FontAwesome name="star" size={12} color="#E86A33" />
+                                        </View>
                                     </View>
 
+                                    {/* Main Image */}
                                     {item.image_url ? (
-                                        <Image source={{ uri: item.image_url }} style={styles.journalImage} />
+                                        <Image source={{ uri: item.image_url }} style={styles.feedImage} resizeMode="cover" />
                                     ) : (
-                                        <View style={[styles.journalImage, styles.journalImagePlaceholder]} />
+                                        <View style={[styles.feedImage, styles.feedImagePlaceholder]}>
+                                            <FontAwesome name="image" size={30} color="#EEE" />
+                                        </View>
                                     )}
 
-                                    <View style={styles.journalTextContainer}>
-                                        <Text style={styles.journalItemTitle} numberOfLines={1}>{item.dish}</Text>
-                                        <Text style={styles.journalItemSubtitle} numberOfLines={1}>{subtitle || '—'}</Text>
-                                    </View>
-
-                                    <View style={styles.ratingContainer}>
-                                        <Text style={styles.ratingText}>{item.rating ?? '—'}</Text>
-                                        <FontAwesome name="star" size={14} color="#C4C4C4" />
-                                    </View>
+                                    {/* Sensory Note Content */}
+                                    {item.sensory_notes && (
+                                        <View style={styles.feedNotesContainer}>
+                                            <Text style={styles.feedNotesText}>"{item.sensory_notes}"</Text>
+                                        </View>
+                                    )}
                                 </View>
                             );
                         })
@@ -307,82 +316,105 @@ const styles = StyleSheet.create({
         fontSize: 24,
         color: '#000',
     },
-    journalListContainer: {
-        backgroundColor: '#fff',
-        borderRadius: 20,
-        paddingHorizontal: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.03,
-        shadowRadius: 10,
-        elevation: 2,
+    journalFeedContainer: {
+        width: '100%',
     },
-    journalItem: {
+    feedCard: {
+        backgroundColor: '#fff',
+        borderRadius: 24,
+        marginBottom: 20,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.05,
+        shadowRadius: 15,
+        elevation: 4,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.03)',
+    },
+    feedCardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0',
+        padding: 16,
     },
-    lastJournalItem: {
-        borderBottomWidth: 0,
-    },
-    dateContainer: {
+    feedBadgeDate: {
+        backgroundColor: '#F8F8F8',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 12,
         alignItems: 'center',
-        width: 40,
         marginRight: 12,
     },
-    monthText: {
-        fontSize: 12,
+    feedBadgeMonth: {
+        fontSize: 10,
         color: '#A0A0A0',
-        fontWeight: '600',
-        letterSpacing: 1,
-        marginBottom: 2,
+        fontWeight: '700',
     },
-    dayText: {
-        fontSize: 16,
+    feedBadgeDay: {
+        fontSize: 14,
         color: '#000',
-        fontWeight: '600',
+        fontWeight: '700',
     },
-    journalImage: {
-        width: 44,
-        height: 44,
-        borderRadius: 6,
-        marginRight: 16,
-    },
-    journalTextContainer: {
+    feedCardTitleContainer: {
         flex: 1,
     },
-    journalItemTitle: {
+    feedDishName: {
         fontFamily: serifFont,
-        fontSize: 16,
+        fontSize: 18,
         color: '#000',
-        marginBottom: 4,
+        marginBottom: 2,
     },
-    journalItemSubtitle: {
-        fontSize: 10,
+    feedVenueName: {
+        fontSize: 11,
         color: '#888',
         fontWeight: '600',
-        letterSpacing: 1,
+        letterSpacing: 0.5,
     },
-    ratingContainer: {
+    feedRatingBadge: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
+        backgroundColor: '#FFF5F2',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 10,
     },
-    ratingText: {
-        fontSize: 14,
-        color: '#000',
-        fontWeight: '500',
+    feedRatingText: {
+        fontSize: 12,
+        color: '#E86A33',
+        fontWeight: '700',
+    },
+    feedImage: {
+        width: '100%',
+        height: 200,
+    },
+    feedImagePlaceholder: {
+        backgroundColor: '#F9F9F9',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    feedNotesContainer: {
+        padding: 16,
+        backgroundColor: '#FBFBFB',
+    },
+    feedNotesText: {
+        fontSize: 13,
+        color: '#555',
+        fontStyle: 'italic',
+        lineHeight: 18,
+    },
+    emptyJournalContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 60,
+        backgroundColor: '#FFF',
+        borderRadius: 24,
     },
     emptyText: {
         textAlign: 'center',
         color: '#AAA',
         fontSize: 14,
-        paddingVertical: 24,
+        marginTop: 15,
         fontStyle: 'italic',
-    },
-    journalImagePlaceholder: {
-        backgroundColor: '#F0F0F0',
     },
 });

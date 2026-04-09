@@ -5,7 +5,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { submitLog } from '../utils/flavorProfileApi';
+import { submitLog, getNearbyVenue, upsertUser } from '../utils/flavorProfileApi';
 import {
   Animated,
   Dimensions,
@@ -179,13 +179,24 @@ export default function RecordExperience() {
       if (!response.ok) throw new Error('Upload failed');
 
       const data = await response.json();
-      if (data.restaurant_name) {
-        setVenue(data.restaurant_name);
-        setCity(data.location || '');
-      }
       setImageUri(data.url);
+
+      // AUTO-DISCOVERY: If GPS data exists and isRestaurant is toggled, hit Google Places
+      if (isRestaurant && latitude && longitude) {
+        try {
+          const venueData = await getNearbyVenue(latitude, longitude);
+          if (venueData.found) {
+            setVenue(venueData.venue.name);
+            setCity(venueData.venue.vicinity || '');
+          }
+        } catch (e) {
+          console.warn('Nearby venue lookup failed:', e);
+        }
+      }
+
       alert('Upload Successful!');
     } catch (error) {
+      console.error('[Upload]', error);
       alert('Upload failed');
     } finally {
       setUploading(false);
@@ -203,13 +214,19 @@ export default function RecordExperience() {
     }
     setArchiving(true);
     try {
+      // Step 0: Ensure User exists in DB (Fix for ForeignKeyViolation)
+      await upsertUser(user.id, {
+        username: user.username || user.firstName || 'Foodie',
+        avatar_url: user.imageUrl,
+      });
+
       await submitLog(user.id, {
-        dish: dish.trim(),
-        venue: venue.trim() || null,
+        dish_name: dish.trim(),
+        venue_name: venue.trim() || null,
         city: city.trim() || null,
         is_restaurant: isRestaurant,
         sensory_notes: sensoryNotes.trim() || null,
-        rating: rating > 0 ? rating : null,
+        rating: rating,
         image_url: imageUri || null,
       });
       alert('Log archived! ✓');

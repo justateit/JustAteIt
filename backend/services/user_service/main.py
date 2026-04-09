@@ -53,8 +53,10 @@ def health_check():
 @app.post("/users")
 def upsert_user(payload: UserPayload, db: Session = Depends(get_db)):
     """Create or update a user profile via Clerk sync."""
+    print(f"\033[96m[USER] Upserting user: {payload.id}\033[0m")
     user = db.query(models.User).filter(models.User.id == payload.id).first()
     if not user:
+        print(f"\033[93m[USER] User {payload.id} not found, creating new record.\033[0m")
         user = models.User(id=payload.id)
         db.add(user)
     
@@ -65,6 +67,7 @@ def upsert_user(payload: UserPayload, db: Session = Depends(get_db)):
     
     # Ensure they have a flavor profile instantly
     if not user.flavor_profile:
+        print(f"\033[92m[USER] Initializing first-time flavor profile for user {payload.id}\033[0m")
         profile = models.FlavorProfile(user_id=user.id)
         db.add(profile)
 
@@ -75,6 +78,7 @@ def upsert_user(payload: UserPayload, db: Session = Depends(get_db)):
 def get_user(user_id: str, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
+         print(f"\033[91m[USER ERROR] Fetch failed: User {user_id} not found\033[0m")
          raise HTTPException(status_code=404, detail="User not found")
     return {
         "id": user.id,
@@ -101,15 +105,18 @@ def get_flavor_profile(user_id: str, db: Session = Depends(get_db)):
 @app.post("/flavor-profiles/update", response_model=ProfileResponse)
 def update_flavor_profile(payload: RatingPayload, db: Session = Depends(get_db)):
     """Core Algorithm: Adjusts user profile based on a rating and dish stats."""
+    print(f"\033[96m[USER] Recalculating flavor profile for {payload.user_id} (Rating: {payload.rating})\033[0m")
     if not (1 <= payload.rating <= 5):
         raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
 
     profile = db.query(models.FlavorProfile).filter(models.FlavorProfile.user_id == payload.user_id).first()
     if not profile:
+        print(f"\033[91m[USER ERROR] Update failed: No profile found for {payload.user_id}\033[0m")
         raise HTTPException(status_code=404, detail="Profile not found. Ensure User is created.")
 
     # Apply adaptive alpha math
     alpha = adaptive_alpha(profile.review_count)
+    print(f"\033[96m[USER] Adaptive Alpha: {alpha:.4f} (Experience: {profile.review_count})\033[0m")
 
     dish_stats = {
         "spice": payload.dish_base_spice,
@@ -125,14 +132,18 @@ def update_flavor_profile(payload: RatingPayload, db: Session = Depends(get_db))
         dish_val = dish_stats[dim]
         new_val = update_dimension(old_val, payload.rating, dish_val, alpha)
         setattr(profile, dim, new_val)
+        # print(f"   -> {dim}: {old_val:.2f} -> {new_val:.2f}")
 
     profile.review_count += 1
     db.commit()
 
     p_dict = {d: getattr(profile, d) for d in FLAVOR_DIMS}
+    label = personality_label(p_dict)
+    print(f"\033[92m[USER] New Personality Label: {label}\033[0m")
+    
     return {
         "user_id": payload.user_id,
         "profile": p_dict,
         "review_count": profile.review_count,
-        "personality": personality_label(p_dict)
+        "personality": label
     }

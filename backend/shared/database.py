@@ -8,7 +8,12 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 # Make sure we don't crash if it's not set (for build steps)
 if DATABASE_URL:
     # We want pool_pre_ping to check if the RDS connection dropped
-    engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+    # connect_timeout=10 prevents infinite hangs if RDS is blocked by firewall
+    engine = create_engine(
+        DATABASE_URL, 
+        pool_pre_ping=True,
+        connect_args={"connect_timeout": 10}
+    )
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 else:
     engine = None
