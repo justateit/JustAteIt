@@ -47,10 +47,10 @@ Compile the Docker containers and push them to AWS ECR:
 Start the serverless Fargate task. The script will automatically find the live IP, sync it to your `frontend/.env`, and spawn the Expo Metro Bundler in a new window:
 ```powershell
 # Standard launch (Simulator testing)
-.\run_ephemeral_cloud.ps1 -SubnetId "YOUR_SUBNET" -SecurityGroupId "YOUR_SG"
+.\run_ephemeral_cloud.ps1 -SubnetId "YOUR_SUBNET" -SecurityGroupId "YOUR_SG" -LifespanMinutes 10 
 
 # Physical Device launch (Bypasses network blocks/firewalls)
-.\run_ephemeral_cloud.ps1 -SubnetId "YOUR_SUBNET" -SecurityGroupId "YOUR_SG" -Tunnel
+.\run_ephemeral_cloud.ps1 -SubnetId "YOUR_SUBNET" -SecurityGroupId "YOUR_SG" -LifespanMinutes 10 -Tunnel
 ```
 
 ---
