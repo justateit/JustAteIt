@@ -1,14 +1,16 @@
+import HorizontalDishCard from '@/components/HorizontalDishCard';
 import { DiningFrequencyCard, TasteDNACard } from '@/components/ProfileCards';
 import { useUser } from '@clerk/clerk-expo';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
     Image,
     Platform,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -20,6 +22,7 @@ import { getLogs } from '../utils/flavorProfileApi';
 
 const MONTH_NAMES = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
+
 function formatLogDate(isoString) {
     const d = new Date(isoString);
     return { month: MONTH_NAMES[d.getMonth()], day: String(d.getDate()) };
@@ -29,20 +32,33 @@ export default function App() {
     const router = useRouter();
     const { user } = useUser();
 
-    const [logs, setLogs] = useState([]);
-    const [logsLoading, setLogsLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const { data, isLoading: logsLoading, refetch } = useQuery({ // returns three things: data (actual logs), isLoading, and refetch function
+        queryKey: ['logs', user?.id], // unique name for this query so Tanstack can cache it properly
+        queryFn: () => getLogs(user.id).then(d => d.logs ?? []), // actual function that fetches the data, calls getLogs then grabs logs array
+        enabled: !!user?.id, // only run the query if we have a user ID
+    });
 
-    useEffect(() => {
-        if (!user?.id) return;
-        getLogs(user.id)
-            .then(data => setLogs(data.logs ?? []))
-            .catch(err => console.warn('[Profile] getLogs failed:', err))
-            .finally(() => setLogsLoading(false));
-    }, [user?.id]);
+    const logs = data ?? []; // use data if it exists, otherwise use empty array
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true); // spinner appears
+        await refetch(); // fetches fresh data
+        setRefreshing(false); // spinner disappears
+    }, [refetch]);
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+            <ScrollView contentContainerStyle={styles.container}
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor="#E86A33"
+                    />
+                }
+            >
 
                 {/* Header */}
                 <View style={styles.header}>
@@ -130,46 +146,23 @@ export default function App() {
                             <Text style={styles.emptyText}>No logs yet. Start by archiving an experience!</Text>
                         </View>
                     ) : (
-                        logs.map((item) => {
-                            const { month, day } = formatLogDate(item.created_at);
-                            const locationStr = [item.venue_name, item.city].filter(Boolean).join(' · ');
-                            
-                            return (
-                                <View key={item.id} style={styles.feedCard}>
-                                    {/* Card Header: Date & Location */}
-                                    <View style={styles.feedCardHeader}>
-                                        <View style={styles.feedBadgeDate}>
-                                            <Text style={styles.feedBadgeMonth}>{month}</Text>
-                                            <Text style={styles.feedBadgeDay}>{day}</Text>
-                                        </View>
-                                        <View style={styles.feedCardTitleContainer}>
-                                            <Text style={styles.feedDishName} numberOfLines={1}>{item.dish_name}</Text>
-                                            <Text style={styles.feedVenueName} numberOfLines={1}>{locationStr || 'Untracked Location'}</Text>
-                                        </View>
-                                        <View style={styles.feedRatingBadge}>
-                                            <Text style={styles.feedRatingText}>{item.rating || '—'}</Text>
-                                            <FontAwesome name="star" size={12} color="#E86A33" />
-                                        </View>
-                                    </View>
+                        logs.map((item) => (
 
-                                    {/* Main Image */}
-                                    {item.image_url ? (
-                                        <Image source={{ uri: item.image_url }} style={styles.feedImage} resizeMode="cover" />
-                                    ) : (
-                                        <View style={[styles.feedImage, styles.feedImagePlaceholder]}>
-                                            <FontAwesome name="image" size={30} color="#EEE" />
-                                        </View>
-                                    )}
+                            <HorizontalDishCard
+                                key={item.id}
+                                id={item.id}
+                                title={item.dish_name}
+                                restaurant={item.venue_name}
+                                date={item.created_at}
+                                rating={item.rating}
+                                image={{ uri: item.image_url }}
+                                location={item.city}
+                                tastingNotes={item.sensory_notes}
+                                chemistryInsight=""
+                                tags={[]}
+                            />
 
-                                    {/* Sensory Note Content */}
-                                    {item.sensory_notes && (
-                                        <View style={styles.feedNotesContainer}>
-                                            <Text style={styles.feedNotesText}>"{item.sensory_notes}"</Text>
-                                        </View>
-                                    )}
-                                </View>
-                            );
-                        })
+                        ))
                     )}
                 </View>
 
