@@ -2,24 +2,37 @@ import HorizontalDishCard from '@/components/HorizontalDishCard';
 import SearchBar from '@/components/SearchBar';
 import { trendingDishes } from '@/data/mockdata';
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+
+const USE_MOCK = !process.env.EXPO_PUBLIC_API_URL; // if no API URL, use mock data
 
 
 const Search = () => {
     const [searchQuery, setSearchQuery] = useState('');
 
-    const results = useMemo(() => {
-        if (!searchQuery.trim()) return [];
-        const q = searchQuery.toLowerCase();
-        return trendingDishes.filter(dish =>
-            dish.title?.toLowerCase().includes(q) ||
-            dish.restaurant?.toLowerCase().includes(q) ||
-            dish.location?.toLowerCase().includes(q) ||
-            dish.date?.includes(q));
-    }, [searchQuery]);
+    const { data, isLoading } = useQuery({
+
+        queryKey: ['search', searchQuery],
+        queryFn: () => {
+            if (USE_MOCK) {
+                return Promise.resolve(
+                    trendingDishes.filter(dish =>
+                        dish.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        dish.restaurant?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        dish.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        dish.date?.includes(searchQuery))
+                )
+            }
+            return fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/v1/venues?search=${searchQuery}`)
+                .then(r => r.json())
+        },
+        enabled: searchQuery.trim().length > 0, // only run query if there's a search term
+    })
+    const results = data ?? [];
 
     return (
         <ScrollView
@@ -37,7 +50,11 @@ const Search = () => {
                 </TouchableOpacity>
                 <Text style={styles.title}>Discover</Text>
             </View>
-            <Text style={{ fontSize: 13, color: 'black', marginBottom: 20, fontWeight: 'bold' }}>SEARCH RESULTS FOR '{searchQuery.toUpperCase()}'</Text>
+            {searchQuery.trim() ? (
+                <Text style={{ fontSize: 13, color: 'black', marginBottom: 20, fontWeight: 'bold' }}>
+                    SEARCH RESULTS FOR '{searchQuery.toUpperCase()}'
+                </Text>
+            ) : null}
             <SearchBar
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -49,7 +66,7 @@ const Search = () => {
                 </Text>
             ) : (
                 <View style={{ gap: 20, marginTop: 10 }}>
-                    {results.map((item) => (
+                    {results.map((item: any) => (
                         <HorizontalDishCard key={item.id} {...item} />
                     ))}
                 </View>
