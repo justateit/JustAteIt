@@ -75,6 +75,9 @@ export default function HomeScreen() {
         onPress={() => router.push('/global_venues')}
       />
 
+      {/* Bottom padding for scrollability */}
+      <View style={{ height: 100 }} />
+
     </ScrollView>
   )
 }

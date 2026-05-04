@@ -2,6 +2,7 @@ import HorizontalDishCard from '@/components/HorizontalDishCard';
 import { DiningFrequencyCard, TasteDNACard } from '@/components/ProfileCards';
 import { useUser } from '@clerk/clerk-expo';
 import { Feather, FontAwesome } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -38,6 +39,11 @@ export default function App() {
         queryFn: () => getLogs(user.id).then(d => d.logs ?? []), // actual function that fetches the data, calls getLogs then grabs logs array
         enabled: !!user?.id, // only run the query if we have a user ID
     });
+
+    // activeTab: the variable that holds the current value
+    // setActiveTab: the function thats called to change the value
+    // useState('journal') sets the starting value to 'journal'  meaning when the page first loads, the journal tab will be selected by default
+    const [activeTab, setActiveTab] = useState('journal');
 
     const logs = data ?? []; // use data if it exists, otherwise use empty array
 
@@ -123,48 +129,74 @@ export default function App() {
                     </View>
                 </View>
 
-                {/* Info Cards — stacked */}
-                <View style={styles.cardsContainer}>
-                    <DiningFrequencyCard />
-                    <TasteDNACard />
-                </View>
-
-                {/* The Journal Section */}
-                <View style={styles.journalHeader}>
-                    <Text style={styles.journalTitle}>The Journal</Text>
-                    <TouchableOpacity>
-                        <Feather name="search" size={22} color="#000" />
+                <View style={styles.toggleContainer}>
+                    <TouchableOpacity
+                        style={[styles.toggleButton, activeTab === 'journal' && styles.toggleButtonActive]}
+                        onPress={() => setActiveTab('journal')}
+                    >
+                        <Text style={[styles.toggleText, activeTab === 'journal' && styles.toggleTextActive]}>
+                            The Journal
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.toggleButton, activeTab === 'saved' && styles.toggleButtonActive]}
+                        onPress={() => router.push('/my_logs')}>
+                        <Text style={[styles.toggleText, activeTab === 'saved' && styles.toggleTextActive]}>
+                            Saved Logs
+                        </Text>
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.journalFeedContainer}>
-                    {logsLoading ? (
-                        <ActivityIndicator size="small" color="#E86A33" style={{ marginVertical: 40 }} />
-                    ) : logs.length === 0 ? (
-                        <View style={styles.emptyJournalContainer}>
-                            <FontAwesome name="file-text-o" size={40} color="#DDD" />
-                            <Text style={styles.emptyText}>No logs yet. Start by archiving an experience!</Text>
+                {activeTab === 'journal' ? (
+                    <>
+                        {/* Info Cards — stacked */}
+                        <View style={styles.cardsContainer}>
+                            <DiningFrequencyCard />
+                            <TasteDNACard />
                         </View>
-                    ) : (
-                        logs.map((item) => (
 
-                            <HorizontalDishCard
-                                key={item.id}
-                                id={item.id}
-                                title={item.dish_name}
-                                restaurant={item.venue_name}
-                                date={item.created_at}
-                                rating={item.rating}
-                                image={{ uri: item.image_url }}
-                                location={item.city}
-                                tastingNotes={item.sensory_notes}
-                                chemistryInsight=""
-                                tags={[]}
-                            />
+                        {/* The Journal Section */}
+                        <View style={styles.journalHeader}>
+                            <Text style={styles.journalTitle}>The Journal</Text>
+                            <TouchableOpacity>
+                                <Feather name="search" size={22} color="#000" />
+                            </TouchableOpacity>
+                        </View>
 
-                        ))
-                    )}
-                </View>
+                        <View style={styles.journalFeedContainer}>
+                            {logsLoading ? (
+                                <ActivityIndicator size="small" color="#E86A33" style={{ marginVertical: 40 }} />
+                            ) : logs.length === 0 ? (
+                                <View style={styles.emptyJournalContainer}>
+                                    <FontAwesome name="file-text-o" size={40} color="#DDD" />
+                                    <Text style={styles.emptyText}>No logs yet. Start by archiving an experience!</Text>
+                                </View>
+                            ) : (
+                                logs.map((item) => (
+
+                                    <HorizontalDishCard
+                                        key={item.id}
+                                        id={item.id}
+                                        title={item.dish_name}
+                                        restaurant={item.venue_name}
+                                        date={item.created_at}
+                                        rating={item.rating}
+                                        image={{ uri: item.image_url }}
+                                        location={item.city}
+                                        tastingNotes={item.sensory_notes}
+                                        chemistryInsight=""
+                                        tags={[]}
+                                    />
+
+                                ))
+                            )}
+                        </View>
+                    </>
+                ) : (
+                    <View />
+
+                )}
+
 
                 {/* Bottom padding for scrollability */}
                 <View style={{ height: 100 }} />
@@ -263,7 +295,7 @@ const styles = StyleSheet.create({
         width: '100%',
         borderRadius: 20,
         overflow: 'hidden',
-        marginBottom: 24,
+        marginBottom: 5,
         borderWidth: 0.8,
         borderColor: 'rgba(255,255,255,0.4)',
         shadowColor: '#000',
@@ -409,5 +441,30 @@ const styles = StyleSheet.create({
         fontSize: 14,
         marginTop: 15,
         fontStyle: 'italic',
+    },
+    toggleContainer: {
+        flexDirection: 'row',
+        backgroundColor: '#e5dfd5ff',
+        borderRadius: 30,
+        padding: 4,
+        marginBottom: 20,
+        width: '100%',
+    },
+    toggleButton: {
+        flex: 1,
+        paddingVertical: 10,
+        borderRadius: 26,
+        alignItems: 'center',
+    },
+    toggleButtonActive: {
+        backgroundColor: '#E86A33',
+    },
+    toggleText: {
+        fontSize: 14,
+        color: '#999',
+    },
+    toggleTextActive: {
+        color: '#FFF',
+        fontWeight: '500',
     },
 });
