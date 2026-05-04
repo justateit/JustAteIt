@@ -38,6 +38,8 @@ const GlobalVenues = ({ onPress }: Props) => {
             <TopRatedSpotsCard
                 spots={topRatedSpots}
             />
+            {/* Bottom padding for scrollability */}
+            <View style={{ height: 100 }} />
         </ScrollView>
     )
 }
