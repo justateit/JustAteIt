@@ -1,0 +1,311 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  JustAteIt dev backend: ECR repos, minimal public-subnet VPC (no NAT),
+  S3 media bucket, ECS cluster + one Fargate task definition running all
+  four services in a single task (localhost networking). Dev harness only:
+  no ALB, no ECS service, no RDS. Tasks are launched on demand by
+  infra/scripts/run-dev-task.ps1.
+
+Parameters:
+  ImageTag:
+    Type: String
+    Description: >
+      Immutable image tag (git SHA) used for all four container images.
+      Must match a tag pushed by infra/scripts/build-push-images.ps1.
+    AllowedPattern: "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"
+
+  AllowedIngressCidr:
+    Type: String
+    Description: >
+      CIDR allowed to reach the API gateway on port 8000
+      (e.g. your public IP as x.x.x.x/32).
+    AllowedPattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/\\d{1,2}$"
+
+  DatabaseUrlParameterArn:
+    Type: String
+    Description: >
+      ARN of the SSM parameter (SecureString recommended) holding the
+      Postgres DATABASE_URL (Supabase session pooler). Must be in the
+      same region as this stack.
+    AllowedPattern: "^arn:aws:ssm:[a-z0-9-]+:\\d{12}:parameter/.+$"
+
+Resources:
+  # ── ECR repositories (immutable tags; emptied automatically on delete) ──
+  ApiGatewayRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${AWS::StackName}-api-gateway"
+      ImageTagMutability: IMMUTABLE
+      EmptyOnDelete: true
+
+  UserServiceRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${AWS::StackName}-user-service"
+      ImageTagMutability: IMMUTABLE
+      EmptyOnDelete: true
+
+  CatalogServiceRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${AWS::StackName}-catalog-service"
+      ImageTagMutability: IMMUTABLE
+      EmptyOnDelete: true
+
+  MediaServiceRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${AWS::StackName}-media-service"
+      ImageTagMutability: IMMUTABLE
+      EmptyOnDelete: true
+
+  # ── Networking: one VPC, one public subnet, IGW route. No NAT (cost). ──
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-vpc"
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.0.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-public"
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  DefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  TaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: JustAteIt dev task - API gateway ingress only
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          CidrIp: !Ref AllowedIngressCidr
+          Description: API gateway from allowed CIDR
+
+  # ── S3 media bucket (objects publicly readable so the app can render
+  #    uploaded photos; dev only) ──
+  MediaBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+
+  MediaBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MediaBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: PublicReadObjects
+            Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "${MediaBucket.Arn}/*"
+
+  # ── ECS cluster, logs, IAM ──
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "${AWS::StackName}-cluster"
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/ecs/${AWS::StackName}"
+      RetentionInDays: 7
+
+  # Pulls images, writes logs, resolves the DATABASE_URL secret at launch.
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: read-database-url-parameter
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ssm:GetParameters
+                Resource: !Ref DatabaseUrlParameterArn
+
+  # Runtime role for the containers (media uploads, SSM parameter reads).
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: media-bucket-and-ssm-read
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                Resource: !Sub "${MediaBucket.Arn}/*"
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt MediaBucket.Arn
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource: !Ref DatabaseUrlParameterArn
+
+  # ── One Fargate task definition with all four containers. In awsvpc
+  #    mode the containers share a network namespace, so they talk over
+  #    localhost exactly like docker-compose service links. ──
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${AWS::StackName}-task"
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      Cpu: "512"
+      Memory: "2048"
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+        - Name: api-gateway
+          Image: !Sub "${ApiGatewayRepo.RepositoryUri}:${ImageTag}"
+          Essential: true
+          PortMappings:
+            - ContainerPort: 8000
+              Protocol: tcp
+          Environment:
+            - Name: USER_SERVICE_URL
+              Value: http://localhost:8001
+            - Name: CATALOG_SERVICE_URL
+              Value: http://localhost:8002
+            - Name: MEDIA_SERVICE_URL
+              Value: http://localhost:8003
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: api-gateway
+
+        - Name: user-service
+          Image: !Sub "${UserServiceRepo.RepositoryUri}:${ImageTag}"
+          Essential: true
+          Secrets:
+            - Name: DATABASE_URL
+              ValueFrom: !Ref DatabaseUrlParameterArn
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: user-service
+
+        - Name: catalog-service
+          Image: !Sub "${CatalogServiceRepo.RepositoryUri}:${ImageTag}"
+          Essential: true
+          Environment:
+            - Name: USER_SERVICE_URL
+              Value: http://localhost:8001
+          Secrets:
+            - Name: DATABASE_URL
+              ValueFrom: !Ref DatabaseUrlParameterArn
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: catalog-service
+
+        - Name: media-service
+          Image: !Sub "${MediaServiceRepo.RepositoryUri}:${ImageTag}"
+          Essential: true
+          Environment:
+            - Name: S3_BUCKET
+              Value: !Ref MediaBucket
+            - Name: S3_REGION
+              Value: !Ref AWS::Region
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: media-service
+
+Outputs:
+  ClusterName:
+    Value: !Ref Cluster
+  TaskDefinitionArn:
+    Value: !Ref TaskDefinition
+  PublicSubnetId:
+    Value: !Ref PublicSubnet
+  TaskSecurityGroupId:
+    Value: !Ref TaskSecurityGroup
+  MediaBucketName:
+    Value: !Ref MediaBucket
+  LogGroupName:
+    Value: !Ref LogGroup
+  ApiGatewayRepoUri:
+    Value: !GetAtt ApiGatewayRepo.RepositoryUri
+  UserServiceRepoUri:
+    Value: !GetAtt UserServiceRepo.RepositoryUri
+  CatalogServiceRepoUri:
+    Value: !GetAtt CatalogServiceRepo.RepositoryUri
+  MediaServiceRepoUri:
+    Value: !GetAtt MediaServiceRepo.RepositoryUri

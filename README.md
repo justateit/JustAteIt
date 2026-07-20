@@ -12,66 +12,40 @@ The project has transitioned from a monolithic local setup to a modern, cloud-na
   - `user_service`: Manages flavor profiles and user metadata.
   - `catalog_service`: Manages reviews, venues (via Google Places API), and dishes.
   - `media_service`: Handshakes with AWS S3 for secure image storage.
-- **Infrastructure**:
-  - **AWS ECS (Elastic Container Service)**: Orchestrates the containerized microservices lifecycle, managing task definitions and cluster scheduling.
-  - **AWS Fargate**: Serverless compute engine used to execute containers without managing underlying EC2 instances.
-  - **AWS ECR (Elastic Container Registry)**: Private Docker registry for hosting, versioning, and deploying service images.
-  - **AWS RDS (Postgres)**: Persistent RDBMS for relational data storage and flavor profile persistence.
-  - **AWS S3**: Scalable object storage for high-resolution food photo media.
-  - **AWS VPC (Virtual Private Cloud)**: Provides an isolated network environment with custom subnets and security groups to secure cross-service traffic.
-  - **CloudWatch**: Centralized logging aggregate for all microservice streams via `awslogs`.
+- **Infrastructure** (defined in `infra/cloudformation/dev-backend.yml`):
+  - **AWS ECS (Elastic Container Service) + Fargate**: Runs all four services as one serverless task launched on demand.
+  - **AWS ECR (Elastic Container Registry)**: Private Docker registry with immutable, git-SHA-tagged images.
+  - **Supabase (Postgres)**: Hosted database; the connection string is delivered to the task via **SSM Parameter Store**.
+  - **AWS S3**: Object storage for food photo media.
+  - **AWS VPC**: Minimal public-subnet network (no NAT/ALB) with a security group restricting ingress to your IP.
+  - **CloudWatch**: Centralized logging for all microservice streams via `awslogs`.
 
 ---
 
-## 🚀 Cloud Deployment Workflow
+## 🚀 Cloud Deployment Workflow (dev)
 
-To deploy the backend to AWS, follow these steps in the `backend/` directory:
+All AWS resources are provisioned by CloudFormation; the old `deploy.ps1`,
+`run_ephemeral_cloud.ps1`, and `inject_env.*` scripts are replaced by the
+scripts in `infra/scripts/`. Full details: [`infra/README.md`](infra/README.md).
 
-### 1. Synchronize Environment Variables
-Sync your local `.env` keys (S3, RDS, AWS) to the AWS Task Definition blueprint:
 ```powershell
-python inject_env.py
+cd infra\scripts
+
+# 1. Provision/update the stack (ECR, VPC, S3, ECS, IAM, task definition)
+.\deploy-stack.ps1 -AllowedIngressCidr "<your-ip>/32" `
+    -DatabaseUrlParameterArn "arn:aws:ssm:us-east-2:<account>:parameter/justateit/dev/database-url"
+
+# 2. Build and push all four images, tagged with the current git SHA
+.\build-push-images.ps1
+
+# 3. Launch one ephemeral Fargate task; syncs frontend/.env.local to its
+#    public IP, waits out the lifespan, then stops that task (also on Ctrl+C)
+.\run-dev-task.ps1 -LifespanMinutes 15
 ```
-
-### 2. Build & Push Images
-Compile the Docker containers and push them to AWS ECR:
-```powershell
-# For all services
-.\deploy.ps1 -AwsAccountId YOUR_ACCOUNT_ID
-
-# For a specific service (e.g., api_gateway)
-.\deploy.ps1 -AwsAccountId YOUR_ACCOUNT_ID -ServiceName "api_gateway"
-```
-
-### 3. One-Click Launch
-Start the serverless Fargate task. The script will automatically find the live IP, sync it to your `frontend/.env`, and spawn the Expo Metro Bundler in a new window:
-```powershell
-# Standard launch (Simulator testing)
-.\run_ephemeral_cloud.ps1 -SubnetId "YOUR_SUBNET" -SecurityGroupId "YOUR_SG" -LifespanMinutes 10 
-
-# Physical Device launch (Bypasses network blocks/firewalls)
-.\run_ephemeral_cloud.ps1 -SubnetId "YOUR_SUBNET" -SecurityGroupId "YOUR_SG" -LifespanMinutes 10 -Tunnel
-```
-
----
-
-## 🛠️ Critical Commands
-
-### 🔍 Find the Live Public IP
-The launch script handles this automatically, but if you need to find it manually:
-```powershell
-(aws ec2 describe-network-interfaces --region us-east-2 | ConvertFrom-Json).NetworkInterfaces | Where-Object { $_.Association.PublicIp } | ForEach-Object { Write-Host "✅ Live IP Found: http://$($_.Association.PublicIp):8000" -ForegroundColor Green }
-```
-
-### 🛑 Emergency Stop (Stop Billing)
-To manually kill all running cloud clusters and stop AWS billing immediately:
-```powershell
-aws ecs list-tasks --cluster justateit-prod-cluster --region us-east-2 | ConvertFrom-Json | Select-Object -ExpandProperty taskArns | ForEach-Object { aws ecs stop-task --cluster justateit-prod-cluster --task $_ --region us-east-2 | Out-Null }
-```
-
 
 ---
 
 ## 🛡️ Security & Performance
 - **Timeouts**: The API Gateway is configured with a **60s** timeout to support high-res photo uploads.
-- **Logging**: All services use Revision 3 with **Universal Logging** enabled (`awslogs`).
+- **Logging**: All containers stream to a CloudWatch log group (7-day retention) via `awslogs`.
+- **Secrets**: `DATABASE_URL` lives in SSM Parameter Store and is injected at container launch — never baked into images or templates.
