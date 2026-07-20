@@ -34,6 +34,8 @@ services:
       dockerfile: services/catalog_service/Dockerfile
     expose:
       - "8002"
+    environment:
+      - USER_SERVICE_URL=http://user_service:8001
     env_file:
       - .env
 
