@@ -39,6 +39,32 @@ Follow the Expo UI to open the app on your device (QR code) or run on an emulato
 - Supabase: Use `@supabase/supabase-js` for uploading and fetching images. Use a public/anon key for client storage access; secure any admin operations server-side.
 - Backend: Use Axios (or fetch) and include the Clerk JWT in the `Authorization: Bearer <token>` header for protected endpoints.
 
+## Deployment
+
+### Native (iOS/Android) — EAS
+
+Native binaries are built with [EAS](https://docs.expo.dev/build/introduction/)
+using the existing profiles in `eas.json` (`development`, `preview`, `production`):
+
+```powershell
+npx eas build --platform android --profile preview      # internal build
+npx eas build --platform ios --profile production       # store build
+npx eas submit --platform ios                           # store submission
+```
+
+### Web — static export
+
+```powershell
+npm run lint        # ESLint (must pass in CI)
+npm run build:web   # expo export --platform web -> dist/
+```
+
+`dist/` is plain static output and can be hosted anywhere. For AWS, an
+optional stack (`infra/cloudformation/web-hosting.yml`) serves it from a
+private S3 bucket behind CloudFront (OAC, default `*.cloudfront.net`
+domain). Deploy the stack once, then publish builds with
+`infra/scripts/deploy-web.ps1`.
+
 ## Notes & tips
 
 - For image uploads, keep uploads to Supabase Storage and save the returned public URL (or path) in the MongoDB food document.

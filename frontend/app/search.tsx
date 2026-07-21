@@ -52,7 +52,7 @@ const Search = () => {
             </View>
             {searchQuery.trim() ? (
                 <Text style={{ fontSize: 13, color: 'black', marginBottom: 20, fontWeight: 'bold' }}>
-                    SEARCH RESULTS FOR '{searchQuery.toUpperCase()}'
+                    SEARCH RESULTS FOR &apos;{searchQuery.toUpperCase()}&apos;
                 </Text>
             ) : null}
             <SearchBar

@@ -2,13 +2,16 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-# Load the same DATABASE_URL we set up for the scripts
+# DATABASE_URL points at Postgres. Local dev: the Supabase stack from
+# backend/supabase (postgresql://postgres:postgres@127.0.0.1:54322/postgres).
+# Hosted: the Supabase SESSION pooler string — see backend/README.md.
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Make sure we don't crash if it's not set (for build steps)
 if DATABASE_URL:
-    # We want pool_pre_ping to check if the RDS connection dropped
-    # connect_timeout=10 prevents infinite hangs if RDS is blocked by firewall
+    # pool_pre_ping revalidates pooled connections that the remote end
+    # (e.g. Supavisor) may have dropped; connect_timeout=10 prevents
+    # infinite hangs when the database is unreachable.
     engine = create_engine(
         DATABASE_URL, 
         pool_pre_ping=True,
