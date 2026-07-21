@@ -61,6 +61,22 @@ the current git SHA, so run them on the same commit. After code changes:
 commit, `build-push-images.ps1`, `deploy-stack.ps1` (updates the task
 definition to the new tag), `run-dev-task.ps1`.
 
+## Optional: web hosting (S3 + CloudFront)
+
+`cloudformation/web-hosting.yml` serves the Expo web export from a private
+S3 bucket behind CloudFront using Origin Access Control. No custom domain —
+the site lives on the default `*.cloudfront.net` URL. The template takes no
+parameters:
+
+```powershell
+aws cloudformation deploy --region us-east-2 --stack-name justateit-web `
+    --template-file infra\cloudformation\web-hosting.yml
+```
+
+To publish a build: run `npm run build:web` in `frontend/`, then
+`infra\scripts\deploy-web.ps1` (syncs `frontend/dist` to the bucket and
+invalidates the CloudFront cache).
+
 ## Cost
 
 Nothing in the stack bills while idle except pennies for ECR/S3 storage and

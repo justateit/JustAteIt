@@ -88,7 +88,7 @@ export default function AuthenticateScreen() {
       <Text style={s.title}>Authenticate</Text>
       <Text style={s.monoSub}>PASSWORDLESS ACCESS</Text>
       <Text style={s.subtitle}>
-        Enter your email and we'll send you a one-time code to sign in instantly.
+        Enter your email and we&apos;ll send you a one-time code to sign in instantly.
       </Text>
 
       <Text style={s.label}>Email Address</Text>
@@ -133,7 +133,7 @@ export default function AuthenticateScreen() {
       </TouchableOpacity>
 
       <View style={s.row}>
-        <Text style={s.dimText}>Didn't get the email? </Text>
+        <Text style={s.dimText}>Didn&apos;t get the email? </Text>
         <TouchableOpacity onPress={onSendCode}><Text style={s.orangeLink}>Resend email</Text></TouchableOpacity>
       </View>
     </GlassScreen>

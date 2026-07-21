@@ -135,7 +135,7 @@ export default function ResetPasswordScreen() {
         <Text style={s.orangeBtnText}>Verify Code</Text>
       </TouchableOpacity>
       <View style={s.row}>
-        <Text style={s.dimText}>Haven't gotten the email yet? </Text>
+        <Text style={s.dimText}>Haven&apos;t gotten the email yet? </Text>
         <TouchableOpacity onPress={onRequestReset}><Text style={s.orangeLink}>Resend email</Text></TouchableOpacity>
       </View>
     </GlassScreen>

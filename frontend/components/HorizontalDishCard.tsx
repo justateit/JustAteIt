@@ -123,7 +123,7 @@ const HorizontalDishCard = ({ id, title, restaurant, date, rating, image, locati
                             <View style={styles.divider} />
                             {/* Tasting Notes */}
                             <Text style={{ letterSpacing: 2, color: '#010101a4', marginLeft: 10, paddingTop: 15 }}>TASTING NOTES</Text>
-                            <Text style={{ color: 'black', padding: 15, lineHeight: 19, fontFamily: "LibreBaskerville" }}>"{tastingNotes}"</Text>
+                            <Text style={{ color: 'black', padding: 15, lineHeight: 19, fontFamily: "LibreBaskerville" }}>&quot;{tastingNotes}&quot;</Text>
                             <View style={{ backgroundColor: 'white', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 10 }}>
                                 <View style={{ flexDirection: 'row', gap: 8, margin: 10, alignItems: 'center' }}>
                                     <View style={{ backgroundColor: '#FF6B4A', borderRadius: 25, width: 8, height: 8 }} />

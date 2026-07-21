@@ -45,6 +45,50 @@ cd infra\scripts
 
 ---
 
+## 🌐 Web Hosting (optional)
+
+The Expo web build can be served from a **private S3 bucket behind CloudFront**
+(Origin Access Control, default `*.cloudfront.net` domain — no custom domain).
+Template: [`infra/cloudformation/web-hosting.yml`](infra/cloudformation/web-hosting.yml).
+
+```powershell
+# One-time: create the hosting stack (no parameters)
+aws cloudformation deploy --region us-east-2 --stack-name justateit-web `
+    --template-file infra\cloudformation\web-hosting.yml
+
+# Build and publish (syncs frontend/dist, invalidates the CloudFront cache)
+cd frontend ; npm run build:web
+cd ..\infra\scripts ; .\deploy-web.ps1
+```
+
+Native app releases use **EAS** with the profiles in `frontend/eas.json`
+(`development`, `preview`, `production`) — see
+[`frontend/README.md`](frontend/README.md) for EAS vs web deployment details.
+
+## 🧪 Development Commands & CI
+
+```powershell
+# Backend tests
+cd backend
+python -m venv .venv ; .venv\Scripts\pip install -r requirements-dev.txt
+.venv\Scripts\pytest
+
+# Frontend
+cd frontend
+npm run lint        # ESLint
+npm run build:web   # static web export -> frontend/dist
+
+# Infrastructure templates
+cfn-lint infra/cloudformation/*.yml
+```
+
+GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs
+the same checks on every pull request: backend pytest, frontend lint, Expo
+web export, and cfn-lint. CI holds **no AWS credentials** and does not
+deploy; if automated deployment is added later, use GitHub's **AWS OIDC
+federation** (`aws-actions/configure-aws-credentials` with `role-to-assume`)
+rather than embedding access keys in repository secrets.
+
 ## 🛡️ Security & Performance
 - **Timeouts**: The API Gateway is configured with a **60s** timeout to support high-res photo uploads.
 - **Logging**: All containers stream to a CloudWatch log group (7-day retention) via `awslogs`.
