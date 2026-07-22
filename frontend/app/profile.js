@@ -1,7 +1,7 @@
 import HorizontalDishCard from '@/components/HorizontalDishCard';
 import { DiningFrequencyCard, TasteDNACard } from '@/components/ProfileCards';
 import { useUser } from '@clerk/clerk-expo';
-import { Feather, FontAwesome } from '@expo/vector-icons';
+import { Feather, FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -153,6 +153,23 @@ export default function App() {
                         <View style={styles.cardsContainer}>
                             <DiningFrequencyCard />
                             <TasteDNACard />
+                        </View>
+
+                        {/* My Insights Section */}
+                        <View style={styles.myInsights}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                <Ionicons name="flask" size={20} color="#FFFFFF" />
+                                <Text style={styles.myInsightsTitle}>AI INSIGHTS</Text>
+                            </View>
+                            <Text style={styles.myInsightsDescription}>
+                                Based on your recent logs, you're a strong Umami lover - you tend to eat Japanese and fermented dishes most on weekdays.
+                            </Text>
+                            <TouchableOpacity style={styles.myInsightsButton} onPress={() => router.push('/my_insights')}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <Text style={styles.myInsightsButtonText}>View Your Insights</Text>
+                                    <Ionicons name="arrow-forward" size={16} color="#E86A33" />
+                                </View>
+                            </TouchableOpacity>
                         </View>
 
                         {/* The Journal Section */}
@@ -328,7 +345,7 @@ const styles = StyleSheet.create({
     },
     cardsContainer: {
         gap: 12,
-        marginBottom: 40,
+        marginBottom: 12,
     },
     journalHeader: {
         flexDirection: 'row',
@@ -467,4 +484,40 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontWeight: '500',
     },
+    myInsights: {
+        backgroundColor: '#E86A33',
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 24,
+        flexDirection: 'column',
+        gap: 8,
+    },
+    myInsightsTitle: {
+        fontSize: 11,
+        color: '#FFFFFF',
+        letterSpacing: 1,
+        fontWeight: '600',
+    },
+    myInsightsDescription: {
+        fontSize: 18,
+        color: '#fff',
+        lineHeight: 22,
+        fontStyle: 'italic',
+        lineHeight: 27,
+    },
+    myInsightsButton: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        alignSelf: 'flex-end',
+        marginTop: 8,
+
+    },
+    myInsightsButtonText: {
+        color: '#E86A33',
+        fontSize: 15,
+        fontWeight: '500',
+    },
+
 });

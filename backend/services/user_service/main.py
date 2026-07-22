@@ -1,7 +1,12 @@
+import anthropic
+import os
+import json
+
 from typing import Dict, Optional
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from dotenv import load_dotenv
 
 # Import shared DB setup
 from shared.database import get_db, engine
@@ -10,10 +15,15 @@ from services.user_service.core.flavor_math import (
     FLAVOR_DIMS, update_dimension, adaptive_alpha, personality_label
 )
 
+load_dotenv()
+
 # Optional: Auto-create tables (good for dev, but we already have an init_db script and migrations)
 # models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="User & Profile Service")
+
+client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
 
 # ── Request / Response Models ─────────────────────────────────────────────────
 
@@ -147,3 +157,70 @@ def update_flavor_profile(payload: RatingPayload, db: Session = Depends(get_db))
         "review_count": profile.review_count,
         "personality": label
     }
+
+@app.get("/flavor-profiles/{user_id}/recommendations")
+def get_recommendations(user_id: str, db: Session = Depends(get_db)):
+    # 1. Look up the REAL flavor profile for this user. Same query get_flavor_profile() uses
+    profile = db.query(models.FlavorProfile).filter(models.FlavorProfile.user_id == user_id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found.")
+    
+    # 2. Everything below is still mocked for now
+    cities = ["New York", "Phoenix", "Tokyo"]
+    saves = 47
+    top_cuisines = ["Mexican (8)", "Japanese (6)", "French (4)", "Chinese (3)"]
+    avg_rating = 4.4
+    five_star_pct = 42
+    four_half_pct = 28
+    four_star_pct = 0
+    three_half_pct = 20
+    three_star_pct = 10
+    critic_label = "Tough Critic"
+    poorly_rated_cuisines = ["Italian"]
+    
+    prompt = f"""
+Role: You are a culinary recommender with deep knowledge of restaurants, dishes, and flavor profiles.
+
+User Profile:
+- Flavor scores (0 to 1, higher means stronger preference):
+    Spice: {profile.spice}
+    Acid: {profile.acid}
+    Umami: {profile.umami}
+    Sweet: {profile.sweet}
+    Texture: {profile.texture}
+
+- Dining activity:
+    Total logs: {profile.review_count}
+    Cities visited: {cities}
+    Saves received: {saves}
+
+- Top cuisines logged: {top_cuisines}
+- Rating breakdown: Average {avg_rating}, Critic Personality: {critic_label}
+- Cuisines rated poorly: {poorly_rated_cuisines}
+
+Task: Recommend exactly 3 dishes matching this profile. Return only valid JSON, no markdown.
+
+Output format:
+{{
+  "insight": "...",
+  "recommendations": [
+    {{"dish": "...", "restaurant": "...", "city": "...", "match": 95, "tags": ["...", "..."], "reason": "...", "chemistryInsight": "..."}}
+  ]
+}}
+"""
+    # 4. Call Claude
+    message = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=2000,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    # 5. Clean and parse the response 
+    raw = message.content[0].text.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+        raw = raw.strip()
+        
+    return json.loads(raw)
