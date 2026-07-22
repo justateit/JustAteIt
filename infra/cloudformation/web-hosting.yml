@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  JustAteIt web hosting (optional): private S3 bucket + CloudFront
+  distribution using Origin Access Control (OAC) to serve the static
+  Expo web export (frontend/dist). No custom domain — the site is
+  served from the default *.cloudfront.net domain. Deploy with
+  infra/scripts/deploy-web.ps1, which also uploads the build and
+  invalidates the cache.
+
+Resources:
+  # ── Private bucket for the Expo web build (frontend/dist) ──
+  WebBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-web-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  # Only CloudFront (this distribution) may read objects.
+  WebBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontOACRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${WebBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
+
+  OriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-oac"
+        Description: OAC for the JustAteIt web bucket
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: !Sub "${AWS::StackName} Expo web app (default cloudfront.net domain)"
+        Enabled: true
+        DefaultRootObject: index.html
+        HttpVersion: http2
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: WebBucketOrigin
+            DomainName: !GetAtt WebBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt OriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        DefaultCacheBehavior:
+          TargetOriginId: WebBucketOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          # AWS managed cache policy "CachingOptimized".
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+        # SPA fallback: S3 returns 403 for missing keys behind OAC, so
+        # route unknown paths to index.html for expo-router deep links.
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 60
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 60
+
+Outputs:
+  WebBucketName:
+    Description: Bucket to sync frontend/dist into.
+    Value: !Ref WebBucket
+  DistributionId:
+    Description: CloudFront distribution ID (for cache invalidation).
+    Value: !Ref Distribution
+  WebUrl:
+    Description: Public URL of the web app.
+    Value: !Sub "https://${Distribution.DomainName}"
