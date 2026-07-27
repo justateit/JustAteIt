@@ -6,80 +6,20 @@ import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Animated, Image, Modal, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getLogs, getRecommendations } from '../../utils/flavorProfileApi';
+import { getFlavorProfile, getLogs, getRecommendations } from '../../utils/flavorProfileApi';
 
-const journalData = [
-    {
-        id: '1',
-        date: 'Yesterday',
-        title: 'Smoked Eel & Beetroot',
-    },
-    {
-        id: '2',
-        date: '3/11/2026',
-        title: 'Uni & Truffle Toast',
-
-    },
-    {
-        id: '3',
-        date: '2/5/2026',
-        title: 'Charred Octopus',
-    },
-    {
-        id: '4',
-        date: '1/20/2026',
-        title: 'Tonkotsu Ramen',
-    },
-];
 
 interface Props {
     onPress: () => void;
 }
 const MyInsights = ({ onPress }: Props) => {
-    const { logCount, saves, cuisine, ratings } = userInsightsData[0];
-    const totalRatings = ratings.fiveStars + ratings.fourStars + ratings.threeStars + ratings.twoStars + ratings.oneStar;
-    const averageRating = (
-        (ratings.fiveStars * 5) +
-        (ratings.fourStars * 4) +
-        (ratings.threeStars * 3) +
-        (ratings.twoStars * 2) +
-        (ratings.oneStar * 1)
-    ) / totalRatings;
-    const getRatingColor = (avg: number) => {
-        if (avg >= 4) return '#e24a08ff';
-        if (avg >= 3) return '#ed7947ff';
-        if (avg >= 2) return '#f99e78ff';
-        if (avg >= 1) return '#f7c9b2ff';
-        if (avg >= 0) return '#f4e4dcff';
-        return '#fffcfbff';
-    }
-    const getCriticLabel = (avg: number) => {
-        if (avg >= 4) return 'Enthusiast';
-        if (avg >= 3) return 'Connoisseur';
-        if (avg >= 2) return 'Tough Critic';
-        if (avg >= 1) return 'Skeptic';
-        if (avg >= 0) return 'Uncompromising';
-        return 'Foodie';
-    }
 
-    const { totalPoints } = userInsightsData[0];
-    const level = Math.floor(totalPoints / 100) + 1;
-    const currentPoints = totalPoints % 100;
-    const pointsNeeded = 100;
-    const getLevelLabel = (level: number) => {
-        if (level == 5) return 'Culinary Connoisseur';
-        if (level == 4) return 'Taste Architect';
-        if (level == 3) return 'Palate Pioneer';
-        if (level == 2) return 'Flavor Seeker';
-        if (level == 1) return 'Fresh Bite';
-        return 'Earn more points!';
-    }
+
+    const { saves } = userInsightsData[0];
+
 
     const [modalVisible, setModalVisible] = useState(false);
-    const topCuisines = Object.entries(cuisine)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 4)
-        .map(([name, count]) => ({ name, count }));
+
     const slideDownAnim = useState(new Animated.Value(0))[0];
     const slideUpAnim = useState(new Animated.Value(0))[0];
     const panResponder = PanResponder.create({
@@ -141,13 +81,80 @@ const MyInsights = ({ onPress }: Props) => {
 
     const { data: logsData } = useQuery({
         queryKey: ['logs', user?.id],
-        queryFn: () => getLogs(user!.id),
+        queryFn: () => getLogs(user!.id).then((d: any) => d.logs ?? []),
         enabled: !!user?.id,
     });
 
+    const { data: profileData } = useQuery({
+        queryKey: ['flavorProfile', user?.id],
+        queryFn: () => getFlavorProfile(user!.id),
+        enabled: !!user?.id,
+    });
+
+    const level = Math.floor((profileData?.points_count ?? 0) / 100) + 1;
+    const currentPoints = (profileData?.points_count ?? 0) % 100;
+    const pointsNeeded = 100;
+    const getLevelLabel = (level: number) => {
+        if (level == 5) return 'Culinary Connoisseur';
+        if (level == 4) return 'Taste Architect';
+        if (level == 3) return 'Palate Pioneer';
+        if (level == 2) return 'Flavor Seeker';
+        if (level == 1) return 'Fresh Bite';
+        return 'Earn more points!';
+    }
+
     const citiesVisited = new Set(
-        (logsData?.logs ?? []).map((log: any) => log.city).filter(Boolean)
+        (logsData ?? []).map((log: any) => log.city).filter(Boolean)
     ).size;
+
+    const cuisineCounts: any = (logsData ?? []).reduce(
+        (acc: any, log: any) => {
+            if (log.cuisine) acc[log.cuisine] = (acc[log.cuisine] ?? 0) + 1;
+            return acc;
+        }, {} as any
+    );
+
+    const topCuisines = (Object.entries(cuisineCounts) as [string, number][])
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([name, count]) => ({ name, count }));
+
+    const ratings = (logsData ?? []).reduce(
+        (acc: any, log: any) => {
+            if (log.rating === 5) acc.fiveStars++;
+            else if (log.rating === 4) acc.fourStars++;
+            else if (log.rating === 3) acc.threeStars++;
+            else if (log.rating === 2) acc.twoStars++;
+            else if (log.rating === 1) acc.oneStar++;
+            return acc;
+        },
+        { fiveStars: 0, fourStars: 0, threeStars: 0, twoStars: 0, oneStar: 0 }
+    );
+
+    const totalRatings = ratings.fiveStars + ratings.fourStars + ratings.threeStars + ratings.twoStars + ratings.oneStar;
+    const averageRating = totalRatings === 0 ? 0 : (
+        (ratings.fiveStars * 5) +
+        (ratings.fourStars * 4) +
+        (ratings.threeStars * 3) +
+        (ratings.twoStars * 2) +
+        (ratings.oneStar * 1)
+    ) / totalRatings;
+    const getRatingColor = (avg: number) => {
+        if (avg >= 4) return '#e24a08ff';
+        if (avg >= 3) return '#ed7947ff';
+        if (avg >= 2) return '#f99e78ff';
+        if (avg >= 1) return '#f7c9b2ff';
+        if (avg >= 0) return '#f4e4dcff';
+        return '#fffcfbff';
+    }
+    const getCriticLabel = (avg: number) => {
+        if (avg >= 4) return 'Enthusiast';
+        if (avg >= 3) return 'Connoisseur';
+        if (avg >= 2) return 'Tough Critic';
+        if (avg >= 1) return 'Skeptic';
+        if (avg >= 0.1) return 'Merciless';
+        return 'New Foodie';
+    }
 
     const PLACEHOLDER_IMAGE = require('../../assets/images/charred_octopus.jpg');
 
@@ -205,12 +212,12 @@ const MyInsights = ({ onPress }: Props) => {
                     {/* Logs, cities, and saves section */}
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 20, marginBottom: 20 }}>
                         <View style={styles.squareContainer}>
-                            <Text style={styles.squareText}>{logsData?.count ?? '--'}</Text>
+                            <Text style={styles.squareText}>{logsData?.length ?? '--'}</Text>
                             <Text style={styles.itemText}>LOGS</Text>
                         </View>
 
                         <View style={styles.squareContainer}>
-                            <Text style={styles.squareText}>{citiesVisited ?? '--'}</Text>
+                            <Text style={styles.squareText}>{citiesVisited || '--'}</Text>
                             <Text style={styles.itemText}>CITIES</Text>
                         </View>
 
@@ -233,7 +240,7 @@ const MyInsights = ({ onPress }: Props) => {
                                     </View>
 
                                     <View style={styles.cuisineProgressBarBackground}>
-                                        <View style={[styles.cuisineProgressBarFill, { width: `${(cuisine.count / logCount) * 100}%` }]} />
+                                        <View style={[styles.cuisineProgressBarFill, { width: `${(cuisine.count / (logsData?.length || 1)) * 100}%` }]} />
                                     </View>
                                 </React.Fragment>
                             ))}
@@ -265,7 +272,7 @@ const MyInsights = ({ onPress }: Props) => {
                                             <View style={styles.ratingColorBoxDark} />
                                             <Text style={styles.ratingText}>5 Stars</Text>
                                         </View>
-                                        <Text style={styles.ratingPercentage}>{Math.round((ratings.fiveStars / totalRatings) * 100)}%</Text>
+                                        <Text style={styles.ratingPercentage}>{(Math.round((ratings.fiveStars / totalRatings) * 100)) || '0'}%</Text>
                                     </View>
 
                                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
@@ -273,7 +280,7 @@ const MyInsights = ({ onPress }: Props) => {
                                             <View style={styles.ratingColorBoxMed} />
                                             <Text style={styles.ratingText}>4 Stars</Text>
                                         </View>
-                                        <Text style={styles.ratingPercentage}>{Math.round((ratings.fourStars / totalRatings) * 100)}%</Text>
+                                        <Text style={styles.ratingPercentage}>{(Math.round((ratings.fourStars / totalRatings) * 100)) || '0'}%</Text>
                                     </View>
 
                                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
@@ -281,7 +288,7 @@ const MyInsights = ({ onPress }: Props) => {
                                             <View style={styles.ratingColorBoxLight} />
                                             <Text style={styles.ratingText}>3 Stars</Text>
                                         </View>
-                                        <Text style={styles.ratingPercentage}>{Math.round((ratings.threeStars / totalRatings) * 100)}%</Text>
+                                        <Text style={styles.ratingPercentage}>{(Math.round((ratings.threeStars / totalRatings) * 100)) || '0'}%</Text>
                                     </View>
 
                                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
@@ -289,7 +296,7 @@ const MyInsights = ({ onPress }: Props) => {
                                             <View style={styles.ratingColorBoxLighter} />
                                             <Text style={styles.ratingText}>2 Stars</Text>
                                         </View>
-                                        <Text style={styles.ratingPercentage}>{Math.round((ratings.twoStars / totalRatings) * 100)}%</Text>
+                                        <Text style={styles.ratingPercentage}>{(Math.round((ratings.twoStars / totalRatings) * 100)) || '0'}%</Text>
                                     </View>
 
                                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
@@ -297,7 +304,7 @@ const MyInsights = ({ onPress }: Props) => {
                                             <View style={styles.ratingColorBoxLightest} />
                                             <Text style={styles.ratingText}>1 Stars</Text>
                                         </View>
-                                        <Text style={styles.ratingPercentage}>{Math.round((ratings.oneStar / totalRatings) * 100)}%</Text>
+                                        <Text style={styles.ratingPercentage}>{(Math.round((ratings.oneStar / totalRatings) * 100)) || '0'}%</Text>
                                     </View>
                                 </View>
                             </View>

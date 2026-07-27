@@ -4,8 +4,7 @@ import { BlurView } from 'expo-blur';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { submitLog, getNearbyVenue, upsertUser } from '../utils/flavorProfileApi';
+import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -19,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { getNearbyVenue, submitLog, upsertUser } from '../utils/flavorProfileApi';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
@@ -72,7 +72,7 @@ function AnimatedSection({ children, scrollY, delay = 0 }) {
     // Initial check: if we're likely on screen, just show it.
     // We use a small timeout to let onLayout potentially fire first.
     const timer = setTimeout(() => {
-       if (!isAnimated.current) triggerAnimation();
+      if (!isAnimated.current) triggerAnimation();
     }, 100 + delay);
 
     return () => {
@@ -97,6 +97,7 @@ export default function RecordExperience() {
   const [dish, setDish] = useState('');
   const [venue, setVenue] = useState('');
   const [city, setCity] = useState('');
+  const [cuisine, setCuisine] = useState('');
   const [sensoryNotes, setSensoryNotes] = useState('');
   const [isRestaurant, setIsRestaurant] = useState(true);
   const [rating, setRating] = useState(0);
@@ -224,6 +225,7 @@ export default function RecordExperience() {
         dish_name: dish.trim(),
         venue_name: venue.trim() || null,
         city: city.trim() || null,
+        cuisine: cuisine.trim() || null,
         is_restaurant: isRestaurant,
         sensory_notes: sensoryNotes.trim() || null,
         rating: rating,
@@ -234,6 +236,7 @@ export default function RecordExperience() {
       setDish('');
       setVenue('');
       setCity('');
+      setCuisine('');
       setSensoryNotes('');
       setRating(0);
       setImageUri(null);
@@ -512,6 +515,22 @@ export default function RecordExperience() {
               </View>
             </AnimatedSection>
           )}
+
+          {/* Cuisine Text Field */}
+          <AnimatedSection scrollY={scrollY} delay={360}>
+            <View style={{ paddingHorizontal: 24, marginTop: 24 }}>
+              <Text style={styles.fieldLabel}>CUISINE</Text>
+              <View style={styles.glassInputSmall}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Mexican, Japanese, Italian"
+                  placeholderTextColor="rgba(60, 60, 67, 0.3)"
+                  value={cuisine}
+                  onChangeText={setCuisine}
+                />
+              </View>
+            </View>
+          </AnimatedSection>
 
           {/* Sensory Notes Glass Card */}
           <AnimatedSection scrollY={scrollY} delay={400}>
