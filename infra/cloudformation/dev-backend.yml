@@ -29,6 +29,14 @@ Parameters:
       same region as this stack.
     AllowedPattern: "^arn:aws:ssm:[a-z0-9-]+:\\d{12}:parameter/.+$"
 
+  AnthropicApiKeyParameterArn:
+    Type: String
+    Description: >
+      ARN of the SSM parameter (SecureString recommended) holding the
+      Anthropic API key used by user-service for dish recommendations.
+      Must be in the same region as this stack.
+    AllowedPattern: "^arn:aws:ssm:[a-z0-9-]+:\\d{12}:parameter/.+$"
+
 Resources:
   # ── ECR repositories (immutable tags; emptied automatically on delete) ──
   ApiGatewayRepo:
@@ -177,7 +185,9 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: ssm:GetParameters
-                Resource: !Ref DatabaseUrlParameterArn
+                Resource:
+                  - !Ref DatabaseUrlParameterArn
+                  - !Ref AnthropicApiKeyParameterArn
 
   # Runtime role for the containers (media uploads, SSM parameter reads).
   TaskRole:
@@ -208,7 +218,9 @@ Resources:
                 Action:
                   - ssm:GetParameter
                   - ssm:GetParameters
-                Resource: !Ref DatabaseUrlParameterArn
+                Resource:
+                  - !Ref DatabaseUrlParameterArn
+                  - !Ref AnthropicApiKeyParameterArn
 
   # ── One Fargate task definition with all four containers. In awsvpc
   #    mode the containers share a network namespace, so they talk over
@@ -250,6 +262,8 @@ Resources:
           Secrets:
             - Name: DATABASE_URL
               ValueFrom: !Ref DatabaseUrlParameterArn
+            - Name: ANTHROPIC_API_KEY
+              ValueFrom: !Ref AnthropicApiKeyParameterArn
           LogConfiguration:
             LogDriver: awslogs
             Options:

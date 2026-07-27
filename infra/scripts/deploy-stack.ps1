@@ -21,6 +21,9 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$DatabaseUrlParameterArn,
 
+    [Parameter(Mandatory = $true)]
+    [string]$AnthropicApiKeyParameterArn,
+
     # Must be lowercase (it prefixes the ECR repository names).
     [string]$StackName = "justateit-dev",
 
@@ -51,7 +54,8 @@ aws cloudformation deploy `
     --parameter-overrides `
         "ImageTag=$ImageTag" `
         "AllowedIngressCidr=$AllowedIngressCidr" `
-        "DatabaseUrlParameterArn=$DatabaseUrlParameterArn"
+        "DatabaseUrlParameterArn=$DatabaseUrlParameterArn" `
+        "AnthropicApiKeyParameterArn=$AnthropicApiKeyParameterArn"
 
 if ($LASTEXITCODE -ne 0) { throw "CloudFormation deploy failed." }
 
