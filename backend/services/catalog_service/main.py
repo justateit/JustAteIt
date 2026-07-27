@@ -18,6 +18,7 @@ class ReviewPayload(BaseModel):
     dish_name: str
     venue_name: Optional[str] = None
     city: Optional[str] = None
+    cuisine: Optional[str] = None
     is_restaurant: bool = True
     rating: float
     sensory_notes: Optional[str] = None
@@ -85,6 +86,7 @@ def get_user_reviews(user_id: str, db: Session = Depends(get_db)):
             "dish_name": r.dish.name if r.dish else "Unknown Dish",
             "venue_name": r.venue.name if r.venue else "Private Location",
             "city": r.venue.vicinity if r.venue else None,
+            "cuisine": r.dish.cuisine if r.dish else None,
             "rating": r.rating,
             "sensory_notes": r.comment,
             "image_url": media_url,
@@ -144,14 +146,15 @@ async def create_review(payload: ReviewPayload, background_tasks: BackgroundTask
     # 2. Handle Dish
     dish = db.query(models.Dish).filter(
         models.Dish.name == payload.dish_name,
-        models.Dish.venue_id == venue_id
+        models.Dish.venue_id == venue_id,
     ).first()
-    
+
     if not dish:
         print(f"\033[93m[CATALOG] Lazy-creating new dish: {payload.dish_name}\033[0m")
         dish = models.Dish(
             name=payload.dish_name,
-            venue_id=venue_id
+            venue_id=venue_id,
+            cuisine=payload.cuisine.strip().title() if payload.cuisine else None,
         )
         db.add(dish)
         db.commit()

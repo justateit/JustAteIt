@@ -27,6 +27,7 @@ class Dish(Base):
     venue_id = Column(UUID(as_uuid=True), ForeignKey("venues.id", ondelete="CASCADE"))
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
+    cuisine = Column(String, nullable=True)
     
     # Base Flavor Fingerprints
     base_spice = Column(Float, default=0.5)
