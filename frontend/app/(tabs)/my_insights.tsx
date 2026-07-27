@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Animated, Image, Modal, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getRecommendations } from '../../utils/flavorProfileApi';
+import { getLogs, getRecommendations } from '../../utils/flavorProfileApi';
 
 const journalData = [
     {
@@ -36,7 +36,7 @@ interface Props {
     onPress: () => void;
 }
 const MyInsights = ({ onPress }: Props) => {
-    const { logCount, citiesVisited, saves, cuisine, ratings } = userInsightsData[0];
+    const { logCount, saves, cuisine, ratings } = userInsightsData[0];
     const totalRatings = ratings.fiveStars + ratings.fourStars + ratings.threeStars + ratings.twoStars + ratings.oneStar;
     const averageRating = (
         (ratings.fiveStars * 5) +
@@ -139,6 +139,16 @@ const MyInsights = ({ onPress }: Props) => {
         enabled: !!user?.id,
     });
 
+    const { data: logsData } = useQuery({
+        queryKey: ['logs', user?.id],
+        queryFn: () => getLogs(user!.id),
+        enabled: !!user?.id,
+    });
+
+    const citiesVisited = new Set(
+        (logsData?.logs ?? []).map((log: any) => log.city).filter(Boolean)
+    ).size;
+
     const PLACEHOLDER_IMAGE = require('../../assets/images/charred_octopus.jpg');
 
     const displayRecs = (recsData?.recommendations ?? []).map((rec: any, i: number) => ({
@@ -195,12 +205,12 @@ const MyInsights = ({ onPress }: Props) => {
                     {/* Logs, cities, and saves section */}
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 20, marginBottom: 20 }}>
                         <View style={styles.squareContainer}>
-                            <Text style={styles.squareText}>{logCount}</Text>
+                            <Text style={styles.squareText}>{logsData?.count ?? '--'}</Text>
                             <Text style={styles.itemText}>LOGS</Text>
                         </View>
 
                         <View style={styles.squareContainer}>
-                            <Text style={styles.squareText}>{citiesVisited}</Text>
+                            <Text style={styles.squareText}>{citiesVisited ?? '--'}</Text>
                             <Text style={styles.itemText}>CITIES</Text>
                         </View>
 
@@ -904,3 +914,5 @@ const styles = StyleSheet.create({
         marginBottom: 6,
     }
 })
+
+export default MyInsights;
