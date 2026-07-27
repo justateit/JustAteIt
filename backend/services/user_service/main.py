@@ -46,6 +46,7 @@ class ProfileResponse(BaseModel):
     profile:      Dict[str, float]
     review_count: int
     personality:  str
+    points_count: int
 
 class UserPayload(BaseModel):
     id:         str 
@@ -109,7 +110,9 @@ def get_flavor_profile(user_id: str, db: Session = Depends(get_db)):
         "user_id": user_id,
         "profile": p_dict,
         "review_count": profile.review_count,
-        "personality": personality_label(p_dict)
+        "personality": personality_label(p_dict),
+        "points_count": profile.points_count,
+        
     }
 
 @app.post("/flavor-profiles/update", response_model=ProfileResponse)
@@ -144,6 +147,7 @@ def update_flavor_profile(payload: RatingPayload, db: Session = Depends(get_db))
         setattr(profile, dim, new_val)
         # print(f"   -> {dim}: {old_val:.2f} -> {new_val:.2f}")
 
+    profile.points_count += 10
     profile.review_count += 1
     db.commit()
 
@@ -155,7 +159,8 @@ def update_flavor_profile(payload: RatingPayload, db: Session = Depends(get_db))
         "user_id": payload.user_id,
         "profile": p_dict,
         "review_count": profile.review_count,
-        "personality": label
+        "personality": label,
+        "points_count": profile.points_count
     }
 
 @app.get("/flavor-profiles/{user_id}/recommendations")

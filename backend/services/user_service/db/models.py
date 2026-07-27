@@ -28,6 +28,7 @@ class FlavorProfile(Base):
     sweet = Column(Float, default=0.30)
     texture = Column(Float, default=0.45)
     review_count = Column(Integer, default=0)
+    points_count = Column(Integer, default=0)
     last_updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationship
