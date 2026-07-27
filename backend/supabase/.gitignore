@@ -1,0 +1,3 @@
+# Supabase CLI runtime artifacts (created by `supabase start` / `supabase link`)
+.branches
+.temp

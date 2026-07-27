@@ -1,0 +1,70 @@
+# Supabase local development configuration for the JustAteIt backend.
+# Run all `supabase ...` commands from the backend/ directory.
+#
+#   supabase start     # boot the local stack (applies migrations on first run)
+#   supabase db reset  # re-apply supabase/migrations/* then supabase/seed.sql
+#   supabase stop      # shut the stack down
+#
+# See backend/README.md → "Database (Supabase)" for the full workflow,
+# including how to push migrations to a hosted project.
+
+project_id = "justateit"
+
+[api]
+enabled = true
+# Local PostgREST/API URL: http://127.0.0.1:54321
+port = 54321
+# Schemas exposed over the auto-generated REST API.
+schemas = ["public", "graphql_public"]
+# Extra schemas added to every API request's search_path.
+extra_search_path = ["public", "extensions"]
+# Hard cap on rows returned by a single API request.
+max_rows = 1000
+
+[db]
+# Local Postgres: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+port = 54322
+# Used by `supabase db diff` when generating migrations.
+shadow_port = 54320
+# Major version must match the hosted project's Postgres version
+# (Project Settings → Infrastructure).
+major_version = 17
+
+[db.pooler]
+# Local connection pooler is off; services connect straight to 54322.
+# Hosted projects use Supavisor instead — see README for the
+# session-pooler runtime connection string.
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+[db.seed]
+# Deterministic, PII-free fixtures applied by `supabase db reset`.
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[studio]
+enabled = true
+# Local Studio (table editor, SQL console): http://127.0.0.1:54323
+port = 54323
+api_url = "http://127.0.0.1"
+
+[auth]
+# Identity is handled by Clerk, not Supabase Auth (GoTrue).
+enabled = false
+
+[inbucket]
+# Local email-testing server — only useful with Supabase Auth; keep off.
+enabled = false
+
+[realtime]
+enabled = false
+
+[storage]
+# Media uploads go to S3 via media_service, not Supabase Storage.
+enabled = false
+
+[analytics]
+enabled = false
