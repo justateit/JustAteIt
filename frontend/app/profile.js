@@ -360,6 +360,7 @@ const styles = StyleSheet.create({
     },
     journalFeedContainer: {
         width: '100%',
+        gap: 16,
     },
     feedCard: {
         backgroundColor: '#fff',
@@ -373,6 +374,7 @@ const styles = StyleSheet.create({
         elevation: 4,
         borderWidth: 1,
         borderColor: 'rgba(0,0,0,0.03)',
+
     },
     feedCardHeader: {
         flexDirection: 'row',
