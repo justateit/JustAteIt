@@ -1,4 +1,5 @@
 import anthropic
+import httpx
 import os
 import json
 
@@ -162,26 +163,56 @@ def update_flavor_profile(payload: RatingPayload, db: Session = Depends(get_db))
         "personality": label,
         "points_count": profile.points_count
     }
+    
+def get_critic_label(avg: float) -> str:
+    if avg >= 4:
+        return "Enthusiast"
+    if avg >= 3:
+        return "Connoisseur"
+    if avg >= 2:
+        return "Tough Critic"
+    if avg >= 1:
+        return "Skeptic"
+    if avg >= 0.1:
+        return "Merciless"
+    return "New Foodie"
+
+async def fetch_user_logs(user_id: str) -> list:
+    """Fetches a user's dish logs from catalog_service. Returns [] on failure."""
+    catalog_svc_url = os.getenv("CATALOG_SERVICE_URL", "http://localhost:8002")
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(f"{catalog_svc_url}/reviews/{user_id}")
+            response.raise_for_status()
+            return response.json().get("logs", [])
+    except Exception as e:
+        print(f"Failed to fetch logs from catalog_service: {e}")
+        return []
 
 @app.get("/flavor-profiles/{user_id}/recommendations")
-def get_recommendations(user_id: str, db: Session = Depends(get_db)):
+async def get_recommendations(user_id: str, db: Session = Depends(get_db)):
     # 1. Look up the REAL flavor profile for this user. Same query get_flavor_profile() uses
     profile = db.query(models.FlavorProfile).filter(models.FlavorProfile.user_id == user_id).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found.")
     
-    # 2. Everything below is still mocked for now
-    cities = ["New York", "Phoenix", "Tokyo"]
-    saves = 47
-    top_cuisines = ["Mexican (8)", "Japanese (6)", "French (4)", "Chinese (3)"]
-    avg_rating = 4.4
-    five_star_pct = 42
-    four_half_pct = 28
-    four_star_pct = 0
-    three_half_pct = 20
-    three_star_pct = 10
-    critic_label = "Tough Critic"
-    poorly_rated_cuisines = ["Italian"]
+    logs = await fetch_user_logs(user_id)
+    
+    cities = sorted({log["city"] for log in logs if log.get("city")})
+    
+    cuisine_counts = {}
+    for log in logs:
+        cuisine = log.get("cuisine")
+        if cuisine:
+            cuisine_counts[cuisine] = cuisine_counts.get(cuisine, 0) + 1
+    top_cuisines = [
+        f"{name} ({count})"
+        for name, count in sorted(cuisine_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    ]
+    
+    ratings = [log["rating"] for log in logs if log.get("rating") is not None]
+    avg_rating = round(sum(ratings) / len(ratings), 2) if ratings else 0
+    critic_label = get_critic_label(avg_rating)
     
     prompt = f"""
 Role: You are a culinary recommender with deep knowledge of restaurants, dishes, and flavor profiles.
@@ -197,11 +228,9 @@ User Profile:
 - Dining activity:
     Total logs: {profile.review_count}
     Cities visited: {cities}
-    Saves received: {saves}
 
 - Top cuisines logged: {top_cuisines}
 - Rating breakdown: Average {avg_rating}, Critic Personality: {critic_label}
-- Cuisines rated poorly: {poorly_rated_cuisines}
 
 Task: Recommend exactly 3 dishes matching this profile. Return only valid JSON, no markdown.
 

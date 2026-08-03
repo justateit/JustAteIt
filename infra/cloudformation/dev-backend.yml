@@ -259,6 +259,9 @@ Resources:
         - Name: user-service
           Image: !Sub "${UserServiceRepo.RepositoryUri}:${ImageTag}"
           Essential: true
+          Environment:
+            - Name: CATALOG_SERVICE_URL
+              Value: http://localhost:8002
           Secrets:
             - Name: DATABASE_URL
               ValueFrom: !Ref DatabaseUrlParameterArn
