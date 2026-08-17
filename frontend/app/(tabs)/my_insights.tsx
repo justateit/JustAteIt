@@ -1,10 +1,10 @@
 import { userInsightsData } from '@/data/mockdata';
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Animated, Image, Modal, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, Image, Modal, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getFlavorProfile, getLogs, getRecommendations } from '../../utils/flavorProfileApi';
 
@@ -14,12 +14,11 @@ interface Props {
 }
 const MyInsights = ({ onPress }: Props) => {
 
-
+    const queryClient = useQueryClient();
     const { saves } = userInsightsData[0];
-
-
     const [modalVisible, setModalVisible] = useState(false);
 
+    /* Animation when closing the AI insights modal */
     const slideDownAnim = useState(new Animated.Value(0))[0];
     const slideUpAnim = useState(new Animated.Value(0))[0];
     const panResponder = PanResponder.create({
@@ -58,6 +57,7 @@ const MyInsights = ({ onPress }: Props) => {
     const openModal = () => {
         slideUpAnim.setValue(500);
         setModalVisible(true);
+        setShowBreakdown(false); // reset breakdown view when opening modal
         Animated.timing(slideUpAnim, {
             toValue: 0,
             duration: 300,
@@ -73,6 +73,7 @@ const MyInsights = ({ onPress }: Props) => {
 
     const { user } = useUser();
 
+    // Fetch recommendations, logs, and flavor profile data
     const { data: recsData } = useQuery({
         queryKey: ['recommendations', user?.id],
         queryFn: () => getRecommendations(user!.id),
@@ -91,6 +92,7 @@ const MyInsights = ({ onPress }: Props) => {
         enabled: !!user?.id,
     });
 
+    // Compute a user's level based on how many points they have
     const level = Math.floor((profileData?.points_count ?? 0) / 100) + 1;
     const currentPoints = (profileData?.points_count ?? 0) % 100;
     const pointsNeeded = 100;
@@ -171,6 +173,22 @@ const MyInsights = ({ onPress }: Props) => {
         chemistryInsight: rec.chemistryInsight
 
     }))
+
+    const [refreshingRecs, setRefreshingRecs] = useState(false);
+
+    // Refresh suggestions
+    const handleRefreshSuggestions = async () => {
+        if (!user?.id || refreshingRecs) return;
+        setRefreshingRecs(true);
+        const previousDishes = displayRecs.map((r: any) => r.title);
+        const fresh = await getRecommendations(user?.id, previousDishes);
+        queryClient.setQueryData(['recommendations', user?.id], fresh);
+        setRefreshingRecs(false);
+        closeModal();
+    }
+
+    // Show breakdown of recommendations
+    const [showBreakdown, setShowBreakdown] = useState(false);
 
     console.log(recsData);
 
@@ -402,14 +420,18 @@ const MyInsights = ({ onPress }: Props) => {
                             <View style={styles.dragHandle} />
                         </View>
                         <Text style={styles.manageText}>Manage recommendations</Text>
-                        <View style={{ flexDirection: 'column', alignItems: 'center' }}>
+                        <View style={{ width: '100%', backgroundColor: 'white', borderRadius: 16, padding: 20, marginTop: 8, borderLeftColor: '#E86A33', borderLeftWidth: 4 }}>
 
                             {/* Refresh Suggestions */}
-                            <TouchableOpacity style={{ width: '100%' }}>
+                            <TouchableOpacity style={{ width: '100%' }} onPress={handleRefreshSuggestions} disabled={refreshingRecs}>
                                 <View style={styles.recommendationCard}>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                                         <View style={styles.recommendationContainer}>
-                                            <Ionicons name="refresh" size={35} color="#E86A33" />
+                                            {refreshingRecs ? (
+                                                <ActivityIndicator size="small" color="#E86A33" />
+                                            ) : (
+                                                <Ionicons name="refresh" size={35} color="#E86A33" />
+                                            )}
                                         </View>
                                         <View style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 7, flex: 1, marginRight: 20 }}>
                                             <Text style={styles.recommendationText}>Refresh suggestions</Text>
@@ -420,7 +442,7 @@ const MyInsights = ({ onPress }: Props) => {
                             </TouchableOpacity>
 
                             {/* Why these dishes */}
-                            <TouchableOpacity style={{ width: '100%' }}>
+                            <TouchableOpacity style={{ width: '100%' }} onPress={() => setShowBreakdown(!showBreakdown)}>
                                 <View style={styles.recommendationCard}>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                                         <View style={styles.recommendationContainer}>
@@ -433,6 +455,14 @@ const MyInsights = ({ onPress }: Props) => {
                                     </View>
                                 </View>
                             </TouchableOpacity>
+
+                            {showBreakdown && (
+                                <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 20, marginTop: 8, borderLeftColor: '#E86A33', borderLeftWidth: 4 }}>
+                                    <Text style={{ color: '#1a1a1a', lineHeight: 22 }}>
+                                        {recsData?.breakdown ?? 'Analyzing your taste profile...'}
+                                    </Text>
+                                </View>
+                            )}
 
                             {/* Turn off AI insights */}
                             <TouchableOpacity style=

@@ -27,9 +27,12 @@ export async function getFlavorProfile(userId) {
 /**
  * Fetch the current flavor profile for the recommendations for a user
  * @param {string} userId  - Clerk user ID
+ * @param {string[]} exclude - Dish titles to exclude from results (optional)
  */
-export async function getRecommendations(userId) {
-  const res = await fetch(`${BASE_URL}/api/v1/flavor-profiles/${encodeURIComponent(userId)}/recommendations`);
+export async function getRecommendations(userId, exclude = []) {
+  const params = exclude.length ? `?exclude=${encodeURIComponent(exclude.join(','))}`
+    : '';
+  const res = await fetch(`${BASE_URL}/api/v1/flavor-profiles/${encodeURIComponent(userId)}/recommendations${params}`);
   if (!res.ok) throw new Error(`getRecommendations failed: ${res.status}`);
   return res.json();
 }

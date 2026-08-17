@@ -190,7 +190,7 @@ async def fetch_user_logs(user_id: str) -> list:
         return []
 
 @app.get("/flavor-profiles/{user_id}/recommendations")
-async def get_recommendations(user_id: str, db: Session = Depends(get_db)):
+async def get_recommendations(user_id: str, exclude: str = "", db: Session = Depends(get_db)):
     # 1. Look up the REAL flavor profile for this user. Same query get_flavor_profile() uses
     profile = db.query(models.FlavorProfile).filter(models.FlavorProfile.user_id == user_id).first()
     if not profile:
@@ -214,6 +214,8 @@ async def get_recommendations(user_id: str, db: Session = Depends(get_db)):
     avg_rating = round(sum(ratings) / len(ratings), 2) if ratings else 0
     critic_label = get_critic_label(avg_rating)
     
+    excluded_dishes = [d.strip() for d in exclude.split(",") if d.strip()]
+    
     prompt = f"""
 Role: You are a culinary recommender with deep knowledge of restaurants, dishes, and flavor profiles.
 
@@ -232,20 +234,25 @@ User Profile:
 - Top cuisines logged: {top_cuisines}
 - Rating breakdown: Average {avg_rating}, Critic Personality: {critic_label}
 
+{f"- Do NOT recommend any of these previously suggested dishes: {excluded_dishes}" if excluded_dishes else ""}
+
 Task: Recommend exactly 3 dishes matching this profile. Return only valid JSON, no markdown.
 
 Output format:
 {{
-  "insight": "...",
+  "insight": "1-2 sentence summary of the user's overall taste pattern",
   "recommendations": [
-    {{"dish": "...", "restaurant": "...", "city": "...", "match": 95, "tags": ["...", "..."], "reason": "...", "chemistryInsight": "..."}}
-  ]
+    {{"dish": "...", "restaurant": "...", "city": "...", "match": <integer 0-100 representing match confidence>, "tags": ["...", "..."], "reason": "1 brief sentence on why this dish fits their palate", "chemistryInsight": "1 brief sentence on the specific flavor chemistry (e.g. umami-fat pairing)"}}
+  ],
+    "breakdown":  "3-4 sentences, friendly and second-person, explaining the methodology behind the 3 picks above: which of their flavor dimensions weighed most heavily and why, and how their logged cuisines, cities, and rating pattern shaped selection. Name specific numbers from their profile. Do not re-describe the dishes themselves.",
+
 }}
 """
     # 4. Call Claude
     message = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=2000,
+        temperature=1.0, 
         messages=[{"role": "user", "content": prompt}],
     )
 
@@ -257,4 +264,9 @@ Output format:
             raw = raw[4:]
         raw = raw.strip()
         
-    return json.loads(raw)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as e:
+        print(f"\033[91m[RECS ERROR] Claude returned invalid JSON: {e}\033[0m")
+        raise HTTPException(status_code=502, detail="Failed to generate recommendations. Please try again.")
+        
