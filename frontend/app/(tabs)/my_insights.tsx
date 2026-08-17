@@ -420,7 +420,7 @@ const MyInsights = ({ onPress }: Props) => {
                             <View style={styles.dragHandle} />
                         </View>
                         <Text style={styles.manageText}>Manage recommendations</Text>
-                        <View style={{ width: '100%', backgroundColor: 'white', borderRadius: 16, padding: 20, marginTop: 8, borderLeftColor: '#E86A33', borderLeftWidth: 4 }}>
+                        <View style={{ flexDirection: 'column', alignItems: 'center' }}>
 
                             {/* Refresh Suggestions */}
                             <TouchableOpacity style={{ width: '100%' }} onPress={handleRefreshSuggestions} disabled={refreshingRecs}>
