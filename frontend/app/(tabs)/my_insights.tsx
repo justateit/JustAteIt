@@ -457,7 +457,7 @@ const MyInsights = ({ onPress }: Props) => {
                             </TouchableOpacity>
 
                             {showBreakdown && (
-                                <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 20, marginTop: 8, borderLeftColor: '#E86A33', borderLeftWidth: 4 }}>
+                                <View style={{ width: '100%', backgroundColor: 'white', borderRadius: 16, padding: 20, marginTop: 8, borderLeftColor: '#E86A33', borderLeftWidth: 4 }}>
                                     <Text style={{ color: '#1a1a1a', lineHeight: 22 }}>
                                         {recsData?.breakdown ?? 'Analyzing your taste profile...'}
                                     </Text>

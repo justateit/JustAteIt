@@ -245,7 +245,6 @@ Output format:
     {{"dish": "...", "restaurant": "...", "city": "...", "match": <integer 0-100 representing match confidence>, "tags": ["...", "..."], "reason": "1 brief sentence on why this dish fits their palate", "chemistryInsight": "1 brief sentence on the specific flavor chemistry (e.g. umami-fat pairing)"}}
   ],
     "breakdown":  "3-4 sentences, friendly and second-person, explaining the methodology behind the 3 picks above: which of their flavor dimensions weighed most heavily and why, and how their logged cuisines, cities, and rating pattern shaped selection. Name specific numbers from their profile. Do not re-describe the dishes themselves.",
-
 }}
 """
     # 4. Call Claude
