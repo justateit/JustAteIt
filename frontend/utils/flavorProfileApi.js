@@ -25,6 +25,19 @@ export async function getFlavorProfile(userId) {
 }
 
 /**
+ * Fetch the current flavor profile for the recommendations for a user
+ * @param {string} userId  - Clerk user ID
+ * @param {string[]} exclude - Dish titles to exclude from results (optional)
+ */
+export async function getRecommendations(userId, exclude = []) {
+  const params = exclude.length ? `?exclude=${encodeURIComponent(exclude.join(','))}`
+    : '';
+  const res = await fetch(`${BASE_URL}/api/v1/flavor-profiles/${encodeURIComponent(userId)}/recommendations${params}`);
+  if (!res.ok) throw new Error(`getRecommendations failed: ${res.status}`);
+  return res.json();
+}
+
+/**
  * Submit a dish rating and get the recalculated flavor profile back.
  * @param {string} userId
  * @param {string} dishId   - Must match a key in MOCK_DISHES (e.g. "dish_001")

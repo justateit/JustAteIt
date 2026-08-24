@@ -99,6 +99,12 @@ def _parse_create_tables(sql: str) -> dict:
             colname = entry.split()[0]
             cols[colname] = re.sub(r"\s+", " ", entry).strip()
         tables[name] = cols
+
+    for m in re.finditer(r"ALTER TABLE\s+(\w+)\s+ADD COLUMN\s+([^;]+);", sql, re.IGNORECASE):
+        name, coldef = m.group(1), m.group(2).strip()
+        colname = coldef.split()[0]
+        tables.setdefault(name, {})[colname] = re.sub(r"\s+", " ", coldef).strip()
+
     return tables
 
 
@@ -246,12 +252,13 @@ def test_expected_columns(tables):
         "users": {"id", "username", "display_name", "avatar_url", "bio",
                   "created_at", "updated_at"},
         "flavor_profiles": {"user_id", "spice", "acid", "umami", "sweet",
-                            "texture", "review_count", "last_updated_at"},
+                            "texture", "review_count", "last_updated_at",
+                            "points_count"},
         "venues": {"id", "google_place_id", "name", "vicinity", "lat", "lng",
                    "created_at"},
         "dishes": {"id", "venue_id", "name", "description", "base_spice",
                    "base_acid", "base_umami", "base_sweet", "base_texture",
-                   "created_at"},
+                   "created_at", "cuisine"},
         "reviews": {"id", "user_id", "dish_id", "venue_id", "rating",
                     "comment", "created_at"},
         "media": {"id", "review_id", "media_url", "media_type", "created_at"},

@@ -152,3 +152,63 @@ export const topRatedSpots = [
     }
 
 ]
+
+export const userInsightsData = [
+    {
+        totalPoints: 169,
+        userLevel: 2,
+        logCount: 24,
+        citiesVisited: 3,
+        saves: 15,
+        cuisine: { Mexican: 3, Indian: 10, French: 4, Japanese: 20, Chinese: 2 },
+        ratings: {
+            fiveStars: 2,
+            fourStars: 10,
+            threeStars: 2,
+            twoStars: 20,
+            oneStar: 0,
+        }
+    }
+]
+
+export const recommendations = [
+    {
+        id: '1',
+        title: 'Charred Octopus',
+        match: 95,
+        restaurant: 'PUJOL',
+        date: '2023-10-05',
+        rating: 5,
+        image: require('../assets/images/charred_octopus.jpg'),
+        location: 'MEXICO CITY',
+        tastingNotes: "Deeply charred tentacles with a mole madre that has been aged 2000+ days. Complex, bitter, sweet, spicy.",
+        chemistryInsight: "Malliard reaction extreme on octopus skin.",
+        tags: ['Mexican', 'Mole', 'Charcoal'],
+    },
+    {
+        id: '2',
+        title: 'Spicy Cumin Lamb',
+        match: 88,
+        restaurant: "XI'AN FAMOUS FOODS",
+        date: '2023-10-10',
+        rating: 5,
+        image: require('../assets/images/spicy_cumin_lamb.jpg'),
+        location: 'NEW YORK',
+        tastingNotes: "Bold cumin-forward lamb with smoky chili heat. Savory, aromatic, and slightly numbing with a rich, lingering spice.",
+        chemistryInsight: "Cumin's volatile compounds bind with lamb fat during high-heat cooking, amplifying aroma.",
+        tags: ['Chinese', 'Lamb', 'Spicy', 'Cumin']
+    },
+    {
+        id: '3',
+        title: 'Uni & Truffle Toast',
+        match: 86,
+        restaurant: 'ATOMIX',
+        date: '2023-10-08',
+        rating: 4.5,
+        image: require('../assets/images/uni_truffle_toast.jpg'),
+        location: 'NEW YORK',
+        tastingNotes: "Buttery uni layered over crisp toast with earthy shaved truffle. Rich, oceanic, and deeply umami-forward with a luxurious finish.",
+        chemistryInsight: "Uni is rich in glutamates while truffle contains androstenol — both compounds synergize to create an intense umami and aromatic experience.",
+        tags: ['Japanese', 'Umami', 'Truffle', 'Seafood']
+    },
+]
