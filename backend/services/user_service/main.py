@@ -20,6 +20,8 @@ load_dotenv()
 
 # Optional: Auto-create tables (good for dev, but we already have an init_db script and migrations)
 # models.Base.metadata.create_all(bind=engine)
+# Note: no create_all() here — the schema is owned by the versioned
+# Supabase migrations in backend/supabase/migrations (see backend/README.md).
 
 app = FastAPI(title="User & Profile Service")
 

@@ -1,0 +1,13 @@
+# Development/test dependencies for the backend (Python 3.9).
+# Exact pins for reproducible test runs:
+#   python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+#   .venv/bin/pytest
+pytest==8.4.2
+
+# Runtime libraries required to import the services under test.
+fastapi==0.128.8
+httpx==0.28.1
+boto3==1.42.97
+python-multipart==0.0.20
+SQLAlchemy==2.0.51
+requests==2.32.5
