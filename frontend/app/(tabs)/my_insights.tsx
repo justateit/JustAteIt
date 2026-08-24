@@ -551,7 +551,7 @@ const MyInsights = ({ onPress }: Props) => {
                                         <Text style={{ fontSize: 22, color: '#737588' }}>%</Text>
                                     </View>
                                     <Text style={{ fontSize: 10, letterSpacing: 2, color: '#010101a4', marginBottom: 8 }}>TASTING NOTES</Text>
-                                    <Text style={{ color: 'black', lineHeight: 19, marginBottom: 20, fontStyle: 'italic' }}>"{selectedDish.tastingNotes}"</Text>
+                                    <Text style={{ color: 'black', lineHeight: 19, marginBottom: 20, fontStyle: 'italic' }}>&quot;{selectedDish.tastingNotes}&quot;</Text>
                                     <Text style={{ fontSize: 10, letterSpacing: 2, color: '#FF6B4A', fontWeight: '700', marginBottom: 12 }}>CHEMISTRY INSIGHT</Text>
                                     <View style={{ backgroundColor: 'white', paddingHorizontal: 20, paddingVertical: 20, borderLeftColor: '#FF6B4A', borderLeftWidth: 4, marginBottom: 20 }}>
                                         <Text style={{ color: 'black' }}>{selectedDish.chemistryInsight}</Text>

@@ -162,7 +162,7 @@ export default function App() {
                                 <Text style={styles.myInsightsTitle}>AI INSIGHTS</Text>
                             </View>
                             <Text style={styles.myInsightsDescription}>
-                                Based on your recent logs, you're a strong Umami lover - you tend to eat Japanese and fermented dishes most on weekdays.
+                                Based on your recent logs, you&apos;re a strong Umami lover - you tend to eat Japanese and fermented dishes most on weekdays.
                             </Text>
                             <TouchableOpacity style={styles.myInsightsButton} onPress={() => router.push('/my_insights')}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -503,7 +503,6 @@ const styles = StyleSheet.create({
     myInsightsDescription: {
         fontSize: 18,
         color: '#fff',
-        lineHeight: 22,
         fontStyle: 'italic',
         lineHeight: 27,
     },
