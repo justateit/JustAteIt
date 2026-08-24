@@ -103,7 +103,7 @@ export default function SignUpScreen() {
         <TouchableOpacity style={[styles.orangeBtn, verifyLoading && styles.disabled]} onPress={onVerifyPress} disabled={verifyLoading}>
           {verifyLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.orangeBtnText}>Verify Code</Text>}
         </TouchableOpacity>
-        <View style={styles.row}><Text style={styles.dimText}>Haven't gotten the email yet? </Text>
+        <View style={styles.row}><Text style={styles.dimText}>Haven&apos;t gotten the email yet? </Text>
           <TouchableOpacity onPress={onSignUpPress}><Text style={styles.orangeLink}>Resend email</Text></TouchableOpacity></View>
       </GlassScreen>
     );
