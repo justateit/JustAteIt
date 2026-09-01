@@ -157,7 +157,7 @@ Resources:
       LogGroupName: !Sub "/ecs/${AWS::StackName}"
       RetentionInDays: 7
 
-  # Pulls images, writes logs, resolves the DATABASE_URL secret at launch.
+  # Pulls images, writes logs, resolves secrets (SSM) at launch.
   TaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -171,13 +171,15 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
       Policies:
-        - PolicyName: read-database-url-parameter
+        - PolicyName: read-ssm-parameters
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action: ssm:GetParameters
-                Resource: !Ref DatabaseUrlParameterArn
+                Resource:
+                  - !Ref DatabaseUrlParameterArn
+                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/justateit/dev/*"
 
   # Runtime role for the containers (media uploads, SSM parameter reads).
   TaskRole:
@@ -208,7 +210,9 @@ Resources:
                 Action:
                   - ssm:GetParameter
                   - ssm:GetParameters
-                Resource: !Ref DatabaseUrlParameterArn
+                Resource:
+                  - !Ref DatabaseUrlParameterArn
+                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/justateit/dev/*"
 
   # ── One Fargate task definition with all four containers. In awsvpc
   #    mode the containers share a network namespace, so they talk over
@@ -266,6 +270,8 @@ Resources:
           Secrets:
             - Name: DATABASE_URL
               ValueFrom: !Ref DatabaseUrlParameterArn
+            - Name: GOOGLE_API_KEY
+              ValueFrom: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/justateit/dev/google-api-key"
           LogConfiguration:
             LogDriver: awslogs
             Options:
