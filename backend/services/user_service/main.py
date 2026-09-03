@@ -88,6 +88,20 @@ def get_user(user_id: str, db: Session = Depends(get_db)):
         "avatar_url": user.avatar_url
     }
 
+@app.delete("/users/{user_id}")
+def delete_user(user_id: str, db: Session = Depends(get_db)):
+    """Deletes a user account and all associated profile, review, and media data."""
+    print(f"\033[91m[USER] Deleting user account and associated data: {user_id}\033[0m")
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        print(f"\033[91m[USER ERROR] Delete failed: User {user_id} not found\033[0m")
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Deleting the user record cascades to flavor_profile, reviews, media, and audit logs
+    db.delete(user)
+    db.commit()
+    return {"success": True, "message": f"User {user_id} and all associated data have been permanently deleted."}
+
 @app.get("/flavor-profiles/{user_id}", response_model=ProfileResponse)
 def get_flavor_profile(user_id: str, db: Session = Depends(get_db)):
     profile = db.query(models.FlavorProfile).filter(models.FlavorProfile.user_id == user_id).first()

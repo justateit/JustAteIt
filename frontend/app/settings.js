@@ -1,7 +1,8 @@
-import { useAuth } from '@clerk/clerk-expo';
+import { useAuth, useUser } from '@clerk/clerk-expo';
 import { Feather } from '@expo/vector-icons';
 import { useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Image,
     Platform,
@@ -14,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { deleteUserAccount } from '../utils/flavorProfileApi';
 
 const serifFont = Platform.select({ ios: 'Georgia', android: 'serif' });
 const monoFont = Platform.select({ ios: 'Courier', android: 'monospace' });
@@ -21,12 +23,14 @@ const monoFont = Platform.select({ ios: 'Courier', android: 'monospace' });
 export default function SettingsScreen() {
     const router = useRouter();
     const { signOut } = useAuth();
+    const { user } = useUser();
 
     const [bio, setBio] = useState(
         'Chasing fermentation across the globe. Seeking the perfect balance of acid and fat.'
     );
     const [darkMode, setDarkMode] = useState(true);
     const [notifications, setNotifications] = useState(true);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const onLogOut = async () => {
         Alert.alert('Log out', 'Are you sure you want to log out?', [
@@ -40,6 +44,42 @@ export default function SettingsScreen() {
                 },
             },
         ]);
+    };
+
+    const onDeleteAccount = () => {
+        Alert.alert(
+            'Delete Account',
+            'Are you sure you want to permanently delete your account? All your flavor profiles, dish logs, and reviews will be permanently removed. This action cannot be undone.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete Permanently',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            setIsDeleting(true);
+                            if (user?.id) {
+                                // 1. Delete user data from backend database
+                                await deleteUserAccount(user.id).catch((err) => {
+                                    console.warn('Backend user deletion warning:', err);
+                                });
+                                // 2. Delete user account from Clerk auth
+                                if (user.delete) {
+                                    await user.delete();
+                                }
+                            }
+                            await signOut();
+                            router.replace('/');
+                        } catch (error) {
+                            console.error('Account deletion error:', error);
+                            Alert.alert('Error', 'Failed to delete account. Please try again.');
+                        } finally {
+                            setIsDeleting(false);
+                        }
+                    },
+                },
+            ]
+        );
     };
 
     const onSaveChanges = () => {
@@ -134,6 +174,22 @@ export default function SettingsScreen() {
                         <Text style={styles.saveChanges}>Save changes</Text>
                     </TouchableOpacity>
                 </View>
+
+                {/* Divider */}
+                <View style={styles.divider} />
+
+                {/* Danger Zone: Delete Account */}
+                <TouchableOpacity
+                    onPress={onDeleteAccount}
+                    disabled={isDeleting}
+                    style={styles.deleteAccountButton}
+                >
+                    {isDeleting ? (
+                        <ActivityIndicator color="#D32F2F" size="small" />
+                    ) : (
+                        <Text style={styles.deleteAccountText}>Delete Account</Text>
+                    )}
+                </TouchableOpacity>
             </View>
         </SafeAreaView>
     );
@@ -268,5 +324,17 @@ const styles = StyleSheet.create({
         color: '#C0BAB0',
         fontSize: 15,
         fontWeight: '500',
+    },
+    deleteAccountButton: {
+        paddingVertical: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 4,
+    },
+    deleteAccountText: {
+        color: '#D32F2F',
+        fontSize: 14,
+        fontWeight: '600',
+        letterSpacing: 0.3,
     },
 });

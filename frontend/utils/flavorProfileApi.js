@@ -25,6 +25,21 @@ export async function getFlavorProfile(userId) {
 }
 
 /**
+ * Permanently delete a user account and all associated profile, review, and media data.
+ * @param {string} userId - Clerk user ID
+ */
+export async function deleteUserAccount(userId) {
+  const res = await fetch(`${BASE_URL}/api/v1/users/${encodeURIComponent(userId)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `deleteUserAccount failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
  * Submit a dish rating and get the recalculated flavor profile back.
  * @param {string} userId
  * @param {string} dishId   - Must match a key in MOCK_DISHES (e.g. "dish_001")
