@@ -9,4 +9,6 @@ interface Dish {
     tastingNotes: string;
     chemistryInsight: string;
     tags: string[];
+    onUpdated?: () => void;
+    onDeleted?: () => void;
 }

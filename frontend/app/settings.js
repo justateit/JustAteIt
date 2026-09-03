@@ -1,6 +1,8 @@
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { Feather } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import * as ImagePicker from 'expo-image-picker';
+import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -15,22 +17,78 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { deleteUserAccount } from '../utils/flavorProfileApi';
+import { deleteUserAccount, getUser, uploadAvatarImage, upsertUser } from '../utils/flavorProfileApi';
 
 const serifFont = Platform.select({ ios: 'Georgia', android: 'serif' });
 const monoFont = Platform.select({ ios: 'Courier', android: 'monospace' });
 
 export default function SettingsScreen() {
     const router = useRouter();
+    const queryClient = useQueryClient();
     const { signOut } = useAuth();
     const { user } = useUser();
 
+    const { data: dbUser } = useQuery({
+        queryKey: ['dbUser', user?.id],
+        queryFn: () => getUser(user.id),
+        enabled: !!user?.id,
+    });
+
+    const [displayName, setDisplayName] = useState(
+        `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || dbUser?.display_name || user?.fullName || 'Food Explorer'
+    );
+    const [username, setUsername] = useState(
+        user?.username || dbUser?.username || user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'explorer'
+    );
     const [bio, setBio] = useState(
-        'Chasing fermentation across the globe. Seeking the perfect balance of acid and fat.'
+        dbUser?.bio || 'Chasing fermentation across the globe. Seeking the perfect balance of acid and fat.'
+    );
+    const [avatarUrl, setAvatarUrl] = useState(
+        dbUser?.avatar_url || user?.imageUrl || 'https://images.unsplash.com/photo-1542223616-740d5dff7f56?w=400&q=80'
     );
     const [darkMode, setDarkMode] = useState(true);
     const [notifications, setNotifications] = useState(true);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (dbUser) {
+            if (dbUser.display_name) setDisplayName(dbUser.display_name);
+            if (dbUser.username) setUsername(dbUser.username);
+            if (dbUser.bio) setBio(dbUser.bio);
+            if (dbUser.avatar_url) setAvatarUrl(dbUser.avatar_url);
+        } else if (user) {
+            const fullName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.fullName;
+            if (fullName) setDisplayName(fullName);
+            if (user.username) setUsername(user.username);
+            if (user.imageUrl && !dbUser?.avatar_url) setAvatarUrl(user.imageUrl);
+        }
+    }, [dbUser, user]);
+
+    const onChangeAvatar = async () => {
+        try {
+            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!permissionResult.granted) {
+                Alert.alert('Permission Required', 'Permission to access media library is required to pick an avatar.');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.8,
+            });
+
+            if (!result.canceled && result.assets?.[0]?.uri) {
+                const pickedUri = result.assets[0].uri;
+                setAvatarUrl(pickedUri);
+            }
+        } catch (error) {
+            console.error('Avatar selection error:', error);
+            Alert.alert('Error', 'Failed to select image.');
+        }
+    };
 
     const onLogOut = async () => {
         Alert.alert('Log out', 'Are you sure you want to log out?', [
@@ -59,11 +117,9 @@ export default function SettingsScreen() {
                         try {
                             setIsDeleting(true);
                             if (user?.id) {
-                                // 1. Delete user data from backend database
                                 await deleteUserAccount(user.id).catch((err) => {
                                     console.warn('Backend user deletion warning:', err);
                                 });
-                                // 2. Delete user account from Clerk auth
                                 if (user.delete) {
                                     await user.delete();
                                 }
@@ -82,9 +138,56 @@ export default function SettingsScreen() {
         );
     };
 
-    const onSaveChanges = () => {
-        // TODO: persist bio/settings to backend
-        Alert.alert('Saved', 'Your changes have been saved.');
+    const onSaveChanges = async () => {
+        if (!user?.id) return;
+        try {
+            setIsSaving(true);
+            const cleanDisplayName = displayName.trim();
+            const cleanUsername = username.trim().replace(/^@/, '');
+            
+            // 1. Upload local avatar image to S3 if it's a local file URI
+            let finalAvatarUrl = avatarUrl;
+            if (avatarUrl && !avatarUrl.startsWith('http://') && !avatarUrl.startsWith('https://')) {
+                try {
+                    finalAvatarUrl = await uploadAvatarImage(avatarUrl);
+                    setAvatarUrl(finalAvatarUrl);
+                } catch (uploadErr) {
+                    console.warn('Avatar upload error:', uploadErr);
+                }
+            }
+
+            // 2. Update backend database
+            await upsertUser(user.id, {
+                bio: bio.trim(),
+                display_name: cleanDisplayName || null,
+                username: cleanUsername || null,
+                avatar_url: finalAvatarUrl || null,
+            });
+
+            // 3. Try updating Clerk user profile if available
+            if (user.update) {
+                const nameParts = cleanDisplayName.split(' ');
+                const firstName = nameParts[0] || '';
+                const lastName = nameParts.slice(1).join(' ') || '';
+                try {
+                    await user.update({
+                        firstName: firstName || user.firstName,
+                        lastName: lastName || user.lastName,
+                        username: cleanUsername || user.username,
+                    });
+                } catch (clerkErr) {
+                    console.warn('Clerk user update notice:', clerkErr);
+                }
+            }
+
+            await queryClient.invalidateQueries(['dbUser', user.id]);
+            Alert.alert('Saved', 'Your profile and avatar photo have been saved!');
+        } catch (error) {
+            console.error('Save profile error:', error);
+            Alert.alert('Error', 'Failed to save changes. Please try again.');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -101,20 +204,41 @@ export default function SettingsScreen() {
             <View style={styles.card}>
                 {/* Avatar + Name */}
                 <View style={styles.profileRow}>
-                    <View style={styles.avatarContainer}>
+                    <TouchableOpacity onPress={onChangeAvatar} style={styles.avatarContainer}>
                         <Image
-                            source={{ uri: 'https://images.unsplash.com/photo-1542223616-740d5dff7f56?w=400&q=80' }}
+                            source={{ uri: avatarUrl }}
                             style={styles.avatar}
                         />
-                    </View>
+                    </TouchableOpacity>
                     <View style={styles.profileInfo}>
-                        <Text style={styles.name}>Julienne Bruno</Text>
-                        <Text style={styles.handle}>@julienne</Text>
-                        <TouchableOpacity>
+                        <Text style={styles.name}>{displayName}</Text>
+                        <Text style={styles.handle}>@{username.replace(/^@/, '')}</Text>
+                        <TouchableOpacity onPress={onChangeAvatar}>
                             <Text style={styles.changeAvatar}>CHANGE AVATAR</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
+
+                {/* Edit Display Name */}
+                <Text style={styles.sectionLabel}>Display Name</Text>
+                <TextInput
+                    value={displayName}
+                    onChangeText={setDisplayName}
+                    style={styles.singleInput}
+                    placeholder="Enter display name"
+                    placeholderTextColor="#aaa"
+                />
+
+                {/* Edit Username */}
+                <Text style={styles.sectionLabel}>Username</Text>
+                <TextInput
+                    value={username}
+                    onChangeText={setUsername}
+                    style={styles.singleInput}
+                    placeholder="Enter username"
+                    placeholderTextColor="#aaa"
+                    autoCapitalize="none"
+                />
 
                 {/* Edit Bio */}
                 <Text style={styles.sectionLabel}>Edit Bio</Text>
@@ -170,8 +294,12 @@ export default function SettingsScreen() {
                     <TouchableOpacity onPress={onLogOut}>
                         <Text style={styles.logOut}>Log out</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={onSaveChanges}>
-                        <Text style={styles.saveChanges}>Save changes</Text>
+                    <TouchableOpacity onPress={onSaveChanges} disabled={isSaving}>
+                        {isSaving ? (
+                            <ActivityIndicator size="small" color="#E86A33" />
+                        ) : (
+                            <Text style={styles.saveChangesActive}>Save changes</Text>
+                        )}
                     </TouchableOpacity>
                 </View>
 
@@ -288,6 +416,17 @@ const styles = StyleSheet.create({
         textAlignVertical: 'top',
         marginBottom: 16,
     },
+    singleInput: {
+        borderWidth: 1,
+        borderColor: '#E0DDD5',
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        backgroundColor: '#FAFAF7',
+        color: '#444',
+        fontSize: 14,
+        marginBottom: 16,
+    },
     divider: {
         height: 1,
         backgroundColor: '#F0EDE5',
@@ -324,6 +463,11 @@ const styles = StyleSheet.create({
         color: '#C0BAB0',
         fontSize: 15,
         fontWeight: '500',
+    },
+    saveChangesActive: {
+        color: '#E86A33',
+        fontSize: 15,
+        fontWeight: '600',
     },
     deleteAccountButton: {
         paddingVertical: 8,

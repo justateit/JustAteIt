@@ -1,9 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@clerk/clerk-expo';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
+import LiquidGlass from './LiquidGlass';
 import { getFlavorProfile } from '../utils/flavorProfileApi';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -57,23 +56,7 @@ export function DiningFrequencyCard() {
     }
 
     return (
-        <View style={styles.glassCard}>
-            {/* Glass surface */}
-            <BlurView
-                intensity={Platform.OS === 'ios' ? 60 : 40}
-                tint="dark"
-                experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
-                style={StyleSheet.absoluteFill}
-            />
-            <LinearGradient
-                colors={[
-                    'rgba(255,255,255,0.07)',
-                    'rgba(255,255,255,0.02)',
-                    'transparent',
-                ]}
-                style={StyleSheet.absoluteFill}
-            />
-
+        <LiquidGlass style={styles.glassCard} intensity={70} borderRadius={20}>
             {/* Content */}
             <View style={styles.cardInner}>
                 {/* Title */}
@@ -123,10 +106,7 @@ export function DiningFrequencyCard() {
                     <Text style={styles.legendText}>MORE</Text>
                 </View>
             </View>
-
-            {/* Glass border */}
-            <View style={styles.glassBorder} />
-        </View>
+        </LiquidGlass>
     );
 }
 
@@ -259,32 +239,7 @@ export function TasteDNACard() {
     }, [userId]);
 
     return (
-        <View style={styles.glassCard}>
-            <BlurView
-                intensity={Platform.OS === 'ios' ? 60 : 40}
-                tint="dark"
-                experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
-                style={StyleSheet.absoluteFill}
-            />
-            {/* Base dark gradient */}
-            <LinearGradient
-                colors={['rgba(255,255,255,0.07)', 'rgba(255,255,255,0.02)', 'transparent']}
-                style={StyleSheet.absoluteFill}
-            />
-            {/* Orange light leak — bottom-right */}
-            <LinearGradient
-                colors={['transparent', 'transparent', 'rgba(255,107,74,0.18)']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFill}
-            />
-            {/* Orange light leak — top-left */}
-            <LinearGradient
-                colors={['rgba(255,107,74,0.10)', 'transparent', 'transparent']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFill}
-            />
+        <LiquidGlass style={styles.glassCard} intensity={70} borderRadius={20}>
 
             <View style={styles.cardInner}>
                 <Text style={styles.dnaTitle}>TASTE DNA</Text>
@@ -349,9 +304,7 @@ export function TasteDNACard() {
                     ? <ActivityIndicator size="small" color="#FF6B4A" style={{ marginTop: 10 }} />
                     : <Text style={styles.dnaPersonality}>{personality}</Text>}
             </View>
-
-            <View style={styles.glassBorder} />
-        </View>
+        </LiquidGlass>
     );
 }
 
@@ -362,16 +315,7 @@ const styles = StyleSheet.create({
     glassCard: {
         flex: 1,
         borderRadius: 20,
-        overflow: 'hidden',
-        backgroundColor: 'rgba(20,20,20,0.75)',
         minHeight: 200,
-    },
-    glassBorder: {
-        ...StyleSheet.absoluteFillObject,
-        borderRadius: 20,
-        borderWidth: 0.8,
-        borderColor: 'rgba(255,255,255,0.12)',
-        pointerEvents: 'none',
     },
     cardInner: {
         flex: 1,

@@ -1,6 +1,6 @@
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
+import LiquidGlass from '@/components/LiquidGlass';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -426,7 +426,10 @@ export default function RecordExperience() {
           {/* Glass Toggle Switch */}
           <AnimatedSection scrollY={scrollY} delay={240}>
             <View style={styles.toggleOuterContainer}>
-              <BlurView intensity={80} tint="light" style={styles.toggleGlassWrapper}>
+              <LiquidGlass
+                borderRadius={25}
+                style={styles.toggleGlassWrapper}
+              >
 
                 {/* Animated Background Pill */}
                 <Animated.View
@@ -481,7 +484,7 @@ export default function RecordExperience() {
                     </Text>
                   </TouchableOpacity>
                 </View>
-              </BlurView>
+              </LiquidGlass>
             </View>
           </AnimatedSection>
 

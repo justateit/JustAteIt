@@ -1,4 +1,5 @@
 import os
+import uuid
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel
@@ -20,6 +21,14 @@ class ReviewPayload(BaseModel):
     city: Optional[str] = None
     is_restaurant: bool = True
     rating: float
+    sensory_notes: Optional[str] = None
+    image_url: Optional[str] = None
+
+class ReviewUpdatePayload(BaseModel):
+    dish_name: Optional[str] = None
+    venue_name: Optional[str] = None
+    city: Optional[str] = None
+    rating: Optional[float] = None
     sensory_notes: Optional[str] = None
     image_url: Optional[str] = None
 
@@ -189,3 +198,89 @@ async def create_review(payload: ReviewPayload, background_tasks: BackgroundTask
     background_tasks.add_task(notify_user_service, payload.user_id, dish_data, payload.rating)
 
     return {"success": True, "review_id": str(review.id)}
+
+
+@app.put("/reviews/{review_id}")
+def update_review(review_id: str, payload: ReviewUpdatePayload, db: Session = Depends(get_db)):
+    """Updates an existing food review and its details."""
+    try:
+        val = uuid.UUID(review_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid review ID format")
+
+    review = db.query(models.Review).options(
+        joinedload(models.Review.dish),
+        joinedload(models.Review.venue),
+        joinedload(models.Review.media)
+    ).filter(models.Review.id == val).first()
+
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    # 1. Update Venue if specified
+    if payload.venue_name is not None:
+        clean_venue = payload.venue_name.strip()
+        if clean_venue:
+            venue = db.query(models.Venue).filter(models.Venue.name == clean_venue).first()
+            if not venue:
+                venue = models.Venue(name=clean_venue, vicinity=payload.city)
+                db.add(venue)
+                db.commit()
+                db.refresh(venue)
+            elif payload.city and venue.vicinity != payload.city:
+                venue.vicinity = payload.city
+                db.commit()
+            review.venue_id = venue.id
+        else:
+            review.venue_id = None
+
+    # 2. Update Dish if specified
+    if payload.dish_name is not None:
+        clean_dish = payload.dish_name.strip()
+        if clean_dish:
+            dish = db.query(models.Dish).filter(
+                models.Dish.name == clean_dish,
+                models.Dish.venue_id == review.venue_id
+            ).first()
+            if not dish:
+                dish = models.Dish(name=clean_dish, venue_id=review.venue_id)
+                db.add(dish)
+                db.commit()
+                db.refresh(dish)
+            review.dish_id = dish.id
+
+    # 3. Update rating / notes
+    if payload.rating is not None:
+        review.rating = payload.rating
+    if payload.sensory_notes is not None:
+        review.comment = payload.sensory_notes
+
+    # 4. Update Media
+    if payload.image_url is not None:
+        if review.media:
+            review.media[0].media_url = payload.image_url
+        elif payload.image_url:
+            media = models.Media(review_id=review.id, media_url=payload.image_url)
+            db.add(media)
+
+    db.commit()
+    db.refresh(review)
+    return {"success": True, "review_id": str(review.id)}
+
+
+@app.delete("/reviews/{review_id}")
+def delete_review(review_id: str, db: Session = Depends(get_db)):
+    """Permanently deletes a food review entry and its associated media."""
+    try:
+        val = uuid.UUID(review_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid review ID format")
+
+    review = db.query(models.Review).filter(models.Review.id == val).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    db.delete(review)
+    db.commit()
+    return {"success": True, "message": "Review deleted successfully"}
+
