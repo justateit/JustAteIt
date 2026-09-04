@@ -4,8 +4,6 @@ import { DiningFrequencyCard, TasteDNACard } from '@/components/ProfileCards';
 import { useUser } from '@clerk/clerk-expo';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
@@ -22,13 +20,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getLogs, getUser } from '../utils/flavorProfileApi';
 
-const MONTH_NAMES = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
-
-function formatLogDate(isoString) {
-    const d = new Date(isoString);
-    return { month: MONTH_NAMES[d.getMonth()], day: String(d.getDate()) };
-}
 
 export default function App() {
     const router = useRouter();

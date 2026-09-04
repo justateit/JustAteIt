@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    Dimensions,
     Modal,
     Platform,
     ScrollView,
@@ -15,8 +14,6 @@ import {
     View,
 } from 'react-native';
 import { deleteLog, updateLog } from '../utils/flavorProfileApi';
-
-const { width } = Dimensions.get('window');
 
 function formatDateDisplay(d?: string) {
     if (!d) return '';

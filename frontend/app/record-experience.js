@@ -4,7 +4,7 @@ import LiquidGlass from '@/components/LiquidGlass';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { submitLog, getNearbyVenue, upsertUser } from '../utils/flavorProfileApi';
 import {
   ActivityIndicator,
@@ -81,6 +81,7 @@ function AnimatedSection({ children, scrollY, delay = 0 }) {
       scrollY.removeListener(listenerId);
       clearTimeout(timer);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -121,7 +122,7 @@ export default function RecordExperience() {
       tension: 60,
       friction: 9,
     }).start();
-  }, [isRestaurant]);
+  }, [isRestaurant, slideAnim]);
 
   // Replace the handleUpload function in record-experience.js with this:
 
@@ -321,13 +322,14 @@ export default function RecordExperience() {
         starScales[index].setValue(1);
       }
     });
-  }, [rating]);
+  }, [rating, starOpacities, starScales]);
 
   // Initialize star opacities on mount
   useEffect(() => {
     [1, 2, 3, 4, 5].forEach((star, index) => {
       starOpacities[index].setValue(star <= rating ? 1 : 0.4);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const renderStars = () => {

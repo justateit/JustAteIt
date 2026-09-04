@@ -1,7 +1,7 @@
 import DishCard from '@/components/DishCard';
 import ExploreCitiesCard from '@/components/ExploreCitiesCard';
 import HorizontalDishCard from '@/components/HorizontalDishCard';
-import SearchBar from '@/components/SearchBar';
+import { SearchBar } from '@/components/SearchBar';
 import { icons } from '@/constants/icons';
 import { freshLogs, trendingDishes } from '@/data/mockdata';
 import { Ionicons } from '@expo/vector-icons';

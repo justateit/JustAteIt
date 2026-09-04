@@ -6,6 +6,8 @@
  * Falls back to localhost:8001 for local development on a simulator.
  */
 
+import { Platform } from 'react-native';
+
 const BASE_URL =
   process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '') ||
   'http://localhost:8000';

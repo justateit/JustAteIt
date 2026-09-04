@@ -1,5 +1,5 @@
 import HorizontalDishCard from '@/components/HorizontalDishCard';
-import SearchBar from '@/components/SearchBar';
+import { SearchBar } from '@/components/SearchBar';
 import { trendingDishes } from '@/data/mockdata';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
@@ -14,7 +14,7 @@ const USE_MOCK = !process.env.EXPO_PUBLIC_API_URL; // if no API URL, use mock da
 const Search = () => {
     const [searchQuery, setSearchQuery] = useState('');
 
-    const { data, isLoading } = useQuery({
+    const { data } = useQuery({
 
         queryKey: ['search', searchQuery],
         queryFn: () => {
