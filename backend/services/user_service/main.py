@@ -1,4 +1,4 @@
-import anthropic
+from anthropic import AnthropicBedrockMantle
 import httpx
 import os
 import json
@@ -25,7 +25,7 @@ load_dotenv()
 
 app = FastAPI(title="User & Profile Service")
 
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+client = AnthropicBedrockMantle(aws_region=os.getenv("AWS_REGION", "us-east-2"))
 
 
 # ── Request / Response Models ─────────────────────────────────────────────────
@@ -152,6 +152,7 @@ def update_flavor_profile(payload: RatingPayload, db: Session = Depends(get_db))
 
     profile.points_count += 10
     profile.review_count += 1
+    profile.recommendations_stale = True
     db.commit()
 
     p_dict = {d: getattr(profile, d) for d in FLAVOR_DIMS}
@@ -197,7 +198,15 @@ async def get_recommendations(user_id: str, exclude: str = "", db: Session = Dep
     profile = db.query(models.FlavorProfile).filter(models.FlavorProfile.user_id == user_id).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found.")
-    
+
+    excluded_dishes = [d.strip() for d in exclude.split(",") if d.strip()]
+    is_refresh_request = bool(excluded_dishes)
+
+    # Serve the cached picks when nothing has changed since they were generated
+    # (no new log, no explicit refresh) — skips the Claude call entirely.
+    if not is_refresh_request and not profile.recommendations_stale and profile.cached_recommendations:
+        return json.loads(profile.cached_recommendations)
+
     logs = await fetch_user_logs(user_id)
     
     cities = sorted({log["city"] for log in logs if log.get("city")})
@@ -215,9 +224,7 @@ async def get_recommendations(user_id: str, exclude: str = "", db: Session = Dep
     ratings = [log["rating"] for log in logs if log.get("rating") is not None]
     avg_rating = round(sum(ratings) / len(ratings), 2) if ratings else 0
     critic_label = get_critic_label(avg_rating)
-    
-    excluded_dishes = [d.strip() for d in exclude.split(",") if d.strip()]
-    
+
     prompt = f"""
 Role: You are a culinary recommender with deep knowledge of restaurants, dishes, and flavor profiles.
 
@@ -251,9 +258,9 @@ Output format:
 """
     # 4. Call Claude
     message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=2000,
-        temperature=1.0, 
+        model="anthropic.claude-haiku-4-5",
+        max_tokens=1024,
+        temperature=0.35,
         messages=[{"role": "user", "content": prompt}],
     )
 
@@ -266,8 +273,13 @@ Output format:
         raw = raw.strip()
         
     try:
-        return json.loads(raw)
+        result = json.loads(raw)
     except json.JSONDecodeError as e:
         print(f"\033[91m[RECS ERROR] Claude returned invalid JSON: {e}\033[0m")
         raise HTTPException(status_code=502, detail="Failed to generate recommendations. Please try again.")
+
+    profile.cached_recommendations = json.dumps(result)
+    profile.recommendations_stale = False
+    db.commit()
+    return result
         

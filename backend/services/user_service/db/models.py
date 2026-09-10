@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey
+from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey, Text, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from shared.database import Base
@@ -29,6 +29,8 @@ class FlavorProfile(Base):
     texture = Column(Float, default=0.45)
     review_count = Column(Integer, default=0)
     points_count = Column(Integer, default=0)
+    cached_recommendations = Column(Text, nullable=True)
+    recommendations_stale = Column(Boolean, default=True)
     last_updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationship

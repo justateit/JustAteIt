@@ -97,7 +97,7 @@ const MyInsights = ({ onPress }: Props) => {
     const currentPoints = (profileData?.points_count ?? 0) % 100;
     const pointsNeeded = 100;
     const getLevelLabel = (level: number) => {
-        if (level == 5) return 'Culinary Connoisseur';
+        if (level >= 5) return 'Culinary Connoisseur';
         if (level == 4) return 'Taste Architect';
         if (level == 3) return 'Palate Pioneer';
         if (level == 2) return 'Flavor Seeker';
@@ -376,10 +376,10 @@ const MyInsights = ({ onPress }: Props) => {
                                                             <Text style={[styles.restaurantCity, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">{rec.location}</Text>
                                                         </View>
                                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                                            {rec.tags.slice(0, 2).map((tag: string) => (
-                                                                <View key={tag} style={styles.cuisineTypeBubble}>
-                                                                    <Text style={styles.cuisineTypeText}>{tag}</Text>
-                                                                </View>
+                                                            {(rec.tags ?? []).slice(0, 2).map((tag: string) => (
+                                                            <View key={tag} style={styles.cuisineTypeBubble}>
+                                                                <Text style={styles.cuisineTypeText}>{tag}</Text>
+                                                            </View>
                                                             ))}
                                                         </View>
                                                     </View>
@@ -557,7 +557,7 @@ const MyInsights = ({ onPress }: Props) => {
                                         <Text style={{ color: 'black' }}>{selectedDish.chemistryInsight}</Text>
                                     </View>
                                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-                                        {selectedDish.tags.map((tag: string) => (
+                                        {(selectedDish.tags ?? []).map((tag: string) => (
                                             <View key={tag} style={{ backgroundColor: 'white', paddingHorizontal: 10, paddingVertical: 10, borderColor: 'gray', borderWidth: 0.2 }}>
                                                 <Text>#{tag}</Text>
                                             </View>
