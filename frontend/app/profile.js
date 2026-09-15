@@ -201,7 +201,6 @@ export default function App() {
                                         image={{ uri: item.image_url }}
                                         location={item.city}
                                         tastingNotes={item.sensory_notes}
-                                        chemistryInsight=""
                                         tags={[]}
                                     />
 

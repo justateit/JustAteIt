@@ -6,7 +6,7 @@ import { Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View
 const { width } = Dimensions.get('window');
 const gap = width * 0.3
 
-const DishCard = ({ id, title, restaurant, date, rating, image, location, tastingNotes, chemistryInsight, tags }: Dish) => {
+const DishCard = ({ id, title, restaurant, date, rating, image, location, tastingNotes, tags }: Dish) => {
     const [modalVisible, setModalVisible] = useState(false);
 
     return (
@@ -117,14 +117,14 @@ const DishCard = ({ id, title, restaurant, date, rating, image, location, tastin
                             </View>
                             {/* Rating */}
                             <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                                <Text style={{ fontSize: 66, fontWeight: '700', color: '#FF6B4A', fontFamily: "LibreBaskerville-Bold", letterSpacing: 2, marginRight: 4 }}>{rating}</Text>
-                                <Text style={{ fontSize: 22, color: '#737588', letterSpacing: 2 }}>/</Text>
-                                <Text style={{ fontSize: 22, color: '#737588', letterSpacing: 2, marginLeft: 4 }}>5.0</Text>
+                                <Text style={{ fontSize: 44, fontWeight: '700', color: '#FF6B4A', fontFamily: "LibreBaskerville-Bold", letterSpacing: 1, marginRight: 4 }}>{rating}</Text>
+                                <Text style={{ fontSize: 16, color: '#737588', letterSpacing: 1 }}>/</Text>
+                                <Text style={{ fontSize: 16, color: '#737588', letterSpacing: 1, marginLeft: 4 }}>5.0</Text>
                             </View>
                             <View style={styles.divider} />
                             {/* Tasting Notes */}
-                            <Text style={{ letterSpacing: 2, color: '#010101a4', marginLeft: 10, paddingTop: 15 }}>TASTING NOTES</Text>
-                            <Text style={{ color: 'black', padding: 15, lineHeight: 19, fontFamily: "LibreBaskerville" }}>&quot;{tastingNotes}&quot;</Text>
+                            <Text style={{ fontSize: 12, letterSpacing: 2, color: '#010101a4', marginLeft: 10, paddingTop: 15 }}>TASTING NOTES</Text>
+                            <Text style={{ fontSize: 14, color: 'black', padding: 15, lineHeight: 19, fontFamily: "LibreBaskerville" }}>&quot;{tastingNotes}&quot;</Text>
                             <View style={{ backgroundColor: 'white', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 10 }}>
                                 <View style={{ flexDirection: 'row', gap: 8, margin: 10, alignItems: 'center' }}>
                                     <View style={{ backgroundColor: '#FF6B4A', borderRadius: 25, width: 8, height: 8 }} />
@@ -134,13 +134,6 @@ const DishCard = ({ id, title, restaurant, date, rating, image, location, tastin
                                 </View>
                                 <Text style={{ color: 'black' }}>
 
-                                </Text>
-                            </View>
-                            {/* Chemistry Insight */}
-                            <Text style={{ letterSpacing: 2, fontWeight: '700', color: '#FF6B4A', marginLeft: 10, paddingTop: 20, paddingBottom: 20 }}>CHEMISTRY INSIGHT</Text>
-                            <View style={{ backgroundColor: 'white', paddingHorizontal: 20, paddingVertical: 20, borderLeftColor: '#FF6B4A', borderLeftWidth: 4 }}>
-                                <Text style={{ color: 'black' }}>
-                                    {chemistryInsight}
                                 </Text>
                             </View>
                             <View style={styles.divider} />

@@ -552,11 +552,6 @@ export default function RecordExperience() {
           {/* Actions */}
           <AnimatedSection scrollY={scrollY} delay={480}>
             <View style={styles.actionsRow}>
-              <TouchableOpacity style={styles.glassActionButton}>
-                <Ionicons name="flask-outline" size={18} color="#FF6B4A" />
-                <Text style={styles.actionButtonText}>Flavor AI</Text>
-              </TouchableOpacity>
-
               <TouchableOpacity style={styles.glassUploadButton} onPress={handleUpload} disabled={uploading}>
                 <Ionicons name={uploading ? "cloud-upload-outline" : "camera-outline"} size={18} color={uploading ? "#FF6B4A" : "#555"} />
                 <Text style={[styles.uploadButtonText, uploading && { color: '#FF6B4A' }]}>
@@ -782,26 +777,10 @@ const styles = StyleSheet.create({
   // ACTIONS
   actionsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
     marginTop: 20,
-  },
-  glassActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 107, 74, 0.1)',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 74, 0.15)',
-  },
-  actionButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#FF6B4A',
-    marginLeft: 6,
   },
   glassUploadButton: {
     flexDirection: 'row',

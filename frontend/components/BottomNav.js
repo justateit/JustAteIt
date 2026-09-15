@@ -59,7 +59,7 @@ export default function BottomNav() {
           <View style={[styles.pillInner, { width: pillWidth, borderRadius: pillRadius }]}>
             <TouchableOpacity
               style={styles.iconButton}
-              onPress={() => router.push('/(tabs)')}
+              onPress={() => router.replace('/(tabs)')}
               activeOpacity={0.8}
             >
               <View style={styles.iconCircleWhite}>
@@ -69,7 +69,7 @@ export default function BottomNav() {
 
             <TouchableOpacity
               style={styles.iconButton}
-              onPress={() => router.push('/record-experience')}
+              onPress={() => router.replace('/record-experience')}
               activeOpacity={0.8}
             >
               <View style={styles.iconCircleOrange}>
@@ -79,7 +79,7 @@ export default function BottomNav() {
 
             <TouchableOpacity
               style={styles.iconButton}
-              onPress={() => router.push('/profile')}
+              onPress={() => router.replace('/profile')}
               activeOpacity={0.8}
             >
               <Ionicons name="person-outline" size={20} color="rgba(255,255,255,0.6)" />

@@ -1,4 +1,4 @@
-from anthropic import AnthropicBedrockMantle
+import anthropic
 import httpx
 import os
 import json
@@ -25,7 +25,7 @@ load_dotenv()
 
 app = FastAPI(title="User & Profile Service")
 
-client = AnthropicBedrockMantle(aws_region=os.getenv("AWS_REGION", "us-east-2"))
+client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 
 # ── Request / Response Models ─────────────────────────────────────────────────
@@ -258,7 +258,7 @@ Output format:
 """
     # 4. Call Claude
     message = client.messages.create(
-        model="anthropic.claude-haiku-4-5",
+        model="claude-haiku-4-5-20251001",
         max_tokens=1024,
         temperature=0.35,
         messages=[{"role": "user", "content": prompt}],

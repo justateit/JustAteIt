@@ -8,7 +8,6 @@ export const trendingDishes = [
         image: require('../assets/images/charred_octopus.jpg'),
         location: 'MEXICO CITY',
         tastingNotes: "Deeply charred tentacles with a mole madre that has been aged 2000+ days. Complex, bitter, sweet, spicy.",
-        chemistryInsight: "Malliard reaction extreme on octopus skin.",
         tags: ['Mexican', 'Mole', 'Charcoal'],
     },
     {
@@ -20,7 +19,6 @@ export const trendingDishes = [
         image: require('../assets/images/spicy_cumin_lamb.jpg'),
         location: 'NEW YORK',
         tastingNotes: "Bold cumin-forward lamb with smoky chili heat. Savory, aromatic, and slightly numbing with a rich, lingering spice.",
-        chemistryInsight: "Cumin's volatile compounds bind with lamb fat during high-heat cooking, amplifying aroma.",
         tags: ['Chinese', 'Lamb', 'Spicy', 'Cumin']
     },
     {
@@ -32,7 +30,6 @@ export const trendingDishes = [
         image: require('../assets/images/uni_truffle_toast.jpg'),
         location: 'NEW YORK',
         tastingNotes: "Buttery uni layered over crisp toast with earthy shaved truffle. Rich, oceanic, and deeply umami-forward with a luxurious finish.",
-        chemistryInsight: "Uni is rich in glutamates while truffle contains androstenol — both compounds synergize to create an intense umami and aromatic experience.",
         tags: ['Japanese', 'Umami', 'Truffle', 'Seafood']
     },
     {
@@ -44,7 +41,6 @@ export const trendingDishes = [
         image: require('../assets/images/smoked_eel_beetroot.jpg'),
         location: 'PARIS',
         tastingNotes: "Delicately smoked eel paired with sweet, earthy beetroot. Balanced by acidity and subtle herbs, creating a refined, savory depth.",
-        chemistryInsight: "Cold smoking preserves eel's omega-3 fatty acids while adding phenolic compounds. Beetroot's geosmin molecule creates the distinct earthy note.",
         tags: ['French', 'Smoked', 'Seafood', 'Earthy']
     },
 ]
@@ -60,7 +56,6 @@ export const freshLogs = [
         image: require('../assets/images/uni_truffle_toast.jpg'),
         location: 'NEW YORK',
         tastingNotes: "Buttery uni layered over crisp toast with earthy shaved truffle. Rich, oceanic, and deeply umami-forward with a luxurious finish.",
-        chemistryInsight: "Uni is rich in glutamates while truffle contains androstenol — both compounds synergize to create an intense umami and aromatic experience.",
         tags: ['Japanese', 'Umami', 'Truffle', 'Seafood']
     },
     {
@@ -72,7 +67,6 @@ export const freshLogs = [
         image: require('../assets/images/smoked_eel_beetroot.jpg'),
         location: 'PARIS',
         tastingNotes: "Delicately smoked eel paired with sweet, earthy beetroot. Balanced by acidity and subtle herbs, creating a refined, savory depth.",
-        chemistryInsight: "Cold smoking preserves eel's omega-3 fatty acids while adding phenolic compounds. Beetroot's geosmin molecule creates the distinct earthy note.",
         tags: ['French', 'Smoked', 'Seafood', 'Earthy']
 
     },
@@ -85,7 +79,6 @@ export const freshLogs = [
         image: require('../assets/images/charred_octopus.jpg'),
         location: 'MEXICO CITY',
         tastingNotes: "Deeply charred tentacles with a mole madre that has been aged 2000+ days. Complex, bitter, sweet, spicy.",
-        chemistryInsight: "Malliard reaction extreme on octopus skin.",
         tags: ['Mexican', 'Mole', 'Charcoal'],
 
     },
@@ -98,7 +91,6 @@ export const freshLogs = [
         image: require('../assets/images/spicy_cumin_lamb.jpg'),
         location: 'NEW YORK',
         tastingNotes: "Bold cumin-forward lamb with smoky chili heat. Savory, aromatic, and slightly numbing with a rich, lingering spice.",
-        chemistryInsight: "Cumin's volatile compounds bind with lamb fat during high-heat cooking, amplifying aroma.",
         tags: ['Chinese', 'Lamb', 'Spicy', 'Cumin']
 
     },
@@ -182,7 +174,6 @@ export const recommendations = [
         image: require('../assets/images/charred_octopus.jpg'),
         location: 'MEXICO CITY',
         tastingNotes: "Deeply charred tentacles with a mole madre that has been aged 2000+ days. Complex, bitter, sweet, spicy.",
-        chemistryInsight: "Malliard reaction extreme on octopus skin.",
         tags: ['Mexican', 'Mole', 'Charcoal'],
     },
     {
@@ -195,7 +186,6 @@ export const recommendations = [
         image: require('../assets/images/spicy_cumin_lamb.jpg'),
         location: 'NEW YORK',
         tastingNotes: "Bold cumin-forward lamb with smoky chili heat. Savory, aromatic, and slightly numbing with a rich, lingering spice.",
-        chemistryInsight: "Cumin's volatile compounds bind with lamb fat during high-heat cooking, amplifying aroma.",
         tags: ['Chinese', 'Lamb', 'Spicy', 'Cumin']
     },
     {
@@ -208,7 +198,6 @@ export const recommendations = [
         image: require('../assets/images/uni_truffle_toast.jpg'),
         location: 'NEW YORK',
         tastingNotes: "Buttery uni layered over crisp toast with earthy shaved truffle. Rich, oceanic, and deeply umami-forward with a luxurious finish.",
-        chemistryInsight: "Uni is rich in glutamates while truffle contains androstenol — both compounds synergize to create an intense umami and aromatic experience.",
         tags: ['Japanese', 'Umami', 'Truffle', 'Seafood']
     },
 ]
