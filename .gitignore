@@ -52,3 +52,5 @@ backend/*.jpg
 backend/*.png
 backend/test_upload.jpg
 *.log
+__pycache__/
+*.pyc

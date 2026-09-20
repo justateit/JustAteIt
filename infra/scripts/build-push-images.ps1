@@ -68,7 +68,7 @@ foreach ($key in $Images.Keys) {
     Write-Host "Pushing $FullImage..." -ForegroundColor Cyan
     docker push $FullImage
     if ($LASTEXITCODE -ne 0) {
-        throw "docker push failed for $FullImage. (Note: tags are immutable — a new commit gives a new tag.)"
+        throw "docker push failed for $FullImage. (Note: tags are immutable - a new commit gives a new tag.)"
     }
 }
 

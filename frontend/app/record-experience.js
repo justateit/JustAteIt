@@ -1,13 +1,15 @@
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
+import LiquidGlass from '@/components/LiquidGlass';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
+  Image,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -79,6 +81,7 @@ function AnimatedSection({ children, scrollY, delay = 0 }) {
       scrollY.removeListener(listenerId);
       clearTimeout(timer);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -120,7 +123,7 @@ export default function RecordExperience() {
       tension: 60,
       friction: 9,
     }).start();
-  }, [isRestaurant]);
+  }, [isRestaurant, slideAnim]);
 
   // Replace the handleUpload function in record-experience.js with this:
 
@@ -149,6 +152,9 @@ export default function RecordExperience() {
         [{ resize: { width: 1200 } }],
         { compress: 0.7, format: ImageManipulator.SaveFormat.WEBP }
       );
+
+      // Show local preview immediately
+      setImageUri(manipResult.uri);
 
       const formData = new FormData();
 
@@ -319,13 +325,14 @@ export default function RecordExperience() {
         starScales[index].setValue(1);
       }
     });
-  }, [rating]);
+  }, [rating, starOpacities, starScales]);
 
   // Initialize star opacities on mount
   useEffect(() => {
     [1, 2, 3, 4, 5].forEach((star, index) => {
       starOpacities[index].setValue(star <= rating ? 1 : 0.4);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const renderStars = () => {
@@ -424,7 +431,10 @@ export default function RecordExperience() {
           {/* Glass Toggle Switch */}
           <AnimatedSection scrollY={scrollY} delay={240}>
             <View style={styles.toggleOuterContainer}>
-              <BlurView intensity={80} tint="light" style={styles.toggleGlassWrapper}>
+              <LiquidGlass
+                borderRadius={25}
+                style={styles.toggleGlassWrapper}
+              >
 
                 {/* Animated Background Pill */}
                 <Animated.View
@@ -479,7 +489,7 @@ export default function RecordExperience() {
                     </Text>
                   </TouchableOpacity>
                 </View>
-              </BlurView>
+              </LiquidGlass>
             </View>
           </AnimatedSection>
 
@@ -548,6 +558,28 @@ export default function RecordExperience() {
               />
             </View>
           </AnimatedSection>
+
+          {/* Photo Preview Card */}
+          {imageUri && (
+            <AnimatedSection scrollY={scrollY} delay={440}>
+              <View style={styles.imagePreviewContainer}>
+                <Image source={{ uri: imageUri }} style={styles.imagePreview} resizeMode="cover" />
+                {uploading && (
+                  <View style={styles.uploadingOverlay}>
+                    <ActivityIndicator size="small" color="#FFF" />
+                    <Text style={styles.uploadingText}>Uploading to S3...</Text>
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={styles.removeImageButton}
+                  onPress={() => setImageUri(null)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="close" size={16} color="#FFF" />
+                </TouchableOpacity>
+              </View>
+            </AnimatedSection>
+          )}
 
           {/* Actions */}
           <AnimatedSection scrollY={scrollY} delay={480}>
@@ -882,6 +914,49 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#333',
     letterSpacing: 0.5,
+  },
+  imagePreviewContainer: {
+    marginHorizontal: 24,
+    marginTop: 16,
+    height: 220,
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: '#EAEAEA',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+    position: 'relative',
+  },
+  imagePreview: {
+    width: '100%',
+    height: '100%',
+  },
+  uploadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  uploadingText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   bottomPadding: {
     height: 100,

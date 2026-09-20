@@ -1,10 +1,9 @@
 import HorizontalDishCard from '@/components/HorizontalDishCard';
+import LiquidGlass from '@/components/LiquidGlass';
 import { DiningFrequencyCard, LevelCard } from '@/components/ProfileCards';
 import { useUser } from '@clerk/clerk-expo';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
@@ -19,20 +18,21 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getLogs } from '../utils/flavorProfileApi';
-
-const MONTH_NAMES = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+import { getLogs, getUser } from '../utils/flavorProfileApi';
 
 
-function formatLogDate(isoString) {
-    const d = new Date(isoString);
-    return { month: MONTH_NAMES[d.getMonth()], day: String(d.getDate()) };
-}
 export default function App() {
     const router = useRouter();
     const { user } = useUser();
 
     const [refreshing, setRefreshing] = useState(false);
+    
+    const { data: dbUser } = useQuery({
+        queryKey: ['dbUser', user?.id],
+        queryFn: () => getUser(user.id),
+        enabled: !!user?.id,
+    });
+
     const { data, isLoading: logsLoading, refetch } = useQuery({ // returns three things: data (actual logs), isLoading, and refetch function
         queryKey: ['logs', user?.id], // unique name for this query so Tanstack can cache it properly
         queryFn: () => getLogs(user.id).then(d => d.logs ?? []), // actual function that fetches the data, calls getLogs then grabs logs array
@@ -80,37 +80,33 @@ export default function App() {
                 <View style={styles.profileSection}>
                     <View style={styles.avatarContainer}>
                         <Image
-                            source={{ uri: user?.imageUrl || 'https://images.unsplash.com/photo-1542223616-740d5dff7f56?w=400&q=80' }}
+                            source={{ uri: dbUser?.avatar_url || user?.imageUrl || 'https://images.unsplash.com/photo-1542223616-740d5dff7f56?w=400&q=80' }}
                             style={styles.avatar}
+                            onError={(e) => {
+                                console.warn('[Profile Avatar Error] Failed to load avatar URL:', e.nativeEvent?.error);
+                            }}
                         />
-                        <View style={styles.editBadge}>
+                        <TouchableOpacity style={styles.editBadge} onPress={() => router.push('/settings')}>
                             <Feather name="edit-2" size={12} color="#fff" />
-                        </View>
+                        </TouchableOpacity>
                     </View>
 
                     <Text style={styles.name}>
-                        {user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'Food Explorer' : 'Food Explorer'}
+                        {user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || dbUser?.display_name || user.fullName || 'Food Explorer' : dbUser?.display_name || 'Food Explorer'}
                     </Text>
                     <Text style={styles.handle}>
-                        @{user?.username ?? user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] ?? 'explorer'}
+                        @{user?.username ?? dbUser?.username ?? user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] ?? 'explorer'}
                     </Text>
 
                     <Text style={styles.bio}>
-                        Chasing fermentation across the globe. Seeking{'\n'}the perfect balance of acid and fat.
+                        {dbUser?.bio || user?.unsafeMetadata?.bio || 'Chasing fermentation across the globe. Seeking the perfect balance of acid and fat.'}
                     </Text>
 
                     {/* Stats — liquid glass */}
-                    <View style={styles.statsWrapper}>
-                        <BlurView
-                            intensity={Platform.OS === 'ios' ? 50 : 35}
-                            tint="light"
-                            experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
-                            style={StyleSheet.absoluteFill}
-                        />
-                        <LinearGradient
-                            colors={['rgba(255,255,255,0.55)', 'rgba(255,255,255,0.15)']}
-                            style={StyleSheet.absoluteFill}
-                        />
+                    <LiquidGlass
+                        borderRadius={18}
+                        style={styles.statsWrapper}
+                    >
                         <View style={styles.statsContainer}>
                             <View style={styles.statItem}>
                                 <Text style={styles.statNumber}>{logs.length}</Text>
@@ -125,7 +121,7 @@ export default function App() {
                                 <Text style={styles.statLabel}>FOLLOWING</Text>
                             </View>
                         </View>
-                    </View>
+                    </LiquidGlass>
                 </View>
 
                 <View style={styles.toggleContainer}>
@@ -188,6 +184,8 @@ export default function App() {
                                         location={item.city}
                                         tastingNotes={item.sensory_notes}
                                         tags={[]}
+                                        onDeleted={refetch}
+                                        onUpdated={refetch}
                                     />
 
                                 ))

@@ -1,5 +1,5 @@
 import HorizontalDishCard from '@/components/HorizontalDishCard';
-import SearchBar from '@/components/SearchBar';
+import { SearchBar } from '@/components/SearchBar';
 import { freshLogs } from '@/data/mockdata';
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';

@@ -36,7 +36,7 @@ const tokenCache = {
   async saveToken(key: string, value: string) {
     try {
       return AsyncStorage.setItem(key, value)
-    } catch (err) {
+    } catch {
       return
     }
   },

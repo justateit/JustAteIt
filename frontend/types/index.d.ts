@@ -8,4 +8,6 @@ interface Dish {
     location: string;
     tastingNotes: string;
     tags: string[];
+    onUpdated?: () => void;
+    onDeleted?: () => void;
 }
