@@ -254,7 +254,7 @@ def test_expected_columns(tables):
         "flavor_profiles": {"user_id", "spice", "acid", "umami", "sweet",
                             "texture", "review_count", "last_updated_at",
                             "points_count", "cached_recommendations",
-                            "recommendations_stale"},
+                            "recommendations_stale", "achieved_milestones"},
         "venues": {"id", "google_place_id", "name", "vicinity", "lat", "lng",
                    "created_at"},
         "dishes": {"id", "venue_id", "name", "description", "base_spice",
