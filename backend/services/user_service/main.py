@@ -3,7 +3,7 @@ import httpx
 import os
 import json
 
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -53,11 +53,24 @@ class ProfileResponse(BaseModel):
     achieved_milestones: list[str]
 
 class UserPayload(BaseModel):
-    id:         str 
+    id:         str
     username:   Optional[str] = None
     display_name: Optional[str] = None
     bio:        Optional[str] = None
     avatar_url: Optional[str] = None
+
+class DishRecommendation(BaseModel):
+    dish:       str
+    restaurant: str
+    city:       str
+    match:      int
+    tags:       List[str]
+    reason:     str
+
+class RecommendationsOutput(BaseModel):
+    insight:         str
+    recommendations: List[DishRecommendation]
+    breakdown:       str
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
@@ -321,38 +334,20 @@ User Profile:
 
 {f"- Do NOT recommend any of these previously suggested dishes: {excluded_dishes}" if excluded_dishes else ""}
 
-Task: Recommend exactly 3 dishes matching this profile. Return only valid JSON, no markdown.
-
-Output format:
-{{
-  "insight": "1-2 sentence summary of the user's overall taste pattern",
-  "recommendations": [
-    {{"dish": "...", "restaurant": "...", "city": "...", "match": <integer 0-100 representing match confidence>, "tags": ["...", "..."], "reason": "1 brief sentence on why this dish fits their palate", "chemistryInsight": "1 brief sentence on the specific flavor chemistry (e.g. umami-fat pairing)"}}
-  ],
-  "breakdown": "3-4 sentences, friendly and second-person, explaining the methodology behind the 3 picks above: which of their flavor dimensions weighed most heavily and why, and how their logged cuisines, cities, and rating pattern shaped the selection. Name specific numbers from their profile. Do not re-describe the dishes themselves."
-}}
+Task: Recommend exactly 3 dishes matching this profile.
+- insight: 1-2 sentence summary of the user's overall taste pattern
+- recommendations: for each dish, an integer 0-100 "match" confidence, up to 3-4 descriptive tags, and a "reason" (1 brief sentence on why this dish fits their palate)
+- breakdown: 3-4 sentences, friendly and second-person, explaining the methodology behind the 3 picks above: which of their flavor dimensions weighed most heavily and why, and how their logged cuisines, cities, and rating pattern shaped the selection. Name specific numbers from their profile. Do not re-describe the dishes themselves.
 """
-    # 4. Call Claude
-    message = client.messages.create(
+    # 4. Call Claude with a schema-constrained response — no manual JSON stripping/parsing needed
+    response = client.messages.parse(
         model="claude-haiku-4-5-20251001",
         max_tokens=1024,
         temperature=0.35,
         messages=[{"role": "user", "content": prompt}],
+        output_format=RecommendationsOutput,
     )
-
-    # 5. Clean and parse the response 
-    raw = message.content[0].text.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-        raw = raw.strip()
-        
-    try:
-        result = json.loads(raw)
-    except json.JSONDecodeError as e:
-        print(f"\033[91m[RECS ERROR] Claude returned invalid JSON: {e}\033[0m")
-        raise HTTPException(status_code=502, detail="Failed to generate recommendations. Please try again.")
+    result = response.parsed_output.model_dump()
 
     profile.cached_recommendations = json.dumps(result)
     profile.recommendations_stale = False
