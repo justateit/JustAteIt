@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Animated, Image, Modal, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, Modal, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getFlavorProfile, getLogs, getRecommendations } from '../../utils/flavorProfileApi';
 
@@ -165,19 +165,15 @@ const MyInsights = ({ onPress }: Props) => {
         return 'New Foodie';
     }
 
-    const PLACEHOLDER_IMAGE = require('../../assets/images/charred_octopus.jpg');
-
     const displayRecs = (recsData?.recommendations ?? []).map((rec: any, i: number) => ({
 
         id: `${rec.dish}-${rec.restaurant}-${i}`,
         title: rec.dish,
         restaurant: rec.restaurant,
         location: rec.city,
-        image: PLACEHOLDER_IMAGE,
         match: rec.match,
         tags: rec.tags,
         tastingNotes: rec.reason,
-        chemistryInsight: rec.chemistryInsight
 
     }))
 
@@ -373,11 +369,7 @@ const MyInsights = ({ onPress }: Props) => {
                                         >
                                             <View style={[styles.restaurantCard, selectedCard === index && styles.restaurantCardSelected]}>
                                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                                                    {/* Picture of Dish */}
-                                                    <Image
-                                                        source={rec.image}
-                                                        style={styles.picture}
-                                                    />
+
                                                     {/* Dish Information */}
                                                     <View style={{ flexDirection: 'column', alignItems: 'flex-start', flex: 1, gap: 4, minWidth: 0 }}>
                                                         <Text style={styles.dishName} numberOfLines={1} ellipsizeMode="tail">{rec.title}</Text>
@@ -533,26 +525,18 @@ const MyInsights = ({ onPress }: Props) => {
                     >
                         <View style={styles.modalOverlay}>
                             <View style={styles.dishModalContent}>
-                                {/* Image */}
-                                <View style={{ width: '100%', height: 220, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' }}>
-                                    <Image
-                                        source={selectedDish.image}
-                                        style={{ width: '100%', height: '100%' }}
-                                    />
-                                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.25)' }} />
-                                    <TouchableOpacity
-                                        onPress={() => setDishModalVisible(false)}
-                                        style={{ position: 'absolute', top: 10, left: 10 }}
-                                    >
-                                        <Ionicons name="close-circle" size={32} color="rgba(255,255,255,0.63)" />
-                                    </TouchableOpacity>
-                                    <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16 }}>
+                                {/* Header */}
+                                <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', padding: 20, paddingBottom: 12, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+                                    <View style={{ flex: 1, paddingRight: 12 }}>
                                         <Text style={styles.dishModalName}>{selectedDish.title}</Text>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                            <Ionicons name="location-outline" size={11} color="#FFFFFF" />
-                                            <Text style={{ fontSize: 10, color: 'white' }}>{selectedDish.restaurant}</Text>
+                                            <Ionicons name="location-outline" size={11} color="#888" />
+                                            <Text style={{ fontSize: 10, color: '#888' }}>{selectedDish.restaurant}</Text>
                                         </View>
                                     </View>
+                                    <TouchableOpacity onPress={() => setDishModalVisible(false)}>
+                                        <Ionicons name="close-circle" size={28} color="#c4c4c4" />
+                                    </TouchableOpacity>
                                 </View>
                                 {/* Details */}
                                 <ScrollView style={{ padding: 20 }} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -563,10 +547,6 @@ const MyInsights = ({ onPress }: Props) => {
                                     </View>
                                     <Text style={{ fontSize: 10, letterSpacing: 2, color: '#010101a4', marginBottom: 8 }}>TASTING NOTES</Text>
                                     <Text style={{ color: 'black', lineHeight: 19, marginBottom: 20, fontStyle: 'italic' }}>&quot;{selectedDish.tastingNotes}&quot;</Text>
-                                    <Text style={{ fontSize: 10, letterSpacing: 2, color: '#FF6B4A', fontWeight: '700', marginBottom: 12 }}>CHEMISTRY INSIGHT</Text>
-                                    <View style={{ backgroundColor: 'white', paddingHorizontal: 20, paddingVertical: 20, borderLeftColor: '#FF6B4A', borderLeftWidth: 4, marginBottom: 20 }}>
-                                        <Text style={{ color: 'black' }}>{selectedDish.chemistryInsight}</Text>
-                                    </View>
                                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
                                         {(selectedDish.tags ?? []).map((tag: string) => (
                                             <View key={tag} style={{ backgroundColor: 'white', paddingHorizontal: 10, paddingVertical: 10, borderColor: 'gray', borderWidth: 0.2 }}>
@@ -722,13 +702,6 @@ const styles = StyleSheet.create({
         paddingTop: 10,
         lineHeight: 24,
         fontWeight: 500,
-    },
-    picture: {
-        width: 56,
-        height: 56,
-        borderRadius: 8,
-        backgroundColor: '#333',
-        flexShrink: 0,
     },
     restaurantCard: {
         width: '100%',
@@ -967,7 +940,7 @@ const styles = StyleSheet.create({
     dishModalName: {
         fontFamily: 'LibreBaskerville',
         fontSize: 19,
-        color: '#FFFFFF',
+        color: '#1a1a1a',
         fontWeight: '900',
         marginBottom: 6,
     }

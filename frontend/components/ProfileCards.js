@@ -1,5 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useMemo, useState } from 'react';
@@ -242,9 +243,9 @@ export function TasteDNACard() {
     const { userId } = useAuth();
     const R = RADAR_SIZE * 0.38;
 
-    const [scores, setScores]           = useState(DEFAULT_SCORES);
+    const [scores, setScores] = useState(DEFAULT_SCORES);
     const [personality, setPersonality] = useState('"Umami Seeker"');
-    const [loading, setLoading]         = useState(true);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (!userId) return;
@@ -354,6 +355,48 @@ export function TasteDNACard() {
         </View>
     );
 }
+// ─────────────────────────────────────────────────────────────────────────────
+// Level Card
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function LevelCard() {
+    const { userId } = useAuth();
+
+    const { data: profileData } = useQuery({
+        queryKey: ['flavorProfile', userId],
+        queryFn: () => getFlavorProfile(userId),
+        enabled: !!userId,
+    });
+    const currentPoints = (profileData?.points_count ?? 0) % 100;
+    const pointsNeeded = 100;
+    const getLevelLabel = (level) => {
+        if (level >= 5) return 'Culinary Connoisseur';
+        if (level == 4) return 'Taste Architect';
+        if (level == 3) return 'Palate Pioneer';
+        if (level == 2) return 'Flavor Seeker';
+        if (level == 1) return 'Fresh Bite';
+        return 'Earn more points!';
+    }
+    const level = Math.floor((profileData?.points_count ?? 0) / 100) + 1;
+    return (
+        <View style={styles.levelContainer}>
+            <Text style={styles.currentLevelText}>CURRENT LEVEL</Text>
+            <Text style={styles.userLevelText}>{getLevelLabel(level)}</Text>
+            {/* Progress bar */}
+            <View style={styles.progressBarBackground}>
+                <View style={[styles.progressBarFill, { width: `${(currentPoints / pointsNeeded) * 100}%` }]} />
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, marginTop: 10 }}>
+                <Text style={styles.pointsText}>{pointsNeeded - currentPoints} pts to {getLevelLabel(level + 1)}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                    <Text style={styles.seeInsightsText}>See Your Insights</Text>
+                    <Ionicons name="arrow-forward" size={14} color="#ffffffff" />
+                </View>
+            </View>
+        </View>
+    );
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Styles
@@ -446,5 +489,49 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
         fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
         letterSpacing: 0.3,
+    },
+    levelContainer: {
+        backgroundColor: '#E86A33',
+        borderRadius: 16,
+        padding: 20,
+    },
+    currentLevelText: {
+        fontSize: 10,
+        color: '#FFFFFF',
+    },
+    userLevelText: {
+        fontSize: 19,
+        color: '#FFFFFF',
+        fontWeight: 500,
+        marginTop: 8,
+        marginBottom: 9
+    },
+    pointsText: {
+        fontSize: 10,
+        color: '#FFFFFF',
+        fontWeight: 500,
+
+    },
+    levelNumberText: {
+        fontSize: 10,
+        color: '#FFFFFF',
+        fontWeight: 700,
+
+    },
+    progressBarBackground: {
+        backgroundColor: '#fcb39b87',
+        borderRadius: 20,
+        width: '100%',
+        height: 10,
+    },
+    progressBarFill: {
+        backgroundColor: '#FFFFFF',
+        height: 10,
+        borderRadius: 20,
+    },
+    seeInsightsText: {
+        fontSize: 12,
+        color: '#FFFFFF',
+        fontWeight: 900,
     },
 });

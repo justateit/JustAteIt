@@ -1,7 +1,7 @@
 import HorizontalDishCard from '@/components/HorizontalDishCard';
-import { DiningFrequencyCard } from '@/components/ProfileCards';
+import { DiningFrequencyCard, LevelCard } from '@/components/ProfileCards';
 import { useUser } from '@clerk/clerk-expo';
-import { Feather, FontAwesome, Ionicons } from '@expo/vector-icons';
+import { Feather, FontAwesome } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,7 +28,6 @@ function formatLogDate(isoString) {
     const d = new Date(isoString);
     return { month: MONTH_NAMES[d.getMonth()], day: String(d.getDate()) };
 }
-
 export default function App() {
     const router = useRouter();
     const { user } = useUser();
@@ -154,22 +153,10 @@ export default function App() {
                             <DiningFrequencyCard />
                         </View>
 
-                        {/* My Insights Section */}
-                        <View style={styles.myInsights}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                <Ionicons name="flask" size={20} color="#FFFFFF" />
-                                <Text style={styles.myInsightsTitle}>AI INSIGHTS</Text>
-                            </View>
-                            <Text style={styles.myInsightsDescription}>
-                                Based on your recent logs, you&apos;re a strong Umami lover - you tend to eat Japanese and fermented dishes most on weekdays.
-                            </Text>
-                            <TouchableOpacity style={styles.myInsightsButton} onPress={() => router.push('/my_insights')}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                    <Text style={styles.myInsightsButtonText}>View Your Insights</Text>
-                                    <Ionicons name="arrow-forward" size={16} color="#E86A33" />
-                                </View>
-                            </TouchableOpacity>
-                        </View>
+                        {/* Level Card */}
+                        <TouchableOpacity style={{ marginBottom: 20 }} onPress={() => router.push('/my_insights')}>
+                            <LevelCard />
+                        </TouchableOpacity>
 
                         {/* The Journal Section */}
                         <View style={styles.journalHeader}>
