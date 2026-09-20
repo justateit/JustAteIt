@@ -50,6 +50,7 @@ class ProfileResponse(BaseModel):
     review_count: int
     personality:  str
     points_count: int
+    achieved_milestones: list[str]
 
 class UserPayload(BaseModel):
     id:         str 
@@ -115,11 +116,11 @@ def get_flavor_profile(user_id: str, db: Session = Depends(get_db)):
         "review_count": profile.review_count,
         "personality": personality_label(p_dict),
         "points_count": profile.points_count,
-        
+        "achieved_milestones": json.loads(profile.achieved_milestones) if profile.achieved_milestones else [],
     }
 
 @app.post("/flavor-profiles/update", response_model=ProfileResponse)
-def update_flavor_profile(payload: RatingPayload, db: Session = Depends(get_db)):
+async def update_flavor_profile(payload: RatingPayload, db: Session = Depends(get_db)):
     """Core Algorithm: Adjusts user profile based on a rating and dish stats."""
     print(f"\033[96m[USER] Recalculating flavor profile for {payload.user_id} (Rating: {payload.rating})\033[0m")
     if not (1 <= payload.rating <= 5):
@@ -153,6 +154,21 @@ def update_flavor_profile(payload: RatingPayload, db: Session = Depends(get_db))
     profile.points_count += 10
     profile.review_count += 1
     profile.recommendations_stale = True
+
+    logs = await fetch_user_logs(payload.user_id)
+    stats = {
+        "review_count": profile.review_count,
+        "cities_visited": len({log["city"] for log in logs if log.get("city")}),
+        "cuisines_tried": len({log["cuisine"] for log in logs if log.get("cuisine")}),
+        "has_five_star": any(log.get("rating") == 5 for log in logs),
+    }
+    achieved = json.loads(profile.achieved_milestones) if profile.achieved_milestones else []
+    for milestone in MILESTONES:
+        if milestone["id"] not in achieved and milestone["condition"](stats):
+            profile.points_count += milestone["points"]
+            achieved.append(milestone["id"])
+    profile.achieved_milestones = json.dumps(achieved)
+
     db.commit()
 
     p_dict = {d: getattr(profile, d) for d in FLAVOR_DIMS}
@@ -164,7 +180,8 @@ def update_flavor_profile(payload: RatingPayload, db: Session = Depends(get_db))
         "profile": p_dict,
         "review_count": profile.review_count,
         "personality": label,
-        "points_count": profile.points_count
+        "points_count": profile.points_count,
+        "achieved_milestones": achieved
     }
     
 def get_critic_label(avg: float) -> str:
@@ -179,6 +196,51 @@ def get_critic_label(avg: float) -> str:
     if avg >= 0.1:
         return "Merciless"
     return "New Foodie"
+
+MILESTONES = [
+    {
+        "id": "first_log",
+        "title": "First Bite",
+        "points": 25,
+        "condition": lambda stats: stats["review_count"] >= 1,
+    },
+    {
+        "id": "three_cities",
+        "title": "City Hopper",
+        "points": 50,
+        "condition": lambda stats: stats["cities_visited"] >= 3,
+    },
+    {
+        "id": "twenty_five_dishes",
+        "title": "Dedicated Foodie",
+        "points": 50,
+        "condition": lambda stats: stats["review_count"] >= 25,
+    },
+    {
+        "id": "five_cuisines",
+        "title": "Flavor Explorer",
+        "points": 50,
+        "condition": lambda stats: stats["cuisines_tried"] >= 5,
+    },
+    {
+        "id": "five_star_find",
+        "title": "Five-Star Find",
+        "points": 25,
+        "condition": lambda stats: stats["has_five_star"],
+    },
+    {
+        "id": "five_cities",
+        "title": "World Traveler",
+        "points": 75,
+        "condition": lambda stats: stats["cities_visited"] >= 5,
+    },
+    {
+        "id": "hundred_dishes",
+        "title": "Century Club",
+        "points": 100,
+        "condition": lambda stats: stats["review_count"] >= 100,
+    },
+]
 
 async def fetch_user_logs(user_id: str) -> list:
     """Fetches a user's dish logs from catalog_service. Returns [] on failure."""

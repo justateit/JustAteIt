@@ -1,5 +1,5 @@
 import HorizontalDishCard from '@/components/HorizontalDishCard';
-import { DiningFrequencyCard, TasteDNACard } from '@/components/ProfileCards';
+import { DiningFrequencyCard } from '@/components/ProfileCards';
 import { useUser } from '@clerk/clerk-expo';
 import { Feather, FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
@@ -152,7 +152,6 @@ export default function App() {
                         {/* Info Cards — stacked */}
                         <View style={styles.cardsContainer}>
                             <DiningFrequencyCard />
-                            <TasteDNACard />
                         </View>
 
                         {/* My Insights Section */}

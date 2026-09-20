@@ -32,6 +32,7 @@ class FlavorProfile(Base):
     cached_recommendations = Column(Text, nullable=True)
     recommendations_stale = Column(Boolean, default=True)
     last_updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    achieved_milestones = Column(Text, nullable=True)
 
     # Relationship
     user = relationship("User", back_populates="flavor_profile")

@@ -1,4 +1,4 @@
-import { userInsightsData } from '@/data/mockdata';
+import { TasteDNACard } from '@/components/ProfileCards';
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -15,7 +15,6 @@ interface Props {
 const MyInsights = ({ onPress }: Props) => {
 
     const queryClient = useQueryClient();
-    const { saves } = userInsightsData[0];
     const [modalVisible, setModalVisible] = useState(false);
 
     /* Animation when closing the AI insights modal */
@@ -92,6 +91,18 @@ const MyInsights = ({ onPress }: Props) => {
         enabled: !!user?.id,
     });
 
+    // Milestones
+    const MILESTONE_DEFS = [
+        { id: "first_log", title: "First Bite" },
+        { id: "three_cities", title: "City Hopper" },
+        { id: "twenty_five_dishes", title: "Dedicated Foodie" },
+        { id: "five_cuisines", title: "Flavor Explorer" },
+        { id: "five_star_find", title: "Five-Star Find" },
+        { id: "five_cities", title: "World Traveler" },
+        { id: "hundred_dishes", title: "Century Club" },
+    ];
+    const achievedIds: string[] = profileData?.achieved_milestones ?? [];
+
     // Compute a user's level based on how many points they have
     const level = Math.floor((profileData?.points_count ?? 0) / 100) + 1;
     const currentPoints = (profileData?.points_count ?? 0) % 100;
@@ -104,10 +115,6 @@ const MyInsights = ({ onPress }: Props) => {
         if (level == 1) return 'Fresh Bite';
         return 'Earn more points!';
     }
-
-    const citiesVisited = new Set(
-        (logsData ?? []).map((log: any) => log.city).filter(Boolean)
-    ).size;
 
     const cuisineCounts: any = (logsData ?? []).reduce(
         (acc: any, log: any) => {
@@ -227,21 +234,25 @@ const MyInsights = ({ onPress }: Props) => {
                         </View>
                     </View>
 
-                    {/* Logs, cities, and saves section */}
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 20, marginBottom: 20 }}>
-                        <View style={styles.squareContainer}>
-                            <Text style={styles.squareText}>{logsData?.length ?? '--'}</Text>
-                            <Text style={styles.itemText}>LOGS</Text>
-                        </View>
-
-                        <View style={styles.squareContainer}>
-                            <Text style={styles.squareText}>{citiesVisited || '--'}</Text>
-                            <Text style={styles.itemText}>CITIES</Text>
-                        </View>
-
-                        <View style={styles.squareContainer}>
-                            <Text style={styles.squareText}>{saves}</Text>
-                            <Text style={styles.itemText}>SAVES</Text>
+                    {/* Milestones section */}
+                    <View style={styles.milestonesContainer}>
+                        <Text style={styles.milestonesTitle}>MILESTONES</Text>
+                        <View style={styles.milestonesList}>
+                            {MILESTONE_DEFS.map((milestone) => {
+                                const isAchieved = achievedIds.includes(milestone.id);
+                                return (
+                                    <View key={milestone.id} style={styles.milestoneItem}>
+                                        <Ionicons
+                                            name={isAchieved ? "checkmark-circle" : "ellipse-outline"}
+                                            size={22}
+                                            color={isAchieved ? "#E86A33" : "#c4c4c4"}
+                                        />
+                                        <Text style={[styles.milestoneText, isAchieved && styles.milestoneTextAchieved]}>
+                                            {milestone.title}
+                                        </Text>
+                                    </View>
+                                );
+                            })}
                         </View>
                     </View>
 
@@ -328,7 +339,7 @@ const MyInsights = ({ onPress }: Props) => {
                             </View>
                         </View>
                     </View>
-
+                    <TasteDNACard />
 
                     {/* Matched For You AI Section */}
                     <View style={styles.matchedForYouContainer}>
@@ -377,9 +388,9 @@ const MyInsights = ({ onPress }: Props) => {
                                                         </View>
                                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                                                             {(rec.tags ?? []).slice(0, 2).map((tag: string) => (
-                                                            <View key={tag} style={styles.cuisineTypeBubble}>
-                                                                <Text style={styles.cuisineTypeText}>{tag}</Text>
-                                                            </View>
+                                                                <View key={tag} style={styles.cuisineTypeBubble}>
+                                                                    <Text style={styles.cuisineTypeText}>{tag}</Text>
+                                                                </View>
                                                             ))}
                                                         </View>
                                                     </View>
@@ -616,26 +627,36 @@ const styles = StyleSheet.create({
         fontWeight: 700,
 
     },
-    squareContainer: {
-        flex: 1,
-        padding: 12,
-        alignItems: 'center',
+    milestonesContainer: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 18
+        borderRadius: 16,
+        padding: 20,
+        marginTop: 20,
+        marginBottom: 20,
     },
-    squareText: {
-        fontWeight: 600,
-        letterSpacing: 1,
-        fontSize: 25,
-        paddingTop: 7,
-        paddingBottom: 6,
-        color: '#2d2d2dff',
-    },
-    itemText: {
-        fontSize: 14,
-        paddingBottom: 7,
+    milestonesTitle: {
         color: '#757575ff',
-        fontWeight: 400
+        fontWeight: 600,
+        fontSize: 15,
+    },
+    milestonesList: {
+        flexDirection: 'column',
+        gap: 14,
+        marginTop: 14,
+    },
+    milestoneItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    milestoneText: {
+        fontSize: 14,
+        fontWeight: 500,
+        color: '#b5b5b5ff',
+    },
+    milestoneTextAchieved: {
+        fontWeight: 600,
+        color: '#1a1a1a',
     },
     topCuisineContainer: {
         backgroundColor: '#FFFFFF',
