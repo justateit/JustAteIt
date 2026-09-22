@@ -451,21 +451,21 @@ export default function RecordExperience() {
         colors={['#FFF0EA', '#F3F6F8', '#EAF2F8']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
       {/* Orange light leak — top-right */}
       <LinearGradient
         colors={['transparent', 'transparent', 'rgba(255,107,74,0.13)']}
         start={{ x: 0, y: 1 }}
         end={{ x: 1, y: 0 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
       {/* Orange light leak — bottom-left */}
       <LinearGradient
         colors={['rgba(255,140,80,0.09)', 'transparent', 'transparent']}
         start={{ x: 0, y: 1 }}
         end={{ x: 1, y: 0 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       <SafeAreaView style={styles.safeArea}>
@@ -1015,7 +1015,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   uploadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0, 0, 0, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',

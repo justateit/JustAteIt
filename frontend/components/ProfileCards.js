@@ -57,7 +57,7 @@ export function DiningFrequencyCard() {
     }
 
     return (
-        <LiquidGlass style={styles.glassCard} intensity={70} borderRadius={20}>
+        <LiquidGlass tint="dark" style={styles.glassCard} intensity={70} borderRadius={20}>
             {/* Content */}
             <View style={styles.cardInner}>
                 {/* Title */}
@@ -240,7 +240,7 @@ export function TasteDNACard() {
     }, [userId]);
 
     return (
-        <LiquidGlass style={styles.glassCard} intensity={70} borderRadius={20}>
+        <LiquidGlass tint="dark" style={styles.glassCard} intensity={70} borderRadius={20}>
 
             <View style={styles.cardInner}>
                 <Text style={styles.dnaTitle}>TASTE DNA</Text>

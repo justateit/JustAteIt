@@ -37,6 +37,7 @@ export default function BottomNav() {
       {/* --- THE MAIN 3D MOLDED LIQUID GLASS PILL --- */}
       <View style={styles.shadowContainer}>
         <LiquidGlass
+          tint="default"
           intensity={65}
           borderRadius={pillRadius}
           style={styles.pill}

@@ -1,6 +1,6 @@
-import React from 'react';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import React from 'react';
 import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 /**
@@ -43,6 +43,13 @@ export default function LiquidGlass({
         shadowColor, shadowOffset, shadowOpacity, shadowRadius, elevation,
         margin, marginTop, marginBottom, marginLeft, marginRight,
         marginHorizontal, marginVertical,
+        // Sizing has to reach the outer wrapper too, or it collapses to
+        // its content size whenever the parent doesn't stretch children
+        // (e.g. a flex parent with alignItems other than 'stretch').
+        width: flatStyle.width,
+        height: flatStyle.height,
+        flex: flatStyle.flex,
+        alignSelf: flatStyle.alignSelf,
     };
 
     return (
@@ -58,9 +65,19 @@ export default function LiquidGlass({
                 />
 
                 {/* 2. Translucent gradient fill — from .lg-glass CSS:
-                     linear-gradient(135deg, rgba(255,255,255,0.26), rgba(255,255,255,0.08) 60%, rgba(255,255,255,0.16)) */}
+                     linear-gradient(135deg, rgba(255,255,255,0.26), rgba(255,255,255,0.08) 60%, rgba(255,255,255,0.16)).
+                     Dark tint gets a dark wash instead — a white wash here would
+                     defeat a "dark glass" blur by washing it back toward white. */}
                 <LinearGradient
-                    colors={[
+                    colors={tint === 'dark' ? [
+                        'rgba(0, 0, 0, 0.80)',
+                        'rgba(0, 0, 0, 0.60)',
+                        'rgba(0, 0, 0, 0.50)',
+                    ] : tint === 'default' ? [
+                        'rgba(120, 120, 120, 0.35)',
+                        'rgba(120, 120, 120, 0.15)',
+                        'rgba(120, 120, 120, 0.25)',
+                    ] : [
                         'rgba(255, 255, 255, 0.26)',
                         'rgba(255, 255, 255, 0.08)',
                         'rgba(255, 255, 255, 0.16)',
@@ -73,9 +90,19 @@ export default function LiquidGlass({
 
                 {/* 3. Top-lit specular sheen — subtle highlight matching
                      the reference's inset 1.8px 3px white highlights.
-                     Kept deliberately soft so it reads as a gentle lit edge. */}
+                     Kept deliberately soft so it reads as a gentle lit edge.
+                     Still a light sheen on dark glass (a frosted highlight),
+                     just faint enough not to wash the surface back out. */}
                 <LinearGradient
-                    colors={[
+                    colors={tint === 'dark' ? [
+                        'rgba(255, 255, 255, 0.12)',
+                        'rgba(255, 255, 255, 0.03)',
+                        'transparent',
+                    ] : tint === 'default' ? [
+                        'rgba(255, 255, 255, 0.20)',
+                        'rgba(255, 255, 255, 0.05)',
+                        'transparent',
+                    ] : [
                         'rgba(255, 255, 255, 0.30)',
                         'rgba(255, 255, 255, 0.06)',
                         'transparent',
