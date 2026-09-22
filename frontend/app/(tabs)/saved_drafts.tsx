@@ -1,37 +1,22 @@
+import { getDrafts } from '@/utils/flavorProfileApi';
+import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
+
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-const journalData = [
-    {
-        id: '1',
-        date: 'Yesterday',
-        title: 'Smoked Eel & Beetroot',
-    },
-    {
-        id: '2',
-        date: '3/11/2026',
-        title: 'Uni & Truffle Toast',
-
-    },
-    {
-        id: '3',
-        date: '2/5/2026',
-        title: 'Charred Octopus',
-    },
-    {
-        id: '4',
-        date: '1/20/2026',
-        title: 'Tonkotsu Ramen',
-    },
-];
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 
-interface Props {
-    onPress: () => void;
-}
-const SavedDrafts = ({ onPress }: Props) => {
+const SavedDrafts = () => {
+    const { user } = useUser();
+    const { data, isLoading } = useQuery({
+        queryKey: ['drafts', user?.id],
+        queryFn: () => getDrafts(user!.id).then(d => d.drafts ?? []),
+        enabled: !!user?.id,
+    });
+    const drafts = data ?? [];
+
     return (
         <ScrollView
             style={styles.container}
@@ -52,28 +37,38 @@ const SavedDrafts = ({ onPress }: Props) => {
             </View>
 
 
-            <View style={styles.journalListContainer}>
-                {journalData.map((item, index) => (
-                    <View
-                        key={item.id}
-                        style={[
-                            styles.journalItem,
-                            index === journalData.length - 1 && styles.lastJournalItem
-                        ]}
-                    >
-                        <TouchableOpacity
-                            style={{ flexDirection: "row", alignItems: "center", }}>
-                            <View style={styles.journalTextContainer}>
-                                <Text style={styles.journalItemTitle}>{item.title}</Text>
-                                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                                    <Text style={{ fontSize: 12, color: "#737588ff", fontWeight: '600', letterSpacing: 1 }}>{item.date}</Text>
-                                    <Ionicons name="chevron-forward" size={16} color="#9FA1B7" />
+            {isLoading ? (
+                <ActivityIndicator size="small" color="#E86A33" style={{ marginVertical: 40 }} />
+            ) : drafts.length === 0 ? (
+                <Text style={{ textAlign: 'center', color: '#9FA1B7', paddingVertical: 40 }}>No saved drafts yet.</Text>
+            ) : (
+                <View style={styles.journalListContainer}>
+                    {drafts.map((item, index) => (
+                        <View
+                            key={item.id}
+                            style={[
+                                styles.journalItem,
+                                index === drafts.length - 1 && styles.lastJournalItem
+                            ]}
+                        >
+                            <TouchableOpacity
+                                style={{ flexDirection: "row", alignItems: "center", }}
+                                onPress={() => router.push({ pathname: '/record-experience', params: { draftId: item.id } })}
+                            >
+                                <View style={styles.journalTextContainer}>
+                                    <Text style={styles.journalItemTitle}>{item.dish_name || 'Untitled Draft'}</Text>
+                                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                                        <Text style={{ fontSize: 12, color: "#737588ff", fontWeight: '600', letterSpacing: 1 }}>
+                                            {new Date(item.updated_at).toLocaleDateString()}
+                                        </Text>
+                                        <Ionicons name="chevron-forward" size={16} color="#9FA1B7" />
+                                    </View>
                                 </View>
-                            </View>
-                        </TouchableOpacity>
-                    </View>
-                ))}
-            </View>
+                            </TouchableOpacity>
+                        </View>
+                    ))}
+                </View>
+            )}
 
             {/* Bottom padding for scrollability */}
             < View style={{ height: 100 }} />

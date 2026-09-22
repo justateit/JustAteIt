@@ -36,6 +36,27 @@ class ReviewUpdatePayload(BaseModel):
 class LatLngPayload(BaseModel):
     lat: float
     lng: float
+    
+class DraftPayload(BaseModel):
+    user_id: str
+    dish_name: Optional[str] = None
+    venue_name: Optional[str] = None
+    city: Optional[str] = None
+    cuisine: Optional[str] = None
+    is_restaurant: Optional[bool] = True
+    rating: Optional[float] = None
+    sensory_notes: Optional[str] = None
+    image_url: Optional[str] = None
+
+class DraftUpdatePayload(BaseModel):
+    dish_name: Optional[str] = None
+    venue_name: Optional[str] = None
+    city: Optional[str] = None
+    cuisine: Optional[str] = None
+    is_restaurant: Optional[bool] = None
+    rating: Optional[float] = None
+    sensory_notes: Optional[str] = None
+    image_url: Optional[str] = None
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
@@ -287,3 +308,184 @@ def delete_review(review_id: str, db: Session = Depends(get_db)):
     db.commit()
     return {"success": True, "message": "Review deleted successfully"}
 
+# Drafts
+@app.post("/drafts")
+def create_draft(payload: DraftPayload, db: Session = Depends(get_db)):
+    """Creates a new draft entry for a user."""
+    print(f"\033[96m[CATALOG] Creating draft for user: {payload.user_id}\033[0m")
+
+    draft = models.Draft(
+        user_id=payload.user_id,
+        dish_name=payload.dish_name,
+        venue_name=payload.venue_name,
+        city=payload.city,
+        cuisine=payload.cuisine,
+        is_restaurant=payload.is_restaurant,
+        sensory_notes=payload.sensory_notes,
+        rating=payload.rating,
+        image_url=payload.image_url
+    )
+    db.add(draft)
+    db.commit()
+    db.refresh(draft)
+    return {"success": True, "draft_id": str(draft.id)}
+    
+
+@app.get("/drafts/{user_id}")
+def get_user_drafts(user_id: str, db: Session = Depends(get_db)):
+    """Fetches all draft entries for a user, sorted newest first."""
+    print(f"\033[96m[CATALOG] Fetching drafts for user: {user_id}\033[0m")
+
+    drafts = db.query(models.Draft)\
+        .filter(models.Draft.user_id == user_id)\
+        .order_by(models.Draft.created_at.desc())\
+        .all()
+
+    result = []
+    for d in drafts:
+        result.append({
+            "id": str(d.id),
+            "dish_name": d.dish_name,
+            "venue_name": d.venue_name,
+            "city": d.city,
+            "cuisine": d.cuisine,
+            "is_restaurant": d.is_restaurant,
+            "sensory_notes": d.sensory_notes,
+            "rating": d.rating,
+            "image_url": d.image_url,
+            "created_at": d.created_at.isoformat(),
+            "updated_at": d.updated_at.isoformat()
+        })
+
+    print(f"\033[92m[CATALOG] Successfully retrieved {len(result)} entries for user drafts.\033[0m")
+    return {"drafts": result, "count": len(result)}
+
+@app.put("/drafts/{draft_id}")
+def update_draft(draft_id: str, payload: DraftUpdatePayload, db: Session = Depends(get_db)):
+    """Updates an existing draft entry."""
+    try:
+        val = uuid.UUID(draft_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid draft ID format")
+
+    draft = db.query(models.Draft).filter(models.Draft.id == val).first()
+    if not draft:
+        raise HTTPException(status_code=404, detail="Draft not found")
+
+    # Update fields if provided
+    if payload.dish_name is not None:
+        draft.dish_name = payload.dish_name
+    if payload.venue_name is not None:
+        draft.venue_name = payload.venue_name
+    if payload.city is not None:
+        draft.city = payload.city
+    if payload.cuisine is not None:
+        draft.cuisine = payload.cuisine
+    if payload.is_restaurant is not None:
+        draft.is_restaurant = payload.is_restaurant
+    if payload.sensory_notes is not None:
+        draft.sensory_notes = payload.sensory_notes
+    if payload.rating is not None:
+        draft.rating = payload.rating
+    if payload.image_url is not None:
+        draft.image_url = payload.image_url
+
+    db.commit()
+    db.refresh(draft)
+    return {"success": True, "draft_id": str(draft.id)}
+
+
+@app.delete("/drafts/{draft_id}")
+def delete_draft(draft_id: str, db: Session = Depends(get_db)):
+    """Permanently deletes a draft entry."""
+    try:
+        val = uuid.UUID(draft_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid Draft ID format")
+
+    draft = db.query(models.Draft).filter(models.Draft.id == val).first()
+    if not draft:
+        raise HTTPException(status_code=404, detail="Draft not found")
+
+    db.delete(draft)
+    db.commit()
+    return {"success": True, "message": "Draft deleted successfully"}
+
+@app.post("/drafts/{draft_id}/publish")
+async def publish_draft(draft_id: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """Converts a draft into a real review, then deletes the draft."""
+    try:
+        val = uuid.UUID(draft_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid draft ID format")
+
+    draft = db.query(models.Draft).filter(models.Draft.id == val).first()
+    if not draft:
+        raise HTTPException(status_code=404, detail="Draft not found")
+
+    if not draft.dish_name or draft.rating is None:
+        raise HTTPException(status_code=400, detail="Dish name and rating are required to publish")
+
+    print(f"\033[96m[CATALOG] Publishing draft {draft_id} for user {draft.user_id}\033[0m")
+
+    # 1. Handle Venue
+    venue_id = None
+    if draft.venue_name:
+        venue = db.query(models.Venue).filter(models.Venue.name == draft.venue_name).first()
+        if not venue:
+            venue = models.Venue(name=draft.venue_name, vicinity=draft.city)
+            db.add(venue)
+            db.commit()
+            db.refresh(venue)
+        venue_id = venue.id
+
+    # 2. Handle Dish
+    dish = db.query(models.Dish).filter(
+        models.Dish.name == draft.dish_name,
+        models.Dish.venue_id == venue_id,
+    ).first()
+
+    if not dish:
+        dish = models.Dish(
+            name=draft.dish_name,
+            venue_id=venue_id,
+            cuisine=draft.cuisine.strip().title() if draft.cuisine else None,
+        )
+        db.add(dish)
+        db.commit()
+        db.refresh(dish)
+
+    # 3. Create the Review
+    review = models.Review(
+        user_id=draft.user_id,
+        dish_id=dish.id,
+        venue_id=venue_id,
+        rating=draft.rating,
+        comment=draft.sensory_notes
+    )
+    db.add(review)
+    db.commit()
+    db.refresh(review)
+
+    # 4. Create Media reference if attached
+    if draft.image_url:
+        media = models.Media(review_id=review.id, media_url=draft.image_url)
+        db.add(media)
+        db.commit()
+
+    # 5. Notify the User Service IN THE BACKGROUND
+    dish_data = {
+        "id": str(dish.id),
+        "spice": dish.base_spice,
+        "acid": dish.base_acid,
+        "umami": dish.base_umami,
+        "sweet": dish.base_sweet,
+        "texture": dish.base_texture
+    }
+    background_tasks.add_task(notify_user_service, draft.user_id, dish_data, draft.rating)
+
+    # 6. Delete the draft now that it's published
+    db.delete(draft)
+    db.commit()
+
+    return {"success": True, "review_id": str(review.id)}

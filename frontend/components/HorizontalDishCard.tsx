@@ -63,6 +63,10 @@ const HorizontalDishCard = ({
     const [editNotes, setEditNotes] = useState(tastingNotes);
 
     useEffect(() => {
+        // Re-syncs from parent-owned props when they change (e.g. after a
+        // sibling refetch) — currentX also diverges locally after this card's
+        // own edit, so it can't be derived during render.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCurrentTitle(title);
         setCurrentRestaurant(restaurant);
         setCurrentRating(rating);

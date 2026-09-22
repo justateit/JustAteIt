@@ -1,9 +1,10 @@
+import LiquidGlass from '@/components/LiquidGlass';
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import LiquidGlass from '@/components/LiquidGlass';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -20,7 +21,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { getNearbyVenue, submitLog, upsertUser } from '../utils/flavorProfileApi';
+import { getDrafts, getNearbyVenue, publishDraft, saveDraft, submitLog, updateDraft, upsertUser } from '../utils/flavorProfileApi';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
@@ -30,8 +31,8 @@ const SCREEN_HEIGHT = Dimensions.get('window').height;
  * and measures its own layout offset within the ScrollView content.
  */
 function AnimatedSection({ children, scrollY, delay = 0 }) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(20)).current;
+  const [opacity] = useState(() => new Animated.Value(0));
+  const [translateY] = useState(() => new Animated.Value(20));
   const isAnimated = useRef(false);
   const layoutY = useRef(0);
 
@@ -96,6 +97,7 @@ function AnimatedSection({ children, scrollY, delay = 0 }) {
 
 export default function RecordExperience() {
   const { user } = useUser();
+  const { draftId } = useLocalSearchParams();
 
   const [dish, setDish] = useState('');
   const [venue, setVenue] = useState('');
@@ -107,13 +109,30 @@ export default function RecordExperience() {
 
   const [uploading, setUploading] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [imageUri, setImageUri] = useState(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
+  useEffect(() => {
+    if (!draftId || !user) return;
+    getDrafts(user.id).then(({ drafts }) => {
+      const draft = drafts.find(d => d.id === draftId);
+      if (!draft) return;
+      setDish(draft.dish_name || '');
+      setVenue(draft.venue_name || '');
+      setCity(draft.city || '');
+      setCuisine(draft.cuisine || '');
+      setSensoryNotes(draft.sensory_notes || '');
+      setIsRestaurant(draft.is_restaurant);
+      setRating(draft.rating || 0);
+      setImageUri(draft.image_url || null);
+    });
+  }, [draftId, user]);
+
   const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(0)).current;
+  const [scrollY] = useState(() => new Animated.Value(0));
+  const [slideAnim] = useState(() => new Animated.Value(0));
   const sliderWidth = containerWidth / 2;
 
   useEffect(() => {
@@ -227,16 +246,32 @@ export default function RecordExperience() {
         avatar_url: user.imageUrl,
       });
 
-      await submitLog(user.id, {
-        dish_name: dish.trim(),
-        venue_name: venue.trim() || null,
-        city: city.trim() || null,
-        cuisine: cuisine.trim() || null,
-        is_restaurant: isRestaurant,
-        sensory_notes: sensoryNotes.trim() || null,
-        rating: rating,
-        image_url: imageUri || null,
-      });
+      if (draftId) {
+        // Save the latest form state to the draft first, so publish
+        // doesn't archive stale data from the last "Save Draft" press.
+        await updateDraft(draftId, {
+          dish_name: dish.trim(),
+          venue_name: venue.trim() || null,
+          city: city.trim() || null,
+          cuisine: cuisine.trim() || null,
+          is_restaurant: isRestaurant,
+          sensory_notes: sensoryNotes.trim() || null,
+          rating: rating,
+          image_url: imageUri || null,
+        });
+        await publishDraft(draftId);
+      } else {
+        await submitLog(user.id, {
+          dish_name: dish.trim(),
+          venue_name: venue.trim() || null,
+          city: city.trim() || null,
+          cuisine: cuisine.trim() || null,
+          is_restaurant: isRestaurant,
+          sensory_notes: sensoryNotes.trim() || null,
+          rating: rating,
+          image_url: imageUri || null,
+        });
+      }
       alert('Log archived! ✓');
       // Reset form
       setDish('');
@@ -254,9 +289,53 @@ export default function RecordExperience() {
     }
   };
 
+  const handleSaveDraft = async () => {
+    if (!user) {
+      alert('You must be signed in to save a draft.');
+      return;
+    }
+    setSavingDraft(true);
+    try {
+      await upsertUser(user.id, {
+        username: user.username || user.firstName || 'Foodie',
+        avatar_url: user.imageUrl,
+      });
+      if (draftId) {
+        await updateDraft(draftId, {
+          dish_name: dish.trim() || null,
+          venue_name: venue.trim() || null,
+          city: city.trim() || null,
+          cuisine: cuisine.trim() || null,
+          is_restaurant: isRestaurant,
+          sensory_notes: sensoryNotes.trim() || null,
+          rating: rating || null,
+          image_url: imageUri || null,
+        });
+      } else {
+        await saveDraft(user.id, {
+          dish_name: dish.trim() || null,
+          venue_name: venue.trim() || null,
+          city: city.trim() || null,
+          cuisine: cuisine.trim() || null,
+          is_restaurant: isRestaurant,
+          sensory_notes: sensoryNotes.trim() || null,
+          rating: rating || null,
+          image_url: imageUri || null,
+        });
+      }
+      alert('Draft saved! ✓');
+    } catch (err) {
+      console.error('[SaveDraft]', err);
+      alert('Failed to save draft. Check your connection and try again.');
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
+
   // Each star gets its own Animated.Value for scale
-  const starScales = useRef([1, 2, 3, 4, 5].map(() => new Animated.Value(1))).current;
-  const starOpacities = useRef([1, 2, 3, 4, 5].map(() => new Animated.Value(0.4))).current;
+  const [starScales] = useState(() => [1, 2, 3, 4, 5].map(() => new Animated.Value(1)));
+  const [starOpacities] = useState(() => [1, 2, 3, 4, 5].map(() => new Animated.Value(0.4)));
   const prevRating = useRef(rating);
 
   useEffect(() => {
@@ -403,7 +482,7 @@ export default function RecordExperience() {
           {/* Header */}
           <AnimatedSection scrollY={scrollY} delay={0}>
             <View style={styles.header}>
-              <TouchableOpacity style={styles.draftButton}>
+              <TouchableOpacity style={styles.draftButton} onPress={handleSaveDraft} disabled={savingDraft}>
                 <Text style={styles.saveDraft}>SAVE DRAFT</Text>
               </TouchableOpacity>
             </View>

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, DateTime, ForeignKey, Text
+from sqlalchemy import Column, String, Float, DateTime, ForeignKey, Text, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -55,6 +55,22 @@ class Review(Base):
     dish = relationship("Dish", back_populates="reviews")
     venue = relationship("Venue", back_populates="reviews")
     media = relationship("Media", back_populates="review", cascade="all, delete-orphan")
+    
+class Draft(Base):
+    __tablename__ = "drafts"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(String, nullable=False)
+    dish_name = Column(String, nullable=True)
+    venue_name = Column(String, nullable=True)
+    city = Column(String, nullable=True)
+    cuisine = Column(String, nullable=True)
+    is_restaurant = Column(Boolean, default=True)
+    sensory_notes = Column(Text, nullable=True)
+    rating = Column(Float, nullable=True)
+    image_url = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 class Media(Base):
     __tablename__ = "media"

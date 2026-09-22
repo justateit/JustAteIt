@@ -45,7 +45,7 @@ function heatColor(v) {
 // Dining Frequency Heatmap
 // ─────────────────────────────────────────────────────────────────────────────
 export function DiningFrequencyCard() {
-    const data = useMemo(generateHeatmap, []);
+    const data = useMemo(() => generateHeatmap(), []);
     const GAP = 2;
     const COLS = 12;
     const [cellSize, setCellSize] = useState(10);
@@ -324,10 +324,10 @@ export function LevelCard() {
     const pointsNeeded = 100;
     const getLevelLabel = (level) => {
         if (level >= 5) return 'Culinary Connoisseur';
-        if (level == 4) return 'Taste Architect';
-        if (level == 3) return 'Palate Pioneer';
-        if (level == 2) return 'Flavor Seeker';
-        if (level == 1) return 'Fresh Bite';
+        if (level === 4) return 'Taste Architect';
+        if (level === 3) return 'Palate Pioneer';
+        if (level === 2) return 'Flavor Seeker';
+        if (level === 1) return 'Fresh Bite';
         return 'Earn more points!';
     }
     const level = Math.floor((profileData?.points_count ?? 0) / 100) + 1;

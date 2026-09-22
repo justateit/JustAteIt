@@ -53,6 +53,9 @@ export default function SettingsScreen() {
 
     useEffect(() => {
         if (dbUser) {
+            // Hydrating editable fields from async server data on load — fields must
+            // stay user-editable afterward, so this can't be derived during render.
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             if (dbUser.display_name) setDisplayName(dbUser.display_name);
             if (dbUser.username) setUsername(dbUser.username);
             if (dbUser.bio) setBio(dbUser.bio);
