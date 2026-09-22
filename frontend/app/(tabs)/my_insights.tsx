@@ -335,7 +335,12 @@ const MyInsights = ({ onPress }: Props) => {
                             </View>
                         </View>
                     </View>
-                    <TasteDNACard />
+
+                    {/* Taste DNA Card */}
+                    <View style={styles.tasteDNAContainer}>
+                        <TasteDNACard />
+                    </View>
+
 
                     {/* Matched For You AI Section */}
                     <View style={styles.matchedForYouContainer}>
@@ -687,7 +692,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'black',
         borderRadius: 16,
         padding: 20,
-        marginTop: 20,
+
     },
     matchedForYouTitle: {
         color: '#848484ff',
@@ -943,6 +948,10 @@ const styles = StyleSheet.create({
         color: '#1a1a1a',
         fontWeight: '900',
         marginBottom: 6,
+    },
+    tasteDNAContainer: {
+        marginTop: 20,
+        marginBottom: 20,
     }
 })
 
