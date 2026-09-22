@@ -31,6 +31,7 @@ EXPECTED_TABLES = {
     "reviews",
     "media",
     "flavor_audit_logs",
+    "drafts",
 }
 
 EXPECTED_INDEXES = {
