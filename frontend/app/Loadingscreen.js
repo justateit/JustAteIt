@@ -216,7 +216,6 @@ function WebChromaVideo({ src, width: vidW, height: vidH, onEnded }) {
 }
 
 export default function LoadingScreen() {
-  const [videoUri, setVideoUri] = useState(null);
   const [videoEnded, setVideoEnded] = useState(false);
   const [showAuthOptions, setShowAuthOptions] = useState(false);
   const { isLoaded, isSignedIn } = useAuth();
@@ -260,14 +259,15 @@ export default function LoadingScreen() {
     return () => clearTimeout(timeout);
   }, []);
 
-  useEffect(() => {
+  const videoUri = useMemo(() => {
     try {
       const asset = Asset.fromModule(require('../assets/video/logo1.mp4'));
       const uri = asset.uri;
       console.log('[LoadingScreen] videoUri:', uri);
-      setVideoUri(uri);
+      return uri;
     } catch (e) {
       console.warn('[LoadingScreen] Could not load video asset:', e);
+      return null;
     }
   }, []);
 

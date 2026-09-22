@@ -1,6 +1,6 @@
 import HorizontalDishCard from '@/components/HorizontalDishCard';
 import LiquidGlass from '@/components/LiquidGlass';
-import { DiningFrequencyCard, TasteDNACard } from '@/components/ProfileCards';
+import { DiningFrequencyCard, LevelCard } from '@/components/ProfileCards';
 import { useUser } from '@clerk/clerk-expo';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
@@ -19,7 +19,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getLogs, getUser } from '../utils/flavorProfileApi';
-
 
 
 export default function App() {
@@ -148,8 +147,12 @@ export default function App() {
                         {/* Info Cards — stacked */}
                         <View style={styles.cardsContainer}>
                             <DiningFrequencyCard />
-                            <TasteDNACard />
                         </View>
+
+                        {/* Level Card */}
+                        <TouchableOpacity style={{ marginBottom: 20 }} onPress={() => router.push('/my_insights')}>
+                            <LevelCard />
+                        </TouchableOpacity>
 
                         {/* The Journal Section */}
                         <View style={styles.journalHeader}>
@@ -180,7 +183,6 @@ export default function App() {
                                         image={{ uri: item.image_url }}
                                         location={item.city}
                                         tastingNotes={item.sensory_notes}
-                                        chemistryInsight=""
                                         tags={[]}
                                         onDeleted={refetch}
                                         onUpdated={refetch}
@@ -326,7 +328,7 @@ const styles = StyleSheet.create({
     },
     cardsContainer: {
         gap: 12,
-        marginBottom: 40,
+        marginBottom: 12,
     },
     journalHeader: {
         flexDirection: 'row',
@@ -355,6 +357,7 @@ const styles = StyleSheet.create({
         elevation: 4,
         borderWidth: 1,
         borderColor: 'rgba(0,0,0,0.03)',
+
     },
     feedCardHeader: {
         flexDirection: 'row',
@@ -466,4 +469,39 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontWeight: '500',
     },
+    myInsights: {
+        backgroundColor: '#E86A33',
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 24,
+        flexDirection: 'column',
+        gap: 8,
+    },
+    myInsightsTitle: {
+        fontSize: 11,
+        color: '#FFFFFF',
+        letterSpacing: 1,
+        fontWeight: '600',
+    },
+    myInsightsDescription: {
+        fontSize: 18,
+        color: '#fff',
+        fontStyle: 'italic',
+        lineHeight: 27,
+    },
+    myInsightsButton: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        alignSelf: 'flex-end',
+        marginTop: 8,
+
+    },
+    myInsightsButtonText: {
+        color: '#E86A33',
+        fontSize: 15,
+        fontWeight: '500',
+    },
+
 });

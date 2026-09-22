@@ -29,6 +29,14 @@ Parameters:
       same region as this stack.
     AllowedPattern: "^arn:aws:ssm:[a-z0-9-]+:\\d{12}:parameter/.+$"
 
+  AnthropicApiKeyParameterArn:
+    Type: String
+    Description: >
+      ARN of the SSM parameter (SecureString recommended) holding the
+      Anthropic API key used by user-service for dish recommendations.
+      Must be in the same region as this stack.
+    AllowedPattern: "^arn:aws:ssm:[a-z0-9-]+:\\d{12}:parameter/.+$"
+
 Resources:
   # ── ECR repositories (immutable tags; emptied automatically on delete) ──
   ApiGatewayRepo:
@@ -179,6 +187,7 @@ Resources:
                 Action: ssm:GetParameters
                 Resource:
                   - !Ref DatabaseUrlParameterArn
+                  - !Ref AnthropicApiKeyParameterArn
                   - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/justateit/dev/*"
 
   # Runtime role for the containers (media uploads, SSM parameter reads).
@@ -212,6 +221,7 @@ Resources:
                   - ssm:GetParameters
                 Resource:
                   - !Ref DatabaseUrlParameterArn
+                  - !Ref AnthropicApiKeyParameterArn
                   - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/justateit/dev/*"
 
   # ── One Fargate task definition with all four containers. In awsvpc
@@ -251,9 +261,14 @@ Resources:
         - Name: user-service
           Image: !Sub "${UserServiceRepo.RepositoryUri}:${ImageTag}"
           Essential: true
+          Environment:
+            - Name: CATALOG_SERVICE_URL
+              Value: http://localhost:8002
           Secrets:
             - Name: DATABASE_URL
               ValueFrom: !Ref DatabaseUrlParameterArn
+            - Name: ANTHROPIC_API_KEY
+              ValueFrom: !Ref AnthropicApiKeyParameterArn
           LogConfiguration:
             LogDriver: awslogs
             Options:

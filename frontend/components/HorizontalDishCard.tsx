@@ -41,7 +41,6 @@ const HorizontalDishCard = ({
     image,
     location,
     tastingNotes,
-    chemistryInsight,
     tags,
     onUpdated,
     onDeleted,
@@ -64,6 +63,10 @@ const HorizontalDishCard = ({
     const [editNotes, setEditNotes] = useState(tastingNotes);
 
     useEffect(() => {
+        // Re-syncs from parent-owned props when they change (e.g. after a
+        // sibling refetch) — currentX also diverges locally after this card's
+        // own edit, so it can't be derived during render.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCurrentTitle(title);
         setCurrentRestaurant(restaurant);
         setCurrentRating(rating);
@@ -465,16 +468,6 @@ const HorizontalDishCard = ({
                                         </View>
                                     </View>
 
-                                    {/* Chemistry Insight (if exists) */}
-                                    {chemistryInsight ? (
-                                        <>
-                                            <Text style={styles.chemistryLabel}>CHEMISTRY INSIGHT</Text>
-                                            <View style={styles.chemistryCard}>
-                                                <Text style={styles.chemistryText}>{chemistryInsight}</Text>
-                                            </View>
-                                        </>
-                                    ) : null}
-
                                     {/* Tags */}
                                     {tags && tags.length > 0 ? (
                                         <>
@@ -521,22 +514,25 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     cardOverlay: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         backgroundColor: 'rgba(0, 0, 0, 0.32)',
     },
     ratingBadge: {
         position: 'absolute',
         top: 14,
         right: 14,
-        backgroundColor: 'rgba(0, 0, 0, 0.55)',
+        backgroundColor: 'rgba(255, 255, 255, 0.56)',
         borderRadius: 16,
         paddingHorizontal: 10,
         paddingVertical: 5,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.25)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 1,
+        shadowRadius: 5,
+        elevation: 5,
     },
     ratingText: {
         fontSize: 12,
@@ -551,10 +547,10 @@ const styles = StyleSheet.create({
         padding: 16,
     },
     dishName: {
-        fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
-        fontSize: 22,
+        fontFamily: "LibreBaskerville",
+        fontSize: 25,
         color: '#FFFFFF',
-        fontWeight: '700',
+        fontWeight: '900',
         marginBottom: 4,
         textShadowColor: 'rgba(0, 0, 0, 0.4)',
         textShadowOffset: { width: 0, height: 1 },
@@ -600,7 +596,7 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     modalImageOverlay: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         backgroundColor: 'rgba(0, 0, 0, 0.35)',
     },
     closeBtn: {
@@ -691,10 +687,10 @@ const styles = StyleSheet.create({
         padding: 18,
     },
     modalDishTitle: {
-        fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+        fontFamily: "LibreBaskerville",
         fontSize: 24,
         color: '#FFFFFF',
-        fontWeight: '700',
+        fontWeight: '900',
         marginBottom: 4,
     },
 
@@ -808,26 +804,6 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '700',
         color: '#777',
-    },
-    chemistryLabel: {
-        letterSpacing: 1.5,
-        fontSize: 11,
-        fontWeight: '700',
-        color: '#FF6B4A',
-        marginBottom: 8,
-    },
-    chemistryCard: {
-        backgroundColor: '#FFFFFF',
-        padding: 16,
-        borderLeftColor: '#FF6B4A',
-        borderLeftWidth: 4,
-        borderRadius: 8,
-        marginBottom: 16,
-    },
-    chemistryText: {
-        fontSize: 13,
-        color: '#333',
-        lineHeight: 19,
     },
     tagsContainer: {
         flexDirection: 'row',
