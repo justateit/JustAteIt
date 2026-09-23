@@ -2,6 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme-context';
 
 const journalData = [
     {
@@ -32,9 +34,10 @@ interface Props {
     onPress: () => void;
 }
 const SavedDrafts = ({ onPress }: Props) => {
+    const { colorScheme } = useTheme();
     return (
         <ScrollView
-            style={styles.container}
+            style={[styles.container, { backgroundColor: Colors[colorScheme].background }]}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
                 minHeight: "100%",
@@ -46,25 +49,26 @@ const SavedDrafts = ({ onPress }: Props) => {
                     onPress={() => {
                         router.push('/profile')
                     }}>
-                    <Ionicons name="arrow-back" size={28} color="#918f8fff" />
+                    <Ionicons name="arrow-back" size={28} color={Colors[colorScheme].icon} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Saved Drafts</Text>
+                <Text style={[styles.title, { color: Colors[colorScheme].text }]}>Saved Drafts</Text>
             </View>
 
 
-            <View style={styles.journalListContainer}>
+            <View style={[styles.journalListContainer, { backgroundColor: Colors[colorScheme].card }]}>
                 {journalData.map((item, index) => (
                     <View
                         key={item.id}
                         style={[
                             styles.journalItem,
-                            index === journalData.length - 1 && styles.lastJournalItem
+                            index === journalData.length - 1 && styles.lastJournalItem,
+                            { borderBottomColor: colorScheme === 'dark' ? '#333' : '#F0F0F0' }
                         ]}
                     >
                         <TouchableOpacity
                             style={{ flexDirection: "row", alignItems: "center", }}>
                             <View style={styles.journalTextContainer}>
-                                <Text style={styles.journalItemTitle}>{item.title}</Text>
+                                <Text style={[styles.journalItemTitle, { color: Colors[colorScheme].text }]}>{item.title}</Text>
                                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                                     <Text style={{ fontSize: 12, color: "#737588ff", fontWeight: '600', letterSpacing: 1 }}>{item.date}</Text>
                                     <Ionicons name="chevron-forward" size={16} color="#9FA1B7" />

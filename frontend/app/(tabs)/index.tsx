@@ -8,8 +8,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import { router } from 'expo-router';
 import { FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme-context';
 
 export default function HomeScreen() {
+  const { colorScheme } = useTheme();
   const [fontsLoaded] = useFonts({
     'LibreBaskerville': require('@/assets/fonts/LibreBaskerville-VariableFont_wght.ttf'),
     'LibreBaskervilleItalic': require('@/assets/fonts/LibreBaskerville-Italic-VariableFont_wght.ttf'),
@@ -19,15 +22,15 @@ export default function HomeScreen() {
 
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: Colors[colorScheme].background }]}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{
         minHeight: "100%",
         paddingBottom: 10
       }}
     >
-      <Text style={styles.title}>Discover</Text>
-      <Text style={{ fontSize: 14, color: '#737588ff', marginBottom: 35 }}>CURATED TASTES & LOCAL GEMS</Text>
+      <Text style={[styles.title, { color: Colors[colorScheme].text }]}>Discover</Text>
+      <Text style={{ fontSize: 14, color: colorScheme === 'dark' ? '#AAA' : '#737588ff', marginBottom: 35 }}>CURATED TASTES & LOCAL GEMS</Text>
       <SearchBar
         value=""
         onChangeText={() => { }}
@@ -42,7 +45,7 @@ export default function HomeScreen() {
           style={{ width: 16, height: 16 }}
           resizeMode="contain"
         />
-        <Text style={styles.sectionText}>TRENDING IN PARIS</Text>
+        <Text style={[styles.sectionText, { color: Colors[colorScheme].text }]}>TRENDING IN PARIS</Text>
       </View>
       <FlatList
         data={trendingDishes}
@@ -53,7 +56,7 @@ export default function HomeScreen() {
       />
       {/* Fresh Logs Section */}
       <View style={styles.freshLogsHeader}>
-        <Text style={styles.sectionText}>FRESH LOGS</Text>
+        <Text style={[styles.sectionText, { color: Colors[colorScheme].text }]}>FRESH LOGS</Text>
         <TouchableOpacity
           style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
           onPress={() => router.push('/logs')}>

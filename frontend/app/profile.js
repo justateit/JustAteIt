@@ -19,12 +19,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getLogs, getUser } from '../utils/flavorProfileApi';
-
-
+import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme-context';
 
 export default function App() {
     const router = useRouter();
     const { user } = useUser();
+    const { colorScheme } = useTheme();
 
     const [refreshing, setRefreshing] = useState(false);
     
@@ -54,7 +55,7 @@ export default function App() {
     }, [refetch]);
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}>
             <ScrollView contentContainerStyle={styles.container}
                 showsVerticalScrollIndicator={false}
                 refreshControl={
@@ -72,8 +73,8 @@ export default function App() {
                         onPress={() => router.push('/saved_drafts')}>
                         <Text style={styles.headerText}>View Saved Drafts</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.settingsButton} onPress={() => router.push('/settings')}>
-                        <Feather name="settings" size={20} color="#666" />
+                    <TouchableOpacity style={[styles.settingsButton, { backgroundColor: Colors[colorScheme].card }]} onPress={() => router.push('/settings')}>
+                        <Feather name="settings" size={20} color={Colors[colorScheme].icon} />
                     </TouchableOpacity>
                 </View>
 
@@ -92,14 +93,14 @@ export default function App() {
                         </TouchableOpacity>
                     </View>
 
-                    <Text style={styles.name}>
+                    <Text style={[styles.name, { color: Colors[colorScheme].text }]}>
                         {user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || dbUser?.display_name || user.fullName || 'Food Explorer' : dbUser?.display_name || 'Food Explorer'}
                     </Text>
                     <Text style={styles.handle}>
                         @{user?.username ?? dbUser?.username ?? user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] ?? 'explorer'}
                     </Text>
 
-                    <Text style={styles.bio}>
+                    <Text style={[styles.bio, { color: colorScheme === 'dark' ? '#AAA' : '#777' }]}>
                         {dbUser?.bio || user?.unsafeMetadata?.bio || 'Chasing fermentation across the globe. Seeking the perfect balance of acid and fat.'}
                     </Text>
 
@@ -110,34 +111,34 @@ export default function App() {
                     >
                         <View style={styles.statsContainer}>
                             <View style={styles.statItem}>
-                                <Text style={styles.statNumber}>{logs.length}</Text>
-                                <Text style={styles.statLabel}>DISHES</Text>
+                                <Text style={[styles.statNumber, { color: Colors[colorScheme].text }]}>{logs.length}</Text>
+                                <Text style={[styles.statLabel, { color: colorScheme === 'dark' ? '#AAA' : '#777' }]}>DISHES</Text>
                             </View>
                             <View style={styles.statItem}>
-                                <Text style={styles.statNumber}>—</Text>
-                                <Text style={styles.statLabel}>FOLLOWERS</Text>
+                                <Text style={[styles.statNumber, { color: Colors[colorScheme].text }]}>—</Text>
+                                <Text style={[styles.statLabel, { color: colorScheme === 'dark' ? '#AAA' : '#777' }]}>FOLLOWERS</Text>
                             </View>
                             <View style={styles.statItem}>
-                                <Text style={styles.statNumber}>—</Text>
-                                <Text style={styles.statLabel}>FOLLOWING</Text>
+                                <Text style={[styles.statNumber, { color: Colors[colorScheme].text }]}>—</Text>
+                                <Text style={[styles.statLabel, { color: colorScheme === 'dark' ? '#AAA' : '#777' }]}>FOLLOWING</Text>
                             </View>
                         </View>
                     </LiquidGlass>
                 </View>
 
-                <View style={styles.toggleContainer}>
+                <View style={[styles.toggleContainer, { backgroundColor: colorScheme === 'dark' ? Colors.dark.input : '#e5dfd5ff' }]}>
                     <TouchableOpacity
                         style={[styles.toggleButton, activeTab === 'journal' && styles.toggleButtonActive]}
                         onPress={() => setActiveTab('journal')}
                     >
-                        <Text style={[styles.toggleText, activeTab === 'journal' && styles.toggleTextActive]}>
+                        <Text style={[styles.toggleText, activeTab === 'journal' && styles.toggleTextActive, { color: activeTab === 'journal' ? '#FFF' : Colors[colorScheme].icon }]}>
                             The Journal
                         </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.toggleButton, activeTab === 'saved' && styles.toggleButtonActive]}
                         onPress={() => router.push('/my_logs')}>
-                        <Text style={[styles.toggleText, activeTab === 'saved' && styles.toggleTextActive]}>
+                        <Text style={[styles.toggleText, activeTab === 'saved' && styles.toggleTextActive, { color: activeTab === 'saved' ? '#FFF' : Colors[colorScheme].icon }]}>
                             Saved Logs
                         </Text>
                     </TouchableOpacity>
@@ -153,9 +154,9 @@ export default function App() {
 
                         {/* The Journal Section */}
                         <View style={styles.journalHeader}>
-                            <Text style={styles.journalTitle}>The Journal</Text>
+                            <Text style={[styles.journalTitle, { color: Colors[colorScheme].text }]}>The Journal</Text>
                             <TouchableOpacity>
-                                <Feather name="search" size={22} color="#000" />
+                                <Feather name="search" size={22} color={Colors[colorScheme].icon} />
                             </TouchableOpacity>
                         </View>
 
@@ -163,8 +164,8 @@ export default function App() {
                             {logsLoading ? (
                                 <ActivityIndicator size="small" color="#E86A33" style={{ marginVertical: 40 }} />
                             ) : logs.length === 0 ? (
-                                <View style={styles.emptyJournalContainer}>
-                                    <FontAwesome name="file-text-o" size={40} color="#DDD" />
+                                <View style={[styles.emptyJournalContainer, { backgroundColor: Colors[colorScheme].card }]}>
+                                    <FontAwesome name="file-text-o" size={40} color={Colors[colorScheme].icon} />
                                     <Text style={styles.emptyText}>No logs yet. Start by archiving an experience!</Text>
                                 </View>
                             ) : (
@@ -443,7 +444,7 @@ const styles = StyleSheet.create({
     },
     toggleContainer: {
         flexDirection: 'row',
-        backgroundColor: '#e5dfd5ff',
+        backgroundColor: '#e5dfd5ff', // Or make dynamic if you want: Colors[colorScheme].inputBorder
         borderRadius: 30,
         padding: 4,
         marginBottom: 20,

@@ -1,5 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme-context';
 
 interface Spot {
     id: string;
@@ -13,29 +15,30 @@ interface Props {
 }
 
 const TopRatedSpotsCard = ({ spots }: Props) => {
+    const { colorScheme } = useTheme();
     return (
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: Colors[colorScheme].card }]}>
             {spots.map((spot, index) => (
                 <View key={spot.id} style={{ marginBottom: 12 }}>
                     {/* Row: number circle | name and location | logged count */}
                     <View style={{ flexDirection: "row", alignItems: 'center' }}>
                         {/* Number Circle */}
-                        <View style={styles.circle}>
-                            <Text style={styles.circleText}>{index + 1}</Text>
+                        <View style={[styles.circle, { backgroundColor: colorScheme === 'dark' ? '#333' : '#dddddfff' }]}>
+                            <Text style={[styles.circleText, { color: Colors[colorScheme].text }]}>{index + 1}</Text>
                         </View>
                         {/* Name + Location */}
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.restuarantName}>{spot.name}</Text>
-                            <Text style={styles.location}>{spot.location}</Text>
+                            <Text style={[styles.restuarantName, { color: Colors[colorScheme].text }]}>{spot.name}</Text>
+                            <Text style={[styles.location, { color: colorScheme === 'dark' ? '#AAA' : '#555' }]}>{spot.location}</Text>
                         </View>
                         {/* Venues Logged */}
                         <View style={{ flexDirection: "row", alignItems: 'center', gap: 3 }}>
                             <Text style={[styles.count, { color: '#FF5E1F', fontWeight: '900' }]}>{spot.loggedCount}</Text>
-                            <Text style={[styles.count, { color: 'black' }]}>LOGS</Text>
+                            <Text style={[styles.count, { color: Colors[colorScheme].text }]}>LOGS</Text>
                         </View>
                     </View>
                     {/* Divider */}
-                    {index < spots.length - 1 && <View style={styles.divider} />}
+                    {index < spots.length - 1 && <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#F0F0F0' }]} />}
                 </View>
             ))}
         </View>

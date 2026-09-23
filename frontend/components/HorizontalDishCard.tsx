@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { Image } from 'expo-image';
 import React, { useEffect, useState } from 'react';
 import {
@@ -13,6 +14,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme-context';
 import { deleteLog, updateLog } from '../utils/flavorProfileApi';
 
 function formatDateDisplay(d?: string) {
@@ -50,6 +53,7 @@ const HorizontalDishCard = ({
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const { colorScheme } = useTheme();
 
     // Live display state
     const [currentTitle, setCurrentTitle] = useState(title);
@@ -164,7 +168,7 @@ const HorizontalDishCard = ({
                 onPress={() => setModalVisible(true)}
                 activeOpacity={0.9}
             >
-                <View style={styles.cardContainer}>
+                <View style={[styles.cardContainer, { backgroundColor: Colors[colorScheme].card }]}>
                     <Image
                         source={typeof image === 'string' ? { uri: image } : image}
                         style={styles.cardImage}
@@ -217,8 +221,8 @@ const HorizontalDishCard = ({
                     else setModalVisible(false);
                 }}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
+                <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.6)' }]}>
+                    <View style={[styles.modalContent, { backgroundColor: Colors[colorScheme].background }]}>
                         {/* Header Cover Image */}
                         <View style={styles.modalImageContainer}>
                             <Image
@@ -337,29 +341,56 @@ const HorizontalDishCard = ({
                                     <Text style={styles.editFormHeading}>EDIT FOOD MEMORY</Text>
 
                                     <View style={styles.inputGroup}>
-                                        <Text style={styles.inputLabel}>DISH NAME</Text>
+                                        <Text style={[styles.inputLabel, { color: Colors[colorScheme].text }]}>DISH NAME</Text>
                                         <TextInput
-                                            style={styles.textInput}
+                                            style={[styles.textInput, { color: Colors[colorScheme].text, backgroundColor: colorScheme === 'dark' ? '#222' : '#FFF', borderColor: colorScheme === 'dark' ? '#444' : '#E0E0E0' }]}
                                             value={editTitle}
                                             onChangeText={setEditTitle}
                                             placeholder="What did you eat?"
-                                            placeholderTextColor="#999"
+                                            placeholderTextColor={colorScheme === 'dark' ? '#AAA' : '#999'}
                                         />
                                     </View>
 
-                                    <View style={styles.inputGroup}>
-                                        <Text style={styles.inputLabel}>VENUE / RESTAURANT</Text>
-                                        <TextInput
-                                            style={styles.textInput}
-                                            value={editRestaurant}
-                                            onChangeText={setEditRestaurant}
-                                            placeholder="Restaurant or home-cooked"
-                                            placeholderTextColor="#999"
-                                        />
+                                    <View style={[styles.inputGroup, { zIndex: 999 }]}>
+                                        <Text style={[styles.inputLabel, { color: Colors[colorScheme].text }]}>VENUE / RESTAURANT</Text>
+                                        <View style={{ zIndex: 999 }}>
+                                          <GooglePlacesAutocomplete
+                                            placeholder="Search for a restaurant..."
+                                            onPress={(data) => {
+                                              setEditRestaurant(data.structured_formatting?.main_text || data.description.split(',')[0]);
+                                            }}
+                                            query={{
+                                              key: process.env.EXPO_PUBLIC_GOOGLE_API_KEY,
+                                              language: 'en',
+                                              types: 'establishment',
+                                            }}
+                                            styles={{
+                                              container: { flex: 0 },
+                                              textInput: [styles.textInput, { color: Colors[colorScheme].text, backgroundColor: colorScheme === 'dark' ? '#222' : '#FFF', borderColor: colorScheme === 'dark' ? '#444' : '#E0E0E0' }],
+                                              listView: {
+                                                position: 'absolute',
+                                                top: 45,
+                                                backgroundColor: Colors[colorScheme].card,
+                                                borderRadius: 8,
+                                                elevation: 5,
+                                                zIndex: 1000,
+                                              },
+                                              description: { color: Colors[colorScheme].text }
+                                            }}
+                                            textInputProps={{
+                                              placeholderTextColor: colorScheme === 'dark' ? '#AAA' : '#999',
+                                              defaultValue: editRestaurant
+                                            }}
+                                            requestUrl={{
+                                              useOnWeb: true,
+                                              url: 'http://localhost:8000/api/v1/places',
+                                            }}
+                                          />
+                                        </View>
                                     </View>
 
                                     <View style={styles.inputGroup}>
-                                        <Text style={styles.inputLabel}>RATING</Text>
+                                        <Text style={[styles.inputLabel, { color: Colors[colorScheme].text }]}>RATING</Text>
                                         <View style={styles.starRow}>
                                             {[1, 2, 3, 4, 5].map((star) => (
                                                 <TouchableOpacity
@@ -374,20 +405,20 @@ const HorizontalDishCard = ({
                                                     />
                                                 </TouchableOpacity>
                                             ))}
-                                            <Text style={styles.starScoreText}>
+                                            <Text style={[styles.starScoreText, { color: Colors[colorScheme].text }]}>
                                                 {Number(editRating).toFixed(1)} / 5.0
                                             </Text>
                                         </View>
                                     </View>
 
                                     <View style={styles.inputGroup}>
-                                        <Text style={styles.inputLabel}>TASTING & SENSORY NOTES</Text>
+                                        <Text style={[styles.inputLabel, { color: Colors[colorScheme].text }]}>TASTING & SENSORY NOTES</Text>
                                         <TextInput
-                                            style={[styles.textInput, styles.textAreaInput]}
+                                            style={[styles.textInput, styles.textAreaInput, { color: Colors[colorScheme].text, backgroundColor: colorScheme === 'dark' ? '#222' : '#FFF', borderColor: colorScheme === 'dark' ? '#444' : '#E0E0E0' }]}
                                             value={editNotes}
                                             onChangeText={setEditNotes}
                                             placeholder="Describe the flavor, texture, acid, spice..."
-                                            placeholderTextColor="#999"
+                                            placeholderTextColor={colorScheme === 'dark' ? '#AAA' : '#999'}
                                             multiline
                                             numberOfLines={4}
                                             textAlignVertical="top"
@@ -396,11 +427,11 @@ const HorizontalDishCard = ({
 
                                     <View style={styles.formActionButtons}>
                                         <TouchableOpacity
-                                            style={styles.formCancelBtn}
+                                            style={[styles.formCancelBtn, { backgroundColor: Colors[colorScheme].card }]}
                                             onPress={cancelEditMode}
                                             activeOpacity={0.8}
                                         >
-                                            <Text style={styles.formCancelBtnText}>Cancel</Text>
+                                            <Text style={[styles.formCancelBtnText, { color: Colors[colorScheme].text }]}>Cancel</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                             style={styles.formSaveBtn}
@@ -421,17 +452,17 @@ const HorizontalDishCard = ({
                                 <>
                                     {/* Reviewer Score Header */}
                                     <View style={styles.scoreRow}>
-                                        <Text style={styles.scoreLabel}>REVIEWER SCORE</Text>
+                                        <Text style={[styles.scoreLabel, { color: colorScheme === 'dark' ? '#AAA' : '#888' }]}>REVIEWER SCORE</Text>
                                         <View style={styles.scoreActionButtons}>
                                             <TouchableOpacity
-                                                style={styles.actionPill}
+                                                style={[styles.actionPill, { backgroundColor: Colors[colorScheme].card }]}
                                                 onPress={openEditMode}
                                             >
-                                                <Ionicons name="create-outline" size={16} color="#444" />
-                                                <Text style={styles.actionPillText}>Edit</Text>
+                                                <Ionicons name="create-outline" size={16} color={Colors[colorScheme].text} />
+                                                <Text style={[styles.actionPillText, { color: Colors[colorScheme].text }]}>Edit</Text>
                                             </TouchableOpacity>
                                             <TouchableOpacity
-                                                style={[styles.actionPill, styles.deletePill]}
+                                                style={[styles.actionPill, styles.deletePill, { backgroundColor: colorScheme === 'dark' ? 'rgba(217, 56, 30, 0.2)' : '#FDEEEB' }]}
                                                 onPress={handleDelete}
                                             >
                                                 <Ionicons name="trash-outline" size={16} color="#D9381E" />
@@ -449,28 +480,28 @@ const HorizontalDishCard = ({
                                         <Text style={styles.ratingMax}>5.0</Text>
                                     </View>
 
-                                    <View style={styles.divider} />
+                                    <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0, 0, 0, 0.08)' }]} />
 
                                     {/* Tasting Notes */}
-                                    <Text style={styles.sectionLabel}>TASTING NOTES</Text>
-                                    <Text style={styles.notesQuote}>
+                                    <Text style={[styles.sectionLabel, { color: colorScheme === 'dark' ? '#AAA' : '#888' }]}>TASTING NOTES</Text>
+                                    <Text style={[styles.notesQuote, { color: Colors[colorScheme].text }]}>
                                         &quot;{currentNotes || 'No sensory notes recorded.'}&quot;
                                     </Text>
 
                                     {/* Sensory Profile Pill */}
-                                    <View style={styles.sensoryCard}>
+                                    <View style={[styles.sensoryCard, { backgroundColor: Colors[colorScheme].card }]}>
                                         <View style={styles.sensoryIndicator}>
                                             <View style={styles.sensoryDot} />
-                                            <Text style={styles.sensoryLabel}>SENSORY PROFILE</Text>
+                                            <Text style={[styles.sensoryLabel, { color: colorScheme === 'dark' ? '#AAA' : '#888' }]}>SENSORY PROFILE</Text>
                                         </View>
                                     </View>
 
                                     {/* Chemistry Insight (if exists) */}
                                     {chemistryInsight ? (
                                         <>
-                                            <Text style={styles.chemistryLabel}>CHEMISTRY INSIGHT</Text>
-                                            <View style={styles.chemistryCard}>
-                                                <Text style={styles.chemistryText}>{chemistryInsight}</Text>
+                                            <Text style={[styles.chemistryLabel, { color: '#FF6B4A' }]}>CHEMISTRY INSIGHT</Text>
+                                            <View style={[styles.chemistryCard, { backgroundColor: Colors[colorScheme].card }]}>
+                                                <Text style={[styles.chemistryText, { color: Colors[colorScheme].text }]}>{chemistryInsight}</Text>
                                             </View>
                                         </>
                                     ) : null}
@@ -478,11 +509,11 @@ const HorizontalDishCard = ({
                                     {/* Tags */}
                                     {tags && tags.length > 0 ? (
                                         <>
-                                            <View style={styles.divider} />
+                                            <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0, 0, 0, 0.08)' }]} />
                                             <View style={styles.tagsContainer}>
                                                 {tags.map((tag) => (
-                                                    <View key={tag} style={styles.tagBox}>
-                                                        <Text style={styles.tagText}>#{tag}</Text>
+                                                    <View key={tag} style={[styles.tagBox, { backgroundColor: Colors[colorScheme].card, borderColor: colorScheme === 'dark' ? '#444' : 'gray' }]}>
+                                                        <Text style={[styles.tagText, { color: Colors[colorScheme].text }]}>#{tag}</Text>
                                                     </View>
                                                 ))}
                                             </View>

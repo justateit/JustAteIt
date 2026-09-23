@@ -6,12 +6,15 @@ import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme-context';
 
 
 const USE_MOCK = !process.env.EXPO_PUBLIC_API_URL; // if no API URL, use mock data
 
 
 const Search = () => {
+    const { colorScheme } = useTheme();
     const [searchQuery, setSearchQuery] = useState('');
 
     const { data } = useQuery({
@@ -36,7 +39,7 @@ const Search = () => {
 
     return (
         <ScrollView
-            style={styles.container}
+            style={[styles.container, { backgroundColor: Colors[colorScheme].background }]}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
                 minHeight: "100%",
@@ -46,12 +49,12 @@ const Search = () => {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 20, marginTop: 90, marginBottom: 25 }}>
                 <TouchableOpacity
                     onPress={() => router.replace('/(tabs)')}>
-                    <Ionicons name="arrow-back" size={28} color="#918f8fff" />
+                    <Ionicons name="arrow-back" size={28} color={Colors[colorScheme].icon} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Discover</Text>
+                <Text style={[styles.title, { color: Colors[colorScheme].text }]}>Discover</Text>
             </View>
             {searchQuery.trim() ? (
-                <Text style={{ fontSize: 13, color: 'black', marginBottom: 20, fontWeight: 'bold' }}>
+                <Text style={{ fontSize: 13, color: Colors[colorScheme].text, marginBottom: 20, fontWeight: 'bold' }}>
                     SEARCH RESULTS FOR &apos;{searchQuery.toUpperCase()}&apos;
                 </Text>
             ) : null}

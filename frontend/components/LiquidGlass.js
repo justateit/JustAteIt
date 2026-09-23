@@ -1,6 +1,8 @@
-import React from 'react';
+import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme-context';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import React from 'react';
 import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 /**
@@ -21,7 +23,7 @@ import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
  */
 export default function LiquidGlass({
     intensity = 60,
-    tint = 'light',
+    tint,
     borderRadius = 26,
     style,
     children,
@@ -39,6 +41,9 @@ export default function LiquidGlass({
         ...layoutStyle
     } = flatStyle;
 
+    const { colorScheme } = useTheme();
+    const activeTint = tint || colorScheme;
+
     const outerStyle = {
         shadowColor, shadowOffset, shadowOpacity, shadowRadius, elevation,
         margin, marginTop, marginBottom, marginLeft, marginRight,
@@ -52,7 +57,7 @@ export default function LiquidGlass({
                 {/* 1. Frosted Backdrop — refracts colours underneath */}
                 <BlurView
                     intensity={Platform.OS === 'ios' ? intensity : Math.min(intensity, 40)}
-                    tint={tint}
+                    tint={activeTint}
                     experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
                     style={StyleSheet.absoluteFill}
                 />
@@ -98,7 +103,6 @@ export default function LiquidGlass({
 export function GlassCard({ children, style, borderRadius = 26, ...props }) {
     return (
         <LiquidGlass
-            tint="light"
             intensity={65}
             borderRadius={borderRadius}
             style={style}
@@ -130,7 +134,6 @@ export function GlassButton({ children, onPress, primary = false, style, ...prop
     return (
         <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={style} {...props}>
             <LiquidGlass
-                tint="light"
                 intensity={70}
                 borderRadius={50}
                 style={styles.glassButtonPadding}
