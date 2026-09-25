@@ -467,4 +467,38 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontWeight: '500',
     },
+        myInsights: {
+        backgroundColor: '#E86A33',
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 24,
+        flexDirection: 'column',
+        gap: 8,
+    },
+    myInsightsTitle: {
+        fontSize: 11,
+        color: '#FFFFFF',
+        letterSpacing: 1,
+        fontWeight: '600',
+    },
+    myInsightsDescription: {
+        fontSize: 18,
+        color: '#fff',
+        fontStyle: 'italic',
+        lineHeight: 27,
+    },
+    myInsightsButton: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        alignSelf: 'flex-end',
+        marginTop: 8,
+
+    },
+    myInsightsButtonText: {
+        color: '#E86A33',
+        fontSize: 15,
+        fontWeight: '500',
+    },
 });
