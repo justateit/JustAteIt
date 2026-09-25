@@ -1,0 +1,1 @@
+ALTER TABLE flavor_profiles ADD COLUMN achieved_milestones TEXT;

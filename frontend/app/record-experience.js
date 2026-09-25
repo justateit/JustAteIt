@@ -1,14 +1,14 @@
+import LiquidGlass from '@/components/LiquidGlass';
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import LiquidGlass from '@/components/LiquidGlass';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme-context';
-import { getNearbyVenue, submitLog, upsertUser } from '../utils/flavorProfileApi';
 import {
   ActivityIndicator,
   Animated,
@@ -24,6 +24,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { getDrafts, getNearbyVenue, publishDraft, saveDraft, submitLog, updateDraft, upsertUser } from '../utils/flavorProfileApi';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
@@ -77,7 +78,7 @@ function AnimatedSection({ children, scrollY, delay = 0, style }) {
     // Initial check: if we're likely on screen, just show it.
     // We use a small timeout to let onLayout potentially fire first.
     const timer = setTimeout(() => {
-       if (!isAnimated.current) triggerAnimation();
+      if (!isAnimated.current) triggerAnimation();
     }, 100 + delay);
 
     return () => {
@@ -100,23 +101,42 @@ function AnimatedSection({ children, scrollY, delay = 0, style }) {
 export default function RecordExperience() {
   const { user } = useUser();
   const { colorScheme } = useTheme();
+  const { draftId } = useLocalSearchParams();
 
   const [dish, setDish] = useState('');
   const [venue, setVenue] = useState('');
   const [city, setCity] = useState('');
+  const [cuisine, setCuisine] = useState('');
   const [sensoryNotes, setSensoryNotes] = useState('');
   const [isRestaurant, setIsRestaurant] = useState(true);
   const [rating, setRating] = useState(0);
 
   const [uploading, setUploading] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [imageUri, setImageUri] = useState(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
+  useEffect(() => {
+    if (!draftId || !user) return;
+    getDrafts(user.id).then(({ drafts }) => {
+      const draft = drafts.find(d => d.id === draftId);
+      if (!draft) return;
+      setDish(draft.dish_name || '');
+      setVenue(draft.venue_name || '');
+      setCity(draft.city || '');
+      setCuisine(draft.cuisine || '');
+      setSensoryNotes(draft.sensory_notes || '');
+      setIsRestaurant(draft.is_restaurant);
+      setRating(draft.rating || 0);
+      setImageUri(draft.image_url || null);
+    });
+  }, [draftId, user]);
+
   const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(0)).current;
+  const [scrollY] = useState(() => new Animated.Value(0));
+  const [slideAnim] = useState(() => new Animated.Value(0));
   const sliderWidth = containerWidth / 2;
 
   useEffect(() => {
@@ -230,20 +250,38 @@ export default function RecordExperience() {
         avatar_url: user.imageUrl,
       });
 
-      await submitLog(user.id, {
-        dish_name: dish.trim(),
-        venue_name: venue.trim() || null,
-        city: city.trim() || null,
-        is_restaurant: isRestaurant,
-        sensory_notes: sensoryNotes.trim() || null,
-        rating: rating,
-        image_url: imageUri || null,
-      });
+      if (draftId) {
+        // Save the latest form state to the draft first, so publish
+        // doesn't archive stale data from the last "Save Draft" press.
+        await updateDraft(draftId, {
+          dish_name: dish.trim(),
+          venue_name: venue.trim() || null,
+          city: city.trim() || null,
+          cuisine: cuisine.trim() || null,
+          is_restaurant: isRestaurant,
+          sensory_notes: sensoryNotes.trim() || null,
+          rating: rating,
+          image_url: imageUri || null,
+        });
+        await publishDraft(draftId);
+      } else {
+        await submitLog(user.id, {
+          dish_name: dish.trim(),
+          venue_name: venue.trim() || null,
+          city: city.trim() || null,
+          cuisine: cuisine.trim() || null,
+          is_restaurant: isRestaurant,
+          sensory_notes: sensoryNotes.trim() || null,
+          rating: rating,
+          image_url: imageUri || null,
+        });
+      }
       alert('Log archived! ✓');
       // Reset form
       setDish('');
       setVenue('');
       setCity('');
+      setCuisine('');
       setSensoryNotes('');
       setRating(0);
       setImageUri(null);
@@ -255,9 +293,53 @@ export default function RecordExperience() {
     }
   };
 
+  const handleSaveDraft = async () => {
+    if (!user) {
+      alert('You must be signed in to save a draft.');
+      return;
+    }
+    setSavingDraft(true);
+    try {
+      await upsertUser(user.id, {
+        username: user.username || user.firstName || 'Foodie',
+        avatar_url: user.imageUrl,
+      });
+      if (draftId) {
+        await updateDraft(draftId, {
+          dish_name: dish.trim() || null,
+          venue_name: venue.trim() || null,
+          city: city.trim() || null,
+          cuisine: cuisine.trim() || null,
+          is_restaurant: isRestaurant,
+          sensory_notes: sensoryNotes.trim() || null,
+          rating: rating || null,
+          image_url: imageUri || null,
+        });
+      } else {
+        await saveDraft(user.id, {
+          dish_name: dish.trim() || null,
+          venue_name: venue.trim() || null,
+          city: city.trim() || null,
+          cuisine: cuisine.trim() || null,
+          is_restaurant: isRestaurant,
+          sensory_notes: sensoryNotes.trim() || null,
+          rating: rating || null,
+          image_url: imageUri || null,
+        });
+      }
+      alert('Draft saved! ✓');
+    } catch (err) {
+      console.error('[SaveDraft]', err);
+      alert('Failed to save draft. Check your connection and try again.');
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
+
   // Each star gets its own Animated.Value for scale
-  const starScales = useRef([1, 2, 3, 4, 5].map(() => new Animated.Value(1))).current;
-  const starOpacities = useRef([1, 2, 3, 4, 5].map(() => new Animated.Value(0.4))).current;
+  const [starScales] = useState(() => [1, 2, 3, 4, 5].map(() => new Animated.Value(1)));
+  const [starOpacities] = useState(() => [1, 2, 3, 4, 5].map(() => new Animated.Value(0.4)));
   const prevRating = useRef(rating);
 
   useEffect(() => {
@@ -373,21 +455,21 @@ export default function RecordExperience() {
         colors={colorScheme === 'dark' ? ['#1A1A1A', '#121212', '#0A0A0A'] : ['#FFF0EA', '#F3F6F8', '#EAF2F8']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
       {/* Orange light leak — top-right */}
       <LinearGradient
         colors={['transparent', 'transparent', 'rgba(255,107,74,0.13)']}
         start={{ x: 0, y: 1 }}
         end={{ x: 1, y: 0 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
       {/* Orange light leak — bottom-left */}
       <LinearGradient
         colors={['rgba(255,140,80,0.09)', 'transparent', 'transparent']}
         start={{ x: 0, y: 1 }}
         end={{ x: 1, y: 0 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       <SafeAreaView style={styles.safeArea}>
@@ -404,7 +486,7 @@ export default function RecordExperience() {
           {/* Header */}
           <AnimatedSection scrollY={scrollY} delay={0}>
             <View style={styles.header}>
-              <TouchableOpacity style={styles.draftButton}>
+              <TouchableOpacity style={styles.draftButton} onPress={handleSaveDraft} disabled={savingDraft}>
                 <Text style={styles.saveDraft}>SAVE DRAFT</Text>
               </TouchableOpacity>
             </View>
@@ -539,6 +621,22 @@ export default function RecordExperience() {
               </View>
             </AnimatedSection>
           )}
+
+          {/* Cuisine Text Field */}
+          <AnimatedSection scrollY={scrollY} delay={360}>
+            <View style={{ paddingHorizontal: 24, marginTop: 24 }}>
+              <Text style={styles.fieldLabel}>CUISINE</Text>
+              <View style={styles.glassInputSmall}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Mexican, Japanese, Italian"
+                  placeholderTextColor="rgba(60, 60, 67, 0.3)"
+                  value={cuisine}
+                  onChangeText={setCuisine}
+                />
+              </View>
+            </View>
+          </AnimatedSection>
 
           {/* Sensory Notes Glass Card */}
           <AnimatedSection scrollY={scrollY} delay={400}>
@@ -812,26 +910,10 @@ const styles = StyleSheet.create({
   // ACTIONS
   actionsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
     marginTop: 20,
-  },
-  glassActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 107, 74, 0.1)',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 74, 0.15)',
-  },
-  actionButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#FF6B4A',
-    marginLeft: 6,
   },
   glassUploadButton: {
     flexDirection: 'row',
@@ -955,7 +1037,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   uploadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0, 0, 0, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',

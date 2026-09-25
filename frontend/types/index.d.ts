@@ -7,7 +7,6 @@ interface Dish {
     image: any; // number = require(), string = URL
     location: string;
     tastingNotes: string;
-    chemistryInsight: string;
     tags: string[];
     onUpdated?: () => void;
     onDeleted?: () => void;

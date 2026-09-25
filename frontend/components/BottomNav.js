@@ -37,6 +37,7 @@ export default function BottomNav() {
       {/* --- THE MAIN 3D MOLDED LIQUID GLASS PILL --- */}
       <View style={styles.shadowContainer}>
         <LiquidGlass
+          tint="default"
           intensity={65}
           borderRadius={pillRadius}
           style={styles.pill}
@@ -44,7 +45,7 @@ export default function BottomNav() {
           <View style={[styles.pillInner, { width: pillWidth, borderRadius: pillRadius }]}>
             <TouchableOpacity
               style={styles.iconButton}
-              onPress={() => router.push('/(tabs)')}
+              onPress={() => router.replace('/(tabs)')}
               activeOpacity={0.8}
             >
               <View style={styles.iconCircleDark}>
@@ -54,7 +55,7 @@ export default function BottomNav() {
 
             <TouchableOpacity
               style={styles.iconButton}
-              onPress={() => router.push('/record-experience')}
+              onPress={() => router.replace('/record-experience')}
               activeOpacity={0.8}
             >
               <View style={styles.iconCircleOrange}>
@@ -64,7 +65,7 @@ export default function BottomNav() {
 
             <TouchableOpacity
               style={styles.iconButton}
-              onPress={() => router.push('/profile')}
+              onPress={() => router.replace('/profile')}
               activeOpacity={0.8}
             >
               <View style={styles.iconCircleDark}>

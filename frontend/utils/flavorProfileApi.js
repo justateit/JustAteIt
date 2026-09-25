@@ -27,6 +27,19 @@ export async function getFlavorProfile(userId) {
 }
 
 /**
+ * Fetch the current flavor profile for the recommendations for a user
+ * @param {string} userId  - Clerk user ID
+ * @param {string[]} exclude - Dish titles to exclude from results (optional)
+ */
+export async function getRecommendations(userId, exclude = []) {
+  const params = exclude.length ? `?exclude=${encodeURIComponent(exclude.join(','))}`
+    : '';
+  const res = await fetch(`${BASE_URL}/api/v1/flavor-profiles/${encodeURIComponent(userId)}/recommendations${params}`);
+  if (!res.ok) throw new Error(`getRecommendations failed: ${res.status}`);
+  return res.json();
+}
+
+/**
  * Permanently delete a user account and all associated profile, review, and media data.
  * @param {string} userId - Clerk user ID
  */
@@ -83,6 +96,24 @@ export async function submitLog(userId, logData) {
 }
 
 /**
+ * Save a new food journal entry draft for the current user.
+ * @param {string} userId
+ * @param {{ dish, venue, city, is_restaurant, sensory_notes, rating, image_url }} logData
+ */
+export async function saveDraft(userId, logData) {
+  const res = await fetch(`${BASE_URL}/api/v1/drafts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: userId, ...logData }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `saveDraft failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
  * Fetch all journal entries for a user (newest first).
  * @param {string} userId
  * @returns {Promise<{ logs: Array, count: number }>}
@@ -90,6 +121,17 @@ export async function submitLog(userId, logData) {
 export async function getLogs(userId) {
   const res = await fetch(`${BASE_URL}/api/v1/reviews/${encodeURIComponent(userId)}`);
   if (!res.ok) throw new Error(`getLogs failed: ${res.status}`);
+  return res.json();
+}
+
+/**
+ * Fetch all draft entries for a user (newest first).
+ * @param {string} userId
+ * @returns {Promise<{ drafts: Array, count: number }>}
+ */
+export async function getDrafts(userId) {
+  const res = await fetch(`${BASE_URL}/api/v1/drafts/${encodeURIComponent(userId)}`);
+  if (!res.ok) throw new Error(`getDrafts failed: ${res.status}`);
   return res.json();
 }
 
@@ -112,6 +154,24 @@ export async function updateLog(reviewId, updateData) {
 }
 
 /**
+ * Update a journal entry draft by ID.
+ * @param {string} draftId
+ * @param {{ dish_name?, venue_name?, city?, rating?, sensory_notes?, image_url? }} updateData
+ */
+export async function updateDraft(draftId, updateData) {
+  const res = await fetch(`${BASE_URL}/api/v1/drafts/${encodeURIComponent(draftId)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updateData),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `updateDraft failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
  * Permanently delete a journal entry by ID.
  * @param {string} reviewId
  */
@@ -122,6 +182,36 @@ export async function deleteLog(reviewId) {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || `deleteLog failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * Permanently delete a journal entry draft by ID.
+ * @param {string} draftId
+ */
+export async function deleteDraft(draftId) {
+  const res = await fetch(`${BASE_URL}/api/v1/drafts/${encodeURIComponent(draftId)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `deleteDraft failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * Converts an existing draft into a real review.
+ * @param {string} draftId
+ */
+export async function publishDraft(draftId) {
+  const res = await fetch(`${BASE_URL}/api/v1/drafts/${encodeURIComponent(draftId)}/publish`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `publishDraft failed: ${res.status}`);
   }
   return res.json();
 }

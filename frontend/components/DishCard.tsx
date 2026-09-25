@@ -8,7 +8,7 @@ import { useTheme } from '@/hooks/use-theme-context';
 const { width } = Dimensions.get('window');
 const gap = width * 0.3
 
-const DishCard = ({ id, title, restaurant, date, rating, image, location, tastingNotes, chemistryInsight, tags }: Dish) => {
+const DishCard = ({ id, title, restaurant, date, rating, image, location, tastingNotes, tags }: Dish) => {
     const [modalVisible, setModalVisible] = useState(false);
     const { colorScheme } = useTheme();
 
@@ -120,9 +120,9 @@ const DishCard = ({ id, title, restaurant, date, rating, image, location, tastin
                             </View>
                             {/* Rating */}
                             <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                                <Text style={{ fontSize: 66, fontWeight: '700', color: '#FF6B4A', fontFamily: "LibreBaskerville-Bold", letterSpacing: 2, marginRight: 4 }}>{rating}</Text>
-                                <Text style={{ fontSize: 22, color: '#737588', letterSpacing: 2 }}>/</Text>
-                                <Text style={{ fontSize: 22, color: '#737588', letterSpacing: 2, marginLeft: 4 }}>5.0</Text>
+                                <Text style={{ fontSize: 44, fontWeight: '700', color: '#FF6B4A', fontFamily: "LibreBaskerville-Bold", letterSpacing: 1, marginRight: 4 }}>{rating}</Text>
+                                <Text style={{ fontSize: 16, color: '#737588', letterSpacing: 1 }}>/</Text>
+                                <Text style={{ fontSize: 16, color: '#737588', letterSpacing: 1, marginLeft: 4 }}>5.0</Text>
                             </View>
                             <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#01010150' }]} />
                             {/* Tasting Notes */}

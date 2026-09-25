@@ -1,7 +1,13 @@
-from typing import Dict, Optional
+import anthropic
+import httpx
+import os
+import json
+
+from typing import Dict, List, Optional
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from dotenv import load_dotenv
 
 # Import shared DB setup
 from shared.database import get_db, engine
@@ -10,10 +16,17 @@ from services.user_service.core.flavor_math import (
     FLAVOR_DIMS, update_dimension, adaptive_alpha, personality_label
 )
 
+load_dotenv()
+
+# Optional: Auto-create tables (good for dev, but we already have an init_db script and migrations)
+# models.Base.metadata.create_all(bind=engine)
 # Note: no create_all() here — the schema is owned by the versioned
 # Supabase migrations in backend/supabase/migrations (see backend/README.md).
 
 app = FastAPI(title="User & Profile Service")
+
+client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
 
 # ── Request / Response Models ─────────────────────────────────────────────────
 
@@ -36,13 +49,28 @@ class ProfileResponse(BaseModel):
     profile:      Dict[str, float]
     review_count: int
     personality:  str
+    points_count: int
+    achieved_milestones: list[str]
 
 class UserPayload(BaseModel):
-    id:         str 
+    id:         str
     username:   Optional[str] = None
     display_name: Optional[str] = None
     bio:        Optional[str] = None
     avatar_url: Optional[str] = None
+
+class DishRecommendation(BaseModel):
+    dish:       str
+    restaurant: str
+    city:       str
+    match:      int
+    tags:       List[str]
+    reason:     str
+
+class RecommendationsOutput(BaseModel):
+    insight:         str
+    recommendations: List[DishRecommendation]
+    breakdown:       str
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
@@ -113,11 +141,13 @@ def get_flavor_profile(user_id: str, db: Session = Depends(get_db)):
         "user_id": user_id,
         "profile": p_dict,
         "review_count": profile.review_count,
-        "personality": personality_label(p_dict)
+        "personality": personality_label(p_dict),
+        "points_count": profile.points_count,
+        "achieved_milestones": json.loads(profile.achieved_milestones) if profile.achieved_milestones else [],
     }
 
 @app.post("/flavor-profiles/update", response_model=ProfileResponse)
-def update_flavor_profile(payload: RatingPayload, db: Session = Depends(get_db)):
+async def update_flavor_profile(payload: RatingPayload, db: Session = Depends(get_db)):
     """Core Algorithm: Adjusts user profile based on a rating and dish stats."""
     print(f"\033[96m[USER] Recalculating flavor profile for {payload.user_id} (Rating: {payload.rating})\033[0m")
     if not (1 <= payload.rating <= 5):
@@ -148,7 +178,24 @@ def update_flavor_profile(payload: RatingPayload, db: Session = Depends(get_db))
         setattr(profile, dim, new_val)
         # print(f"   -> {dim}: {old_val:.2f} -> {new_val:.2f}")
 
+    profile.points_count += 10
     profile.review_count += 1
+    profile.recommendations_stale = True
+
+    logs = await fetch_user_logs(payload.user_id)
+    stats = {
+        "review_count": profile.review_count,
+        "cities_visited": len({log["city"] for log in logs if log.get("city")}),
+        "cuisines_tried": len({log["cuisine"] for log in logs if log.get("cuisine")}),
+        "has_five_star": any(log.get("rating") == 5 for log in logs),
+    }
+    achieved = json.loads(profile.achieved_milestones) if profile.achieved_milestones else []
+    for milestone in MILESTONES:
+        if milestone["id"] not in achieved and milestone["condition"](stats):
+            profile.points_count += milestone["points"]
+            achieved.append(milestone["id"])
+    profile.achieved_milestones = json.dumps(achieved)
+
     db.commit()
 
     p_dict = {d: getattr(profile, d) for d in FLAVOR_DIMS}
@@ -159,5 +206,151 @@ def update_flavor_profile(payload: RatingPayload, db: Session = Depends(get_db))
         "user_id": payload.user_id,
         "profile": p_dict,
         "review_count": profile.review_count,
-        "personality": label
+        "personality": label,
+        "points_count": profile.points_count,
+        "achieved_milestones": achieved
     }
+    
+def get_critic_label(avg: float) -> str:
+    if avg >= 4:
+        return "Enthusiast"
+    if avg >= 3:
+        return "Connoisseur"
+    if avg >= 2:
+        return "Tough Critic"
+    if avg >= 1:
+        return "Skeptic"
+    if avg >= 0.1:
+        return "Merciless"
+    return "New Foodie"
+
+MILESTONES = [
+    {
+        "id": "first_log",
+        "title": "First Bite",
+        "points": 25,
+        "condition": lambda stats: stats["review_count"] >= 1,
+    },
+    {
+        "id": "three_cities",
+        "title": "City Hopper",
+        "points": 50,
+        "condition": lambda stats: stats["cities_visited"] >= 3,
+    },
+    {
+        "id": "twenty_five_dishes",
+        "title": "Dedicated Foodie",
+        "points": 50,
+        "condition": lambda stats: stats["review_count"] >= 25,
+    },
+    {
+        "id": "five_cuisines",
+        "title": "Flavor Explorer",
+        "points": 50,
+        "condition": lambda stats: stats["cuisines_tried"] >= 5,
+    },
+    {
+        "id": "five_star_find",
+        "title": "Five-Star Find",
+        "points": 25,
+        "condition": lambda stats: stats["has_five_star"],
+    },
+    {
+        "id": "five_cities",
+        "title": "World Traveler",
+        "points": 75,
+        "condition": lambda stats: stats["cities_visited"] >= 5,
+    },
+    {
+        "id": "hundred_dishes",
+        "title": "Century Club",
+        "points": 100,
+        "condition": lambda stats: stats["review_count"] >= 100,
+    },
+]
+
+async def fetch_user_logs(user_id: str) -> list:
+    """Fetches a user's dish logs from catalog_service. Returns [] on failure."""
+    catalog_svc_url = os.getenv("CATALOG_SERVICE_URL", "http://localhost:8002")
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(f"{catalog_svc_url}/reviews/{user_id}")
+            response.raise_for_status()
+            return response.json().get("logs", [])
+    except Exception as e:
+        print(f"Failed to fetch logs from catalog_service: {e}")
+        return []
+
+@app.get("/flavor-profiles/{user_id}/recommendations")
+async def get_recommendations(user_id: str, exclude: str = "", db: Session = Depends(get_db)):
+    # 1. Look up the REAL flavor profile for this user. Same query get_flavor_profile() uses
+    profile = db.query(models.FlavorProfile).filter(models.FlavorProfile.user_id == user_id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found.")
+
+    excluded_dishes = [d.strip() for d in exclude.split(",") if d.strip()]
+    is_refresh_request = bool(excluded_dishes)
+
+    # Serve the cached picks when nothing has changed since they were generated
+    # (no new log, no explicit refresh) — skips the Claude call entirely.
+    if not is_refresh_request and not profile.recommendations_stale and profile.cached_recommendations:
+        return json.loads(profile.cached_recommendations)
+
+    logs = await fetch_user_logs(user_id)
+    
+    cities = sorted({log["city"] for log in logs if log.get("city")})
+    
+    cuisine_counts = {}
+    for log in logs:
+        cuisine = log.get("cuisine")
+        if cuisine:
+            cuisine_counts[cuisine] = cuisine_counts.get(cuisine, 0) + 1
+    top_cuisines = [
+        f"{name} ({count})"
+        for name, count in sorted(cuisine_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    ]
+    
+    ratings = [log["rating"] for log in logs if log.get("rating") is not None]
+    avg_rating = round(sum(ratings) / len(ratings), 2) if ratings else 0
+    critic_label = get_critic_label(avg_rating)
+
+    prompt = f"""
+Role: You are a culinary recommender with deep knowledge of restaurants, dishes, and flavor profiles.
+
+User Profile:
+- Flavor scores (0 to 1, higher means stronger preference):
+    Spice: {profile.spice}
+    Acid: {profile.acid}
+    Umami: {profile.umami}
+    Sweet: {profile.sweet}
+    Texture: {profile.texture}
+
+- Dining activity:
+    Total logs: {profile.review_count}
+    Cities visited: {cities}
+
+- Top cuisines logged: {top_cuisines}
+- Rating breakdown: Average {avg_rating}, Critic Personality: {critic_label}
+
+{f"- Do NOT recommend any of these previously suggested dishes: {excluded_dishes}" if excluded_dishes else ""}
+
+Task: Recommend exactly 3 dishes matching this profile.
+- insight: 1-2 sentence summary of the user's overall taste pattern
+- recommendations: for each dish, an integer 0-100 "match" confidence, up to 3-4 descriptive tags, and a "reason" (1 brief sentence on why this dish fits their palate)
+- breakdown: 3-4 sentences, friendly and second-person, explaining the methodology behind the 3 picks above: which of their flavor dimensions weighed most heavily and why, and how their logged cuisines, cities, and rating pattern shaped the selection. Name specific numbers from their profile. Do not re-describe the dishes themselves.
+"""
+    # 4. Call Claude with a schema-constrained response — no manual JSON stripping/parsing needed
+    response = client.messages.parse(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=1024,
+        temperature=0.35,
+        messages=[{"role": "user", "content": prompt}],
+        output_format=RecommendationsOutput,
+    )
+    result = response.parsed_output.model_dump()
+
+    profile.cached_recommendations = json.dumps(result)
+    profile.recommendations_stale = False
+    db.commit()
+    return result
+        

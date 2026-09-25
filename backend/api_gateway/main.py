@@ -79,6 +79,12 @@ async def route_reviews(request: Request, path: str = ""):
     full_path = f"reviews/{path}" if path else "reviews"
     return await proxy_request(ROUTES["catalog"], full_path, request)
 
+@app.api_route("/api/v1/drafts", methods=["GET", "POST", "PUT", "DELETE"])
+@app.api_route("/api/v1/drafts/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def route_drafts(request: Request, path: str = ""):
+    full_path = f"drafts/{path}" if path else "drafts"
+    return await proxy_request(ROUTES["catalog"], full_path, request)
+
 @app.api_route("/api/v1/venues", methods=["GET", "POST", "PUT", "DELETE"])
 @app.api_route("/api/v1/venues/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def route_venues(request: Request, path: str = ""):

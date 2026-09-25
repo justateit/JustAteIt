@@ -12,7 +12,8 @@ push images with build-push-images.ps1 using the same tag.
 
 .EXAMPLE
 .\deploy-stack.ps1 -AllowedIngressCidr "203.0.113.7/32" `
-    -DatabaseUrlParameterArn "arn:aws:ssm:us-east-2:123456789012:parameter/justateit/dev/database-url"
+    -DatabaseUrlParameterArn "arn:aws:ssm:us-east-2:123456789012:parameter/justateit/dev/database-url" `
+    -AnthropicApiKeyParameterArn "arn:aws:ssm:us-east-2:123456789012:parameter/justateit/dev/anthropic-api-key"
 #>
 param(
     [Parameter(Mandatory = $true)]
@@ -20,6 +21,9 @@ param(
 
     [Parameter(Mandatory = $true)]
     [string]$DatabaseUrlParameterArn,
+
+    [Parameter(Mandatory = $true)]
+    [string]$AnthropicApiKeyParameterArn,
 
     # Must be lowercase (it prefixes the ECR repository names).
     [string]$StackName = "justateit-dev",
@@ -51,7 +55,8 @@ aws cloudformation deploy `
     --parameter-overrides `
         "ImageTag=$ImageTag" `
         "AllowedIngressCidr=$AllowedIngressCidr" `
-        "DatabaseUrlParameterArn=$DatabaseUrlParameterArn"
+        "DatabaseUrlParameterArn=$DatabaseUrlParameterArn" `
+        "AnthropicApiKeyParameterArn=$AnthropicApiKeyParameterArn"
 
 if ($LASTEXITCODE -ne 0) { throw "CloudFormation deploy failed." }
 

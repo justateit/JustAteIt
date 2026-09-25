@@ -2,6 +2,7 @@ import BottomNav from '@/components/BottomNav';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ClerkLoaded, ClerkProvider } from '@clerk/clerk-expo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -64,11 +65,11 @@ function RootLayoutInner() {
           <NavThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <View style={styles.container}>
               <Stack>
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
                 <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
                 <Stack.Screen name="index" options={{ headerShown: false }} />
-                <Stack.Screen name="record-experience" options={{ headerShown: false }} />
-                <Stack.Screen name="profile" options={{ headerShown: false }} />
+                <Stack.Screen name="record-experience" options={{ headerShown: false, animation: 'fade' }} />
+                <Stack.Screen name="profile" options={{ headerShown: false, animation: 'fade' }} />
                 <Stack.Screen name="search" options={{ headerShown: false }} />
                 <Stack.Screen name="onboarding" options={{ headerShown: false }} />
                 <Stack.Screen name="sign-in" options={{ headerShown: false }} />
