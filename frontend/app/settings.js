@@ -18,6 +18,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { deleteUserAccount, getUser, uploadAvatarImage, upsertUser } from '../utils/flavorProfileApi';
+import { useTheme } from '../hooks/use-theme-context';
+import { Colors } from '../constants/theme';
 
 const serifFont = Platform.select({ ios: 'Georgia', android: 'serif' });
 const monoFont = Platform.select({ ios: 'Courier', android: 'monospace' });
@@ -46,7 +48,8 @@ export default function SettingsScreen() {
     const [avatarUrl, setAvatarUrl] = useState(
         dbUser?.avatar_url || user?.imageUrl || 'https://images.unsplash.com/photo-1542223616-740d5dff7f56?w=400&q=80'
     );
-    const [darkMode, setDarkMode] = useState(true);
+    const { themeMode, setThemeMode, colorScheme } = useTheme();
+    const colors = Colors[colorScheme ?? 'light'];
     const [notifications, setNotifications] = useState(true);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -194,17 +197,17 @@ export default function SettingsScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Feather name="arrow-left" size={22} color="#000" />
+                    <Feather name="arrow-left" size={22} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Settings</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Settings</Text>
             </View>
 
             {/* Card */}
-            <View style={styles.card}>
+            <View style={[styles.card, { backgroundColor: colors.card }]}>
                 {/* Avatar + Name */}
                 <View style={styles.profileRow}>
                     <TouchableOpacity onPress={onChangeAvatar} style={styles.avatarContainer}>
@@ -214,8 +217,8 @@ export default function SettingsScreen() {
                         />
                     </TouchableOpacity>
                     <View style={styles.profileInfo}>
-                        <Text style={styles.name}>{displayName}</Text>
-                        <Text style={styles.handle}>@{username.replace(/^@/, '')}</Text>
+                        <Text style={[styles.name, { color: colors.text }]}>{displayName}</Text>
+                        <Text style={[styles.handle, { color: colorScheme === 'dark' ? '#aaa' : '#888' }]}>@{username.replace(/^@/, '')}</Text>
                         <TouchableOpacity onPress={onChangeAvatar}>
                             <Text style={styles.changeAvatar}>CHANGE AVATAR</Text>
                         </TouchableOpacity>
@@ -223,33 +226,33 @@ export default function SettingsScreen() {
                 </View>
 
                 {/* Edit Display Name */}
-                <Text style={styles.sectionLabel}>Display Name</Text>
+                <Text style={[styles.sectionLabel, { color: colors.text }]}>Display Name</Text>
                 <TextInput
                     value={displayName}
                     onChangeText={setDisplayName}
-                    style={styles.singleInput}
+                    style={[styles.singleInput, { backgroundColor: colors.input, borderColor: colors.inputBorder, color: colors.text }]}
                     placeholder="Enter display name"
                     placeholderTextColor="#aaa"
                 />
 
                 {/* Edit Username */}
-                <Text style={styles.sectionLabel}>Username</Text>
+                <Text style={[styles.sectionLabel, { color: colors.text }]}>Username</Text>
                 <TextInput
                     value={username}
                     onChangeText={setUsername}
-                    style={styles.singleInput}
+                    style={[styles.singleInput, { backgroundColor: colors.input, borderColor: colors.inputBorder, color: colors.text }]}
                     placeholder="Enter username"
                     placeholderTextColor="#aaa"
                     autoCapitalize="none"
                 />
 
                 {/* Edit Bio */}
-                <Text style={styles.sectionLabel}>Edit Bio</Text>
+                <Text style={[styles.sectionLabel, { color: colors.text }]}>Edit Bio</Text>
                 <TextInput
                     value={bio}
                     onChangeText={setBio}
                     multiline
-                    style={styles.bioInput}
+                    style={[styles.bioInput, { backgroundColor: colors.input, borderColor: colors.inputBorder, color: colors.text }]}
                     placeholderTextColor="#aaa"
                 />
 
@@ -259,12 +262,12 @@ export default function SettingsScreen() {
                 {/* Dark Mode Toggle */}
                 <View style={styles.settingRow}>
                     <View>
-                        <Text style={styles.settingLabel}>Dark Mode</Text>
-                        <Text style={styles.settingSubLabel}>Adjust the interface appearance</Text>
+                        <Text style={[styles.settingLabel, { color: colors.text }]}>Dark Mode</Text>
+                        <Text style={[styles.settingSubLabel, { color: colorScheme === 'dark' ? '#aaa' : '#999' }]}>Adjust the interface appearance</Text>
                     </View>
                     <Switch
-                        value={darkMode}
-                        onValueChange={setDarkMode}
+                        value={themeMode === 'dark'}
+                        onValueChange={(val) => setThemeMode(val ? 'dark' : 'light')}
                         trackColor={{ false: '#D9D9D9', true: '#E86A33' }}
                         thumbColor="#fff"
                         ios_backgroundColor="#D9D9D9"
@@ -277,8 +280,8 @@ export default function SettingsScreen() {
                 {/* Notifications Toggle */}
                 <View style={styles.settingRow}>
                     <View>
-                        <Text style={styles.settingLabel}>Notifications</Text>
-                        <Text style={styles.settingSubLabel}>Receive weekly flavor reports</Text>
+                        <Text style={[styles.settingLabel, { color: colors.text }]}>Notifications</Text>
+                        <Text style={[styles.settingSubLabel, { color: colorScheme === 'dark' ? '#aaa' : '#999' }]}>Receive weekly flavor reports</Text>
                     </View>
                     <Switch
                         value={notifications}

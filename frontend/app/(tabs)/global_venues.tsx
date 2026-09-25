@@ -5,14 +5,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
 import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme-context';
 
 interface Props {
     onPress: () => void;
 }
 const GlobalVenues = ({ onPress }: Props) => {
+    const { colorScheme } = useTheme();
     return (
         <ScrollView
-            style={styles.container}
+            style={[styles.container, { backgroundColor: Colors[colorScheme].background }]}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
                 minHeight: "100%",
@@ -22,9 +25,9 @@ const GlobalVenues = ({ onPress }: Props) => {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 20, marginTop: 90, marginBottom: 25 }}>
                 <TouchableOpacity
                     onPress={() => router.back()}>
-                    <Ionicons name="arrow-back" size={28} color="#918f8fff" />
+                    <Ionicons name="arrow-back" size={28} color={Colors[colorScheme].icon} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Global Venues</Text>
+                <Text style={[styles.title, { color: Colors[colorScheme].text }]}>Global Venues</Text>
             </View>
             <FlatList
                 data={exploreCities}
@@ -34,7 +37,7 @@ const GlobalVenues = ({ onPress }: Props) => {
                 scrollEnabled={false}
                 contentContainerStyle={{ gap: 12 }}
             />
-            <Text style={{ fontFamily: "LibreBaskerville", fontSize: 20, color: 'black', marginTop: 30, marginBottom: 20 }}>Top Rated Spots</Text>
+            <Text style={{ fontFamily: "LibreBaskerville", fontSize: 20, color: Colors[colorScheme].text, marginTop: 30, marginBottom: 20 }}>Top Rated Spots</Text>
             <TopRatedSpotsCard
                 spots={topRatedSpots}
             />

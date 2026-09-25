@@ -1,3 +1,5 @@
+import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme-context';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
@@ -21,7 +23,7 @@ import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
  */
 export default function LiquidGlass({
     intensity = 60,
-    tint = 'light',
+    tint,
     borderRadius = 26,
     style,
     children,
@@ -39,17 +41,13 @@ export default function LiquidGlass({
         ...layoutStyle
     } = flatStyle;
 
+    const { colorScheme } = useTheme();
+    const activeTint = tint || colorScheme;
+
     const outerStyle = {
         shadowColor, shadowOffset, shadowOpacity, shadowRadius, elevation,
         margin, marginTop, marginBottom, marginLeft, marginRight,
         marginHorizontal, marginVertical,
-        // Sizing has to reach the outer wrapper too, or it collapses to
-        // its content size whenever the parent doesn't stretch children
-        // (e.g. a flex parent with alignItems other than 'stretch').
-        width: flatStyle.width,
-        height: flatStyle.height,
-        flex: flatStyle.flex,
-        alignSelf: flatStyle.alignSelf,
     };
 
     return (
@@ -59,25 +57,15 @@ export default function LiquidGlass({
                 {/* 1. Frosted Backdrop — refracts colours underneath */}
                 <BlurView
                     intensity={Platform.OS === 'ios' ? intensity : Math.min(intensity, 40)}
-                    tint={tint}
+                    tint={activeTint}
                     experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
                     style={StyleSheet.absoluteFill}
                 />
 
                 {/* 2. Translucent gradient fill — from .lg-glass CSS:
-                     linear-gradient(135deg, rgba(255,255,255,0.26), rgba(255,255,255,0.08) 60%, rgba(255,255,255,0.16)).
-                     Dark tint gets a dark wash instead — a white wash here would
-                     defeat a "dark glass" blur by washing it back toward white. */}
+                     linear-gradient(135deg, rgba(255,255,255,0.26), rgba(255,255,255,0.08) 60%, rgba(255,255,255,0.16)) */}
                 <LinearGradient
-                    colors={tint === 'dark' ? [
-                        'rgba(0, 0, 0, 0.80)',
-                        'rgba(0, 0, 0, 0.60)',
-                        'rgba(0, 0, 0, 0.50)',
-                    ] : tint === 'default' ? [
-                        'rgba(120, 120, 120, 0.35)',
-                        'rgba(120, 120, 120, 0.15)',
-                        'rgba(120, 120, 120, 0.25)',
-                    ] : [
+                    colors={[
                         'rgba(255, 255, 255, 0.26)',
                         'rgba(255, 255, 255, 0.08)',
                         'rgba(255, 255, 255, 0.16)',
@@ -90,19 +78,9 @@ export default function LiquidGlass({
 
                 {/* 3. Top-lit specular sheen — subtle highlight matching
                      the reference's inset 1.8px 3px white highlights.
-                     Kept deliberately soft so it reads as a gentle lit edge.
-                     Still a light sheen on dark glass (a frosted highlight),
-                     just faint enough not to wash the surface back out. */}
+                     Kept deliberately soft so it reads as a gentle lit edge. */}
                 <LinearGradient
-                    colors={tint === 'dark' ? [
-                        'rgba(255, 255, 255, 0.12)',
-                        'rgba(255, 255, 255, 0.03)',
-                        'transparent',
-                    ] : tint === 'default' ? [
-                        'rgba(255, 255, 255, 0.20)',
-                        'rgba(255, 255, 255, 0.05)',
-                        'transparent',
-                    ] : [
+                    colors={[
                         'rgba(255, 255, 255, 0.30)',
                         'rgba(255, 255, 255, 0.06)',
                         'transparent',
@@ -125,7 +103,6 @@ export default function LiquidGlass({
 export function GlassCard({ children, style, borderRadius = 26, ...props }) {
     return (
         <LiquidGlass
-            tint="light"
             intensity={65}
             borderRadius={borderRadius}
             style={style}
@@ -157,7 +134,6 @@ export function GlassButton({ children, onPress, primary = false, style, ...prop
     return (
         <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={style} {...props}>
             <LiquidGlass
-                tint="light"
                 intensity={70}
                 borderRadius={50}
                 style={styles.glassButtonPadding}

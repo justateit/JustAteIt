@@ -4,7 +4,7 @@ interface Dish {
     restaurant: string;
     date: string;
     rating: number,
-    image: string | number; // number = require(), string = URL
+    image: any; // number = require(), string = URL
     location: string;
     tastingNotes: string;
     tags: string[];

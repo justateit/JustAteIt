@@ -4,8 +4,11 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
+import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme-context';
 import {
   ActivityIndicator,
   Animated,
@@ -30,9 +33,9 @@ const SCREEN_HEIGHT = Dimensions.get('window').height;
  * and fades out + slides down when scrolled out. Uses scrollY (Animated.Value)
  * and measures its own layout offset within the ScrollView content.
  */
-function AnimatedSection({ children, scrollY, delay = 0 }) {
-  const [opacity] = useState(() => new Animated.Value(0));
-  const [translateY] = useState(() => new Animated.Value(20));
+function AnimatedSection({ children, scrollY, delay = 0, style }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(20)).current;
   const isAnimated = useRef(false);
   const layoutY = useRef(0);
 
@@ -88,7 +91,7 @@ function AnimatedSection({ children, scrollY, delay = 0 }) {
   return (
     <Animated.View
       onLayout={handleLayout}
-      style={{ opacity, transform: [{ translateY }] }}
+      style={[{ opacity, transform: [{ translateY }] }, style]}
     >
       {children}
     </Animated.View>
@@ -97,6 +100,7 @@ function AnimatedSection({ children, scrollY, delay = 0 }) {
 
 export default function RecordExperience() {
   const { user } = useUser();
+  const { colorScheme } = useTheme();
   const { draftId } = useLocalSearchParams();
 
   const [dish, setDish] = useState('');
@@ -448,7 +452,7 @@ export default function RecordExperience() {
 
       {/* Background Gradient for Glass Effect */}
       <LinearGradient
-        colors={['#FFF0EA', '#F3F6F8', '#EAF2F8']}
+        colors={colorScheme === 'dark' ? ['#1A1A1A', '#121212', '#0A0A0A'] : ['#FFF0EA', '#F3F6F8', '#EAF2F8']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -490,17 +494,17 @@ export default function RecordExperience() {
 
           {/* Title */}
           <AnimatedSection scrollY={scrollY} delay={80}>
-            <Text style={styles.title}>Record an Experience</Text>
+            <Text style={[styles.title, { color: Colors[colorScheme].text }]}>Record an Experience</Text>
           </AnimatedSection>
 
           {/* Glass Dish Input */}
           <AnimatedSection scrollY={scrollY} delay={160}>
             <Text style={styles.sectionLabel}>THE DISH</Text>
-            <View style={styles.glassInputContainer}>
+            <View style={[styles.glassInputContainer, { backgroundColor: colorScheme === 'dark' ? 'rgba(40, 40, 40, 0.65)' : 'rgba(255, 255, 255, 0.65)', borderColor: colorScheme === 'dark' ? 'rgba(80, 80, 80, 0.9)' : 'rgba(255, 255, 255, 0.9)' }]}>
               <TextInput
-                style={styles.dishInput}
+                style={[styles.dishInput, { color: Colors[colorScheme].text }]}
                 placeholder="e.g. Mapo Tofu"
-                placeholderTextColor="rgba(60, 60, 67, 0.3)"
+                placeholderTextColor={colorScheme === 'dark' ? "rgba(255, 255, 255, 0.3)" : "rgba(60, 60, 67, 0.3)"}
                 value={dish}
                 onChangeText={setDish}
               />
@@ -512,13 +516,14 @@ export default function RecordExperience() {
             <View style={styles.toggleOuterContainer}>
               <LiquidGlass
                 borderRadius={25}
-                style={styles.toggleGlassWrapper}
+                style={[styles.toggleGlassWrapper, { backgroundColor: colorScheme === 'dark' ? 'rgba(50, 50, 50, 0.3)' : 'rgba(255,255,255,0.3)', borderColor: colorScheme === 'dark' ? 'rgba(100, 100, 100, 0.5)' : 'rgba(255, 255, 255, 0.5)' }]}
               >
 
                 {/* Animated Background Pill */}
                 <Animated.View
                   style={[
                     styles.toggleSlider,
+                    { backgroundColor: colorScheme === 'dark' ? '#444' : '#FFFFFF' },
                     {
                       width: sliderWidth,
                       transform: [{
@@ -544,10 +549,10 @@ export default function RecordExperience() {
                     <MaterialIcons
                       name="restaurant"
                       size={16}
-                      color={isRestaurant ? '#333' : '#666'}
+                      color={isRestaurant ? (colorScheme === 'dark' ? '#FFF' : '#333') : '#666'}
                       style={styles.toggleIcon}
                     />
-                    <Text style={[styles.toggleText, isRestaurant && styles.toggleTextActive]}>
+                    <Text style={[styles.toggleText, isRestaurant && styles.toggleTextActive, isRestaurant && { color: colorScheme === 'dark' ? '#FFF' : '#333' }]}>
                       RESTAURANT
                     </Text>
                   </TouchableOpacity>
@@ -560,10 +565,10 @@ export default function RecordExperience() {
                     <Ionicons
                       name="home-outline"
                       size={16}
-                      color={!isRestaurant ? '#333' : '#666'}
+                      color={!isRestaurant ? (colorScheme === 'dark' ? '#FFF' : '#333') : '#666'}
                       style={styles.toggleIcon}
                     />
-                    <Text style={[styles.toggleText, !isRestaurant && styles.toggleTextActive]}>
+                    <Text style={[styles.toggleText, !isRestaurant && styles.toggleTextActive, !isRestaurant && { color: colorScheme === 'dark' ? '#FFF' : '#333' }]}>
                       HOME COOKED
                     </Text>
                   </TouchableOpacity>
@@ -574,30 +579,42 @@ export default function RecordExperience() {
 
           {/* Venue and City Inputs — hidden when Home Cooked */}
           {isRestaurant && (
-            <AnimatedSection scrollY={scrollY} delay={320}>
-              <View style={styles.row}>
-                <View style={styles.halfWidth}>
-                  <Text style={styles.fieldLabel}>VENUE</Text>
-                  <View style={styles.glassInputSmall}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Name"
-                      placeholderTextColor="rgba(60, 60, 67, 0.3)"
-                      value={venue}
-                      onChangeText={setVenue}
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.halfWidth}>
-                  <Text style={styles.fieldLabel}>CITY</Text>
-                  <View style={styles.glassInputSmall}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Location"
-                      placeholderTextColor="rgba(60, 60, 67, 0.3)"
-                      value={city}
-                      onChangeText={setCity}
+            <AnimatedSection scrollY={scrollY} delay={320} style={{ zIndex: 999 }}>
+              <View style={[styles.row, { zIndex: 999 }]}>
+                <View style={{ width: '100%', zIndex: 999 }}>
+                  <Text style={styles.fieldLabel}>VENUE & CITY</Text>
+                  <View style={[styles.glassInputSmall, { padding: 0, overflow: 'visible', zIndex: 999, backgroundColor: colorScheme === 'dark' ? 'rgba(40, 40, 40, 0.65)' : 'rgba(255, 255, 255, 0.65)', borderColor: colorScheme === 'dark' ? 'rgba(80, 80, 80, 0.9)' : 'rgba(255, 255, 255, 0.9)' }]}>
+                    <GooglePlacesAutocomplete
+                      placeholder="Search for a restaurant..."
+                      onPress={(data, details = null) => {
+                        setVenue(data.structured_formatting?.main_text || data.description.split(',')[0]);
+                        setCity(data.structured_formatting?.secondary_text || data.description);
+                      }}
+                      query={{
+                        key: process.env.EXPO_PUBLIC_GOOGLE_API_KEY,
+                        language: 'en',
+                        types: 'establishment',
+                      }}
+                      styles={{
+                        container: { flex: 0 },
+                        textInput: [styles.input, { paddingHorizontal: 12, height: 44, color: Colors[colorScheme].text, backgroundColor: 'transparent' }],
+                        listView: {
+                          position: 'absolute',
+                          top: 45,
+                          backgroundColor: Colors[colorScheme].card,
+                          borderRadius: 8,
+                          elevation: 5,
+                          zIndex: 1000,
+                        },
+                        description: { color: Colors[colorScheme].text }
+                      }}
+                      textInputProps={{
+                        placeholderTextColor: colorScheme === 'dark' ? "rgba(255, 255, 255, 0.3)" : "rgba(60, 60, 67, 0.3)"
+                      }}
+                      requestUrl={{
+                        useOnWeb: true,
+                        url: 'http://localhost:8000/api/v1/places',
+                      }}
                     />
                   </View>
                 </View>
@@ -624,11 +641,11 @@ export default function RecordExperience() {
           {/* Sensory Notes Glass Card */}
           <AnimatedSection scrollY={scrollY} delay={400}>
             <Text style={styles.sectionLabel}>SENSORY NOTES</Text>
-            <View style={styles.notesContainer}>
+            <View style={[styles.notesContainer, { backgroundColor: colorScheme === 'dark' ? 'rgba(40, 40, 40, 0.5)' : 'rgba(255, 255, 255, 0.5)', borderColor: colorScheme === 'dark' ? 'rgba(80, 80, 80, 0.6)' : 'rgba(255, 255, 255, 0.6)' }]}>
               <TextInput
-                style={styles.textArea}
+                style={[styles.textArea, { color: Colors[colorScheme].text }]}
                 placeholder="Describe the texture, the key flavors, the aroma..."
-                placeholderTextColor="rgba(60, 60, 67, 0.3)"
+                placeholderTextColor={colorScheme === 'dark' ? "rgba(255, 255, 255, 0.3)" : "rgba(60, 60, 67, 0.3)"}
                 value={sensoryNotes}
                 onChangeText={setSensoryNotes}
                 multiline
@@ -663,9 +680,14 @@ export default function RecordExperience() {
           {/* Actions */}
           <AnimatedSection scrollY={scrollY} delay={480}>
             <View style={styles.actionsRow}>
-              <TouchableOpacity style={styles.glassUploadButton} onPress={handleUpload} disabled={uploading}>
-                <Ionicons name={uploading ? "cloud-upload-outline" : "camera-outline"} size={18} color={uploading ? "#FF6B4A" : "#555"} />
-                <Text style={[styles.uploadButtonText, uploading && { color: '#FF6B4A' }]}>
+              <TouchableOpacity style={styles.glassActionButton}>
+                <Ionicons name="flask-outline" size={18} color="#FF6B4A" />
+                <Text style={styles.actionButtonText}>Flavor AI</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={[styles.glassUploadButton, { backgroundColor: colorScheme === 'dark' ? 'rgba(40,40,40,0.8)' : 'rgba(255,255,255,0.8)', borderColor: colorScheme === 'dark' ? '#444' : '#FFF' }]} onPress={handleUpload} disabled={uploading}>
+                <Ionicons name={uploading ? "cloud-upload-outline" : "camera-outline"} size={18} color={uploading ? "#FF6B4A" : (colorScheme === 'dark' ? '#AAA' : '#555')} />
+                <Text style={[styles.uploadButtonText, { color: colorScheme === 'dark' ? '#AAA' : '#555' }, uploading && { color: '#FF6B4A' }]}>
                   {uploading ? 'Processing...' : 'Add Photo'}</Text>
               </TouchableOpacity>
             </View>
@@ -694,10 +716,10 @@ export default function RecordExperience() {
                 disabled={archiving}
               >
                 <LinearGradient
-                  colors={['#FFF', '#F0F0F0']}
-                  style={styles.archiveGradient}
+                  colors={colorScheme === 'dark' ? ['#444', '#222'] : ['#FFF', '#F0F0F0']}
+                  style={[styles.archiveGradient, { borderColor: colorScheme === 'dark' ? '#555' : '#FFF' }]}
                 >
-                  <Text style={styles.archiveButtonText}>
+                  <Text style={[styles.archiveButtonText, { color: colorScheme === 'dark' ? '#FFF' : '#333' }]}>
                     {archiving ? 'SAVING...' : 'ARCHIVE LOG'}
                   </Text>
                 </LinearGradient>

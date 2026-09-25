@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { Image } from 'expo-image';
 import React, { useEffect, useState } from 'react';
 import {
@@ -13,6 +14,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme-context';
 import { deleteLog, updateLog } from '../utils/flavorProfileApi';
 
 function formatDateDisplay(d?: string) {
@@ -41,6 +44,7 @@ const HorizontalDishCard = ({
     image,
     location,
     tastingNotes,
+    chemistryInsight,
     tags,
     onUpdated,
     onDeleted,
@@ -49,6 +53,7 @@ const HorizontalDishCard = ({
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const { colorScheme } = useTheme();
 
     // Live display state
     const [currentTitle, setCurrentTitle] = useState(title);
@@ -63,10 +68,6 @@ const HorizontalDishCard = ({
     const [editNotes, setEditNotes] = useState(tastingNotes);
 
     useEffect(() => {
-        // Re-syncs from parent-owned props when they change (e.g. after a
-        // sibling refetch) — currentX also diverges locally after this card's
-        // own edit, so it can't be derived during render.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCurrentTitle(title);
         setCurrentRestaurant(restaurant);
         setCurrentRating(rating);
@@ -167,7 +168,7 @@ const HorizontalDishCard = ({
                 onPress={() => setModalVisible(true)}
                 activeOpacity={0.9}
             >
-                <View style={styles.cardContainer}>
+                <View style={[styles.cardContainer, { backgroundColor: Colors[colorScheme].card }]}>
                     <Image
                         source={typeof image === 'string' ? { uri: image } : image}
                         style={styles.cardImage}
@@ -220,8 +221,8 @@ const HorizontalDishCard = ({
                     else setModalVisible(false);
                 }}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
+                <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.6)' }]}>
+                    <View style={[styles.modalContent, { backgroundColor: Colors[colorScheme].background }]}>
                         {/* Header Cover Image */}
                         <View style={styles.modalImageContainer}>
                             <Image
@@ -244,33 +245,60 @@ const HorizontalDishCard = ({
                                 <Ionicons name="close" size={20} color="#FFFFFF" />
                             </TouchableOpacity>
 
-                            {/* Top Right Actions — only during editing; view-mode Edit/Delete
-                                live in the Reviewer Score header below instead of being
-                                duplicated up here. */}
-                            {isEditing && (
-                                <View style={styles.topActionsRow}>
-                                    <TouchableOpacity
-                                        style={styles.cancelBadge}
-                                        onPress={cancelEditMode}
-                                        activeOpacity={0.8}
-                                    >
-                                        <Text style={styles.cancelBadgeText}>CANCEL</Text>
-                                    </TouchableOpacity>
+                            {/* Top Right Actions */}
+                            <View style={styles.topActionsRow}>
+                                {!isEditing ? (
+                                    <>
+                                        <TouchableOpacity
+                                            style={styles.editBadge}
+                                            onPress={openEditMode}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Ionicons name="pencil" size={13} color="#FFFFFF" />
+                                            <Text style={styles.badgeActionText}>EDIT</Text>
+                                        </TouchableOpacity>
 
-                                    <TouchableOpacity
-                                        style={styles.saveBadge}
-                                        onPress={handleSave}
-                                        disabled={isSaving}
-                                        activeOpacity={0.8}
-                                    >
-                                        {isSaving ? (
-                                            <ActivityIndicator size="small" color="#FFFFFF" />
-                                        ) : (
-                                            <Text style={styles.saveBadgeText}>SAVE</Text>
-                                        )}
-                                    </TouchableOpacity>
-                                </View>
-                            )}
+                                        <TouchableOpacity
+                                            style={styles.deleteBadge}
+                                            onPress={handleDelete}
+                                            disabled={isDeleting}
+                                            activeOpacity={0.8}
+                                        >
+                                            {isDeleting ? (
+                                                <ActivityIndicator size="small" color="#FFFFFF" />
+                                            ) : (
+                                                <>
+                                                    <Ionicons name="trash-outline" size={13} color="#FFFFFF" />
+                                                    <Text style={styles.badgeActionText}>DELETE</Text>
+                                                </>
+                                            )}
+                                        </TouchableOpacity>
+                                    </>
+                                ) : (
+                                    <>
+                                        <TouchableOpacity
+                                            style={styles.cancelBadge}
+                                            onPress={cancelEditMode}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={styles.cancelBadgeText}>CANCEL</Text>
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            style={styles.saveBadge}
+                                            onPress={handleSave}
+                                            disabled={isSaving}
+                                            activeOpacity={0.8}
+                                        >
+                                            {isSaving ? (
+                                                <ActivityIndicator size="small" color="#FFFFFF" />
+                                            ) : (
+                                                <Text style={styles.saveBadgeText}>SAVE</Text>
+                                            )}
+                                        </TouchableOpacity>
+                                    </>
+                                )}
+                            </View>
 
                             {/* Header Dish & Venue info (view mode) */}
                             {!isEditing && (
@@ -313,29 +341,56 @@ const HorizontalDishCard = ({
                                     <Text style={styles.editFormHeading}>EDIT FOOD MEMORY</Text>
 
                                     <View style={styles.inputGroup}>
-                                        <Text style={styles.inputLabel}>DISH NAME</Text>
+                                        <Text style={[styles.inputLabel, { color: Colors[colorScheme].text }]}>DISH NAME</Text>
                                         <TextInput
-                                            style={styles.textInput}
+                                            style={[styles.textInput, { color: Colors[colorScheme].text, backgroundColor: colorScheme === 'dark' ? '#222' : '#FFF', borderColor: colorScheme === 'dark' ? '#444' : '#E0E0E0' }]}
                                             value={editTitle}
                                             onChangeText={setEditTitle}
                                             placeholder="What did you eat?"
-                                            placeholderTextColor="#999"
+                                            placeholderTextColor={colorScheme === 'dark' ? '#AAA' : '#999'}
                                         />
                                     </View>
 
-                                    <View style={styles.inputGroup}>
-                                        <Text style={styles.inputLabel}>VENUE / RESTAURANT</Text>
-                                        <TextInput
-                                            style={styles.textInput}
-                                            value={editRestaurant}
-                                            onChangeText={setEditRestaurant}
-                                            placeholder="Restaurant or home-cooked"
-                                            placeholderTextColor="#999"
-                                        />
+                                    <View style={[styles.inputGroup, { zIndex: 999 }]}>
+                                        <Text style={[styles.inputLabel, { color: Colors[colorScheme].text }]}>VENUE / RESTAURANT</Text>
+                                        <View style={{ zIndex: 999 }}>
+                                          <GooglePlacesAutocomplete
+                                            placeholder="Search for a restaurant..."
+                                            onPress={(data) => {
+                                              setEditRestaurant(data.structured_formatting?.main_text || data.description.split(',')[0]);
+                                            }}
+                                            query={{
+                                              key: process.env.EXPO_PUBLIC_GOOGLE_API_KEY,
+                                              language: 'en',
+                                              types: 'establishment',
+                                            }}
+                                            styles={{
+                                              container: { flex: 0 },
+                                              textInput: [styles.textInput, { color: Colors[colorScheme].text, backgroundColor: colorScheme === 'dark' ? '#222' : '#FFF', borderColor: colorScheme === 'dark' ? '#444' : '#E0E0E0' }],
+                                              listView: {
+                                                position: 'absolute',
+                                                top: 45,
+                                                backgroundColor: Colors[colorScheme].card,
+                                                borderRadius: 8,
+                                                elevation: 5,
+                                                zIndex: 1000,
+                                              },
+                                              description: { color: Colors[colorScheme].text }
+                                            }}
+                                            textInputProps={{
+                                              placeholderTextColor: colorScheme === 'dark' ? '#AAA' : '#999',
+                                              defaultValue: editRestaurant
+                                            }}
+                                            requestUrl={{
+                                              useOnWeb: true,
+                                              url: 'http://localhost:8000/api/v1/places',
+                                            }}
+                                          />
+                                        </View>
                                     </View>
 
                                     <View style={styles.inputGroup}>
-                                        <Text style={styles.inputLabel}>RATING</Text>
+                                        <Text style={[styles.inputLabel, { color: Colors[colorScheme].text }]}>RATING</Text>
                                         <View style={styles.starRow}>
                                             {[1, 2, 3, 4, 5].map((star) => (
                                                 <TouchableOpacity
@@ -350,20 +405,20 @@ const HorizontalDishCard = ({
                                                     />
                                                 </TouchableOpacity>
                                             ))}
-                                            <Text style={styles.starScoreText}>
+                                            <Text style={[styles.starScoreText, { color: Colors[colorScheme].text }]}>
                                                 {Number(editRating).toFixed(1)} / 5.0
                                             </Text>
                                         </View>
                                     </View>
 
                                     <View style={styles.inputGroup}>
-                                        <Text style={styles.inputLabel}>TASTING & SENSORY NOTES</Text>
+                                        <Text style={[styles.inputLabel, { color: Colors[colorScheme].text }]}>TASTING & SENSORY NOTES</Text>
                                         <TextInput
-                                            style={[styles.textInput, styles.textAreaInput]}
+                                            style={[styles.textInput, styles.textAreaInput, { color: Colors[colorScheme].text, backgroundColor: colorScheme === 'dark' ? '#222' : '#FFF', borderColor: colorScheme === 'dark' ? '#444' : '#E0E0E0' }]}
                                             value={editNotes}
                                             onChangeText={setEditNotes}
                                             placeholder="Describe the flavor, texture, acid, spice..."
-                                            placeholderTextColor="#999"
+                                            placeholderTextColor={colorScheme === 'dark' ? '#AAA' : '#999'}
                                             multiline
                                             numberOfLines={4}
                                             textAlignVertical="top"
@@ -372,11 +427,11 @@ const HorizontalDishCard = ({
 
                                     <View style={styles.formActionButtons}>
                                         <TouchableOpacity
-                                            style={styles.formCancelBtn}
+                                            style={[styles.formCancelBtn, { backgroundColor: Colors[colorScheme].card }]}
                                             onPress={cancelEditMode}
                                             activeOpacity={0.8}
                                         >
-                                            <Text style={styles.formCancelBtnText}>Cancel</Text>
+                                            <Text style={[styles.formCancelBtnText, { color: Colors[colorScheme].text }]}>Cancel</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                             style={styles.formSaveBtn}
@@ -397,28 +452,21 @@ const HorizontalDishCard = ({
                                 <>
                                     {/* Reviewer Score Header */}
                                     <View style={styles.scoreRow}>
-                                        <Text style={styles.scoreLabel}>REVIEWER SCORE</Text>
+                                        <Text style={[styles.scoreLabel, { color: colorScheme === 'dark' ? '#AAA' : '#888' }]}>REVIEWER SCORE</Text>
                                         <View style={styles.scoreActionButtons}>
                                             <TouchableOpacity
-                                                style={styles.actionPill}
+                                                style={[styles.actionPill, { backgroundColor: Colors[colorScheme].card }]}
                                                 onPress={openEditMode}
                                             >
-                                                <Ionicons name="create-outline" size={16} color="#444" />
-                                                <Text style={styles.actionPillText}>Edit</Text>
+                                                <Ionicons name="create-outline" size={16} color={Colors[colorScheme].text} />
+                                                <Text style={[styles.actionPillText, { color: Colors[colorScheme].text }]}>Edit</Text>
                                             </TouchableOpacity>
                                             <TouchableOpacity
-                                                style={[styles.actionPill, styles.deletePill]}
+                                                style={[styles.actionPill, styles.deletePill, { backgroundColor: colorScheme === 'dark' ? 'rgba(217, 56, 30, 0.2)' : '#FDEEEB' }]}
                                                 onPress={handleDelete}
-                                                disabled={isDeleting}
                                             >
-                                                {isDeleting ? (
-                                                    <ActivityIndicator size="small" color="#D9381E" />
-                                                ) : (
-                                                    <>
-                                                        <Ionicons name="trash-outline" size={16} color="#D9381E" />
-                                                        <Text style={[styles.actionPillText, styles.deletePillText]}>Delete</Text>
-                                                    </>
-                                                )}
+                                                <Ionicons name="trash-outline" size={16} color="#D9381E" />
+                                                <Text style={[styles.actionPillText, styles.deletePillText]}>Delete</Text>
                                             </TouchableOpacity>
                                         </View>
                                     </View>
@@ -432,30 +480,40 @@ const HorizontalDishCard = ({
                                         <Text style={styles.ratingMax}>5.0</Text>
                                     </View>
 
-                                    <View style={styles.divider} />
+                                    <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0, 0, 0, 0.08)' }]} />
 
                                     {/* Tasting Notes */}
-                                    <Text style={styles.sectionLabel}>TASTING NOTES</Text>
-                                    <Text style={styles.notesQuote}>
+                                    <Text style={[styles.sectionLabel, { color: colorScheme === 'dark' ? '#AAA' : '#888' }]}>TASTING NOTES</Text>
+                                    <Text style={[styles.notesQuote, { color: Colors[colorScheme].text }]}>
                                         &quot;{currentNotes || 'No sensory notes recorded.'}&quot;
                                     </Text>
 
                                     {/* Sensory Profile Pill */}
-                                    <View style={styles.sensoryCard}>
+                                    <View style={[styles.sensoryCard, { backgroundColor: Colors[colorScheme].card }]}>
                                         <View style={styles.sensoryIndicator}>
                                             <View style={styles.sensoryDot} />
-                                            <Text style={styles.sensoryLabel}>SENSORY PROFILE</Text>
+                                            <Text style={[styles.sensoryLabel, { color: colorScheme === 'dark' ? '#AAA' : '#888' }]}>SENSORY PROFILE</Text>
                                         </View>
                                     </View>
+
+                                    {/* Chemistry Insight (if exists) */}
+                                    {chemistryInsight ? (
+                                        <>
+                                            <Text style={[styles.chemistryLabel, { color: '#FF6B4A' }]}>CHEMISTRY INSIGHT</Text>
+                                            <View style={[styles.chemistryCard, { backgroundColor: Colors[colorScheme].card }]}>
+                                                <Text style={[styles.chemistryText, { color: Colors[colorScheme].text }]}>{chemistryInsight}</Text>
+                                            </View>
+                                        </>
+                                    ) : null}
 
                                     {/* Tags */}
                                     {tags && tags.length > 0 ? (
                                         <>
-                                            <View style={styles.divider} />
+                                            <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0, 0, 0, 0.08)' }]} />
                                             <View style={styles.tagsContainer}>
                                                 {tags.map((tag) => (
-                                                    <View key={tag} style={styles.tagBox}>
-                                                        <Text style={styles.tagText}>#{tag}</Text>
+                                                    <View key={tag} style={[styles.tagBox, { backgroundColor: Colors[colorScheme].card, borderColor: colorScheme === 'dark' ? '#444' : 'gray' }]}>
+                                                        <Text style={[styles.tagText, { color: Colors[colorScheme].text }]}>#{tag}</Text>
                                                     </View>
                                                 ))}
                                             </View>
@@ -494,25 +552,22 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     cardOverlay: {
-        ...StyleSheet.absoluteFill,
+        ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(0, 0, 0, 0.32)',
     },
     ratingBadge: {
         position: 'absolute',
         top: 14,
         right: 14,
-        backgroundColor: 'rgba(255, 255, 255, 0.56)',
+        backgroundColor: 'rgba(0, 0, 0, 0.55)',
         borderRadius: 16,
         paddingHorizontal: 10,
         paddingVertical: 5,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 1,
-        shadowRadius: 5,
-        elevation: 5,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.25)',
     },
     ratingText: {
         fontSize: 12,
@@ -527,10 +582,10 @@ const styles = StyleSheet.create({
         padding: 16,
     },
     dishName: {
-        fontFamily: "LibreBaskerville",
-        fontSize: 25,
+        fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+        fontSize: 22,
         color: '#FFFFFF',
-        fontWeight: '900',
+        fontWeight: '700',
         marginBottom: 4,
         textShadowColor: 'rgba(0, 0, 0, 0.4)',
         textShadowOffset: { width: 0, height: 1 },
@@ -559,11 +614,10 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: '#F4F0E6',
-        borderRadius: 24,
-        maxHeight: '85%',
-        marginHorizontal: 16,
-        marginBottom: 60,
+        backgroundColor: '#F7F4EC',
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        maxHeight: '90%',
         overflow: 'hidden',
     },
     modalImageContainer: {
@@ -577,7 +631,7 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     modalImageOverlay: {
-        ...StyleSheet.absoluteFill,
+        ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(0, 0, 0, 0.35)',
     },
     closeBtn: {
@@ -602,6 +656,28 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
         zIndex: 10,
+    },
+    editBadge: {
+        backgroundColor: 'rgba(0, 0, 0, 0.55)',
+        borderRadius: 18,
+        paddingHorizontal: 12,
+        paddingVertical: 7,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    deleteBadge: {
+        backgroundColor: 'rgba(217, 56, 30, 0.75)',
+        borderRadius: 18,
+        paddingHorizontal: 12,
+        paddingVertical: 7,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
     },
     cancelBadge: {
         backgroundColor: 'rgba(255, 255, 255, 0.85)',
@@ -632,6 +708,12 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         letterSpacing: 0.8,
     },
+    badgeActionText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        letterSpacing: 0.8,
+    },
     modalHeaderBottom: {
         position: 'absolute',
         bottom: 0,
@@ -640,10 +722,10 @@ const styles = StyleSheet.create({
         padding: 18,
     },
     modalDishTitle: {
-        fontFamily: "LibreBaskerville",
+        fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
         fontSize: 24,
         color: '#FFFFFF',
-        fontWeight: '900',
+        fontWeight: '700',
         marginBottom: 4,
     },
 
@@ -697,19 +779,19 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     ratingBigNumber: {
-        fontSize: 44,
+        fontSize: 54,
         fontWeight: '700',
         color: '#FF6B4A',
-        fontFamily: "LibreBaskerville-Bold",
+        fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
         letterSpacing: 1,
     },
     ratingSlash: {
-        fontSize: 16,
+        fontSize: 22,
         color: '#999',
         marginLeft: 4,
     },
     ratingMax: {
-        fontSize: 16,
+        fontSize: 22,
         color: '#999',
         marginLeft: 4,
     },
@@ -757,6 +839,26 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '700',
         color: '#777',
+    },
+    chemistryLabel: {
+        letterSpacing: 1.5,
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#FF6B4A',
+        marginBottom: 8,
+    },
+    chemistryCard: {
+        backgroundColor: '#FFFFFF',
+        padding: 16,
+        borderLeftColor: '#FF6B4A',
+        borderLeftWidth: 4,
+        borderRadius: 8,
+        marginBottom: 16,
+    },
+    chemistryText: {
+        fontSize: 13,
+        color: '#333',
+        lineHeight: 19,
     },
     tagsContainer: {
         flexDirection: 'row',

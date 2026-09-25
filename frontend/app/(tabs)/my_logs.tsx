@@ -6,12 +6,15 @@ import { useFonts } from 'expo-font';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme-context';
 
 export default function HomeScreen() {
     const [fontsLoaded] = useFonts({
         'LibreBaskerville': require('@/assets/fonts/LibreBaskerville-VariableFont_wght.ttf'),
         'LibreBaskervilleItalic': require('@/assets/fonts/LibreBaskerville-Italic-VariableFont_wght.ttf'),
     });
+    const { colorScheme } = useTheme();
 
     const [activeFilter, setActiveFilter] = useState('all');
 
@@ -19,7 +22,7 @@ export default function HomeScreen() {
 
     return (
         <ScrollView
-            style={styles.container}
+            style={[styles.container, { backgroundColor: Colors[colorScheme].background }]}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
                 minHeight: "100%",
@@ -31,9 +34,9 @@ export default function HomeScreen() {
                     onPress={() => {
                         router.push('/profile')
                     }}>
-                    <Ionicons name="arrow-back" size={28} color="#918f8fff" />
+                    <Ionicons name="arrow-back" size={28} color={Colors[colorScheme].icon} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Saved Logs</Text>
+                <Text style={[styles.title, { color: Colors[colorScheme].text }]}>Saved Logs</Text>
             </View>
             <SearchBar
                 value=""
@@ -45,21 +48,21 @@ export default function HomeScreen() {
 
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 20, marginBottom: 20, marginLeft: 5, marginRight: 5 }}>
                 <TouchableOpacity
-                    style={[styles.filterButton, activeFilter === 'all' && styles.filterButtonActive]}
+                    style={[styles.filterButton, { backgroundColor: Colors[colorScheme].card }, activeFilter === 'all' && styles.filterButtonActive]}
                     onPress={() => setActiveFilter('all')}>
-                    <Text style={[styles.filterText, activeFilter === 'all' && styles.filterTextActive]}>All</Text>
+                    <Text style={[styles.filterText, { color: Colors[colorScheme].text }, activeFilter === 'all' && styles.filterTextActive]}>All</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={[styles.filterButton, activeFilter === 'recent' && styles.filterButtonActive]}
+                    style={[styles.filterButton, { backgroundColor: Colors[colorScheme].card }, activeFilter === 'recent' && styles.filterButtonActive]}
                     onPress={() => setActiveFilter('recent')}>
-                    <Text style={[styles.filterText, activeFilter === 'recent' && styles.filterTextActive]}>Recent</Text>
+                    <Text style={[styles.filterText, { color: Colors[colorScheme].text }, activeFilter === 'recent' && styles.filterTextActive]}>Recent</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={[styles.filterButton, activeFilter === 'cuisine' && styles.filterButtonActive]}
+                    style={[styles.filterButton, { backgroundColor: Colors[colorScheme].card }, activeFilter === 'cuisine' && styles.filterButtonActive]}
                     onPress={() => setActiveFilter('cuisine')}>
-                    <Text style={[styles.filterText, activeFilter === 'cuisine' && styles.filterTextActive]}>Cuisine</Text>
+                    <Text style={[styles.filterText, { color: Colors[colorScheme].text }, activeFilter === 'cuisine' && styles.filterTextActive]}>Cuisine</Text>
                 </TouchableOpacity>
             </View>
 

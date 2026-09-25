@@ -2,7 +2,7 @@ import BottomNav from '@/components/BottomNav';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ClerkLoaded, ClerkProvider } from '@clerk/clerk-expo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
+
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -44,14 +44,25 @@ const tokenCache = {
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_dGllZC1maXRjaGUtc2t1bmstNTYuY2xlcmsuYWNjb3VudHMuZGV2JA'; // added a dummy key to prevent crashes if .env is missing. User should replace this.
 
+import { ThemeProvider as NavThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
+import { ThemeProvider, useTheme } from '@/hooks/use-theme-context';
+
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  return (
+    <ThemeProvider>
+      <RootLayoutInner />
+    </ThemeProvider>
+  );
+}
+
+function RootLayoutInner() {
+  const { colorScheme } = useTheme();
 
   return (
     <QueryClientProvider client={queryClient}>
       <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
         <ClerkLoaded>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <NavThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <View style={styles.container}>
               <Stack>
                 <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
@@ -67,10 +78,10 @@ export default function RootLayout() {
                 <Stack.Screen name="settings" options={{ headerShown: false }} />
                 <Stack.Screen name="authenticate" options={{ headerShown: false }} />
               </Stack>
-              <StatusBar style="auto" />
+              <StatusBar style={colorScheme === 'dark' ? "light" : "dark"} />
               <RootBottomNav />
             </View>
-          </ThemeProvider>
+          </NavThemeProvider>
         </ClerkLoaded>
       </ClerkProvider>
     </QueryClientProvider>
