@@ -1,5 +1,4 @@
 import anthropic
-import asyncio
 import httpx
 import os
 import json
@@ -282,14 +281,24 @@ async def fetch_user_logs(user_id: str) -> list:
         print(f"Failed to fetch logs from catalog_service: {e}")
         return []
 
-async def fetch_real_venues(city: str, cuisine: str, limit: int = 6) -> list:
-    """Real restaurants of `cuisine` in `city`, via catalog_service. Returns [] on failure."""
+async def fetch_real_venues(cities: list, cuisines: list, limit: int = 60) -> list:
+    """
+    Real restaurants for these cities/cuisines, via catalog_service.
+
+    One call covers every pair — the upstream venue APIs are slow and rate
+    limited, so this must not be called in a loop. Returns [] on failure, which
+    callers treat as "name no restaurant" rather than falling back to a guess.
+    """
     catalog_svc_url = os.getenv("CATALOG_SERVICE_URL", "http://localhost:8002")
     try:
-        async with httpx.AsyncClient(timeout=12.0) as client:
+        async with httpx.AsyncClient(timeout=20.0) as client:
             response = await client.get(
                 f"{catalog_svc_url}/venues/search",
-                params={"city": city, "cuisine": cuisine, "limit": limit},
+                params={
+                    "cities": ",".join(cities),
+                    "cuisines": ",".join(cuisines),
+                    "limit": limit,
+                },
             )
             response.raise_for_status()
             return response.json().get("venues", [])
@@ -352,22 +361,27 @@ async def get_recommendations(user_id: str, exclude: str = "", db: Session = Dep
     # the cities this user dines in. Overpass rate-limits bursts — it answers one
     # query fine but rejects a handful fired at once — so these run sequentially
     # with a stagger, and the total is capped to keep the request tolerable.
-    real_venues = []
-    # City-major on purpose: both cuisines get searched in the first city before
-    # we spend the budget on a second one, so the list covers both cuisines even
-    # when a city turns up nothing (OSM cuisine tags are volunteer-supplied and
-    # thin in some suburbs — Gilbert AZ has restaurants but almost no tags).
-    lookups = [
-        (city, cuisine)
-        for city in cities[:3]
-        for cuisine in [name for name, _ in cuisine_ranked[:2]]
-    ]
-    for i, (city, cuisine) in enumerate(lookups[:4]):
-        if i:
-            await asyncio.sleep(1.0)  # stay under Overpass's burst limit
-        for v in await fetch_real_venues(city, cuisine, limit=4):
-            if v.get("name"):
-                real_venues.append(f"{v['name']} — {cuisine} in {city}")
+    # Venues the user has already logged are the reliable floor: each was resolved
+    # through Places/OSM when the meal was logged, so it is a real business, and
+    # reusing it costs no request. The external search only widens the pool — the
+    # public Overpass instance is slow and frequently answers "server too busy",
+    # so it can never be the only source or the venue line goes blank.
+    real_venues, seen_venues = [], set()
+    for log in logs:
+        name, city = log.get("venue_name"), log.get("city")
+        if not name or name == "Private Location" or (name, city) in seen_venues:
+            continue
+        seen_venues.add((name, city))
+        real_venues.append(
+            f"{name} — {log.get('cuisine') or 'unknown cuisine'} in {city or 'their area'} (already visited)"
+        )
+
+    for v in await fetch_real_venues(cities[:2], [name for name, _ in cuisine_ranked[:2]]):
+        name, city = v.get("name"), v.get("city")
+        if not name or (name, city) in seen_venues:
+            continue
+        seen_venues.add((name, city))
+        real_venues.append(f"{name} — {v.get('cuisine', '')} in {city}")
 
     ratings = [log["rating"] for log in logs if log.get("rating") is not None]
     avg_rating = round(sum(ratings) / len(ratings), 2) if ratings else 0
@@ -399,7 +413,7 @@ Task: Recommend exactly 3 dishes. Work through these steps in order.
 
 Step 1. Set the target cuisine: the first entry in "Top-rated cuisines". Ties break on rating, never on log count.
 Step 2. Build each of the 3 recommendations around an entry from the "Real restaurants" list: pick the restaurant first, then a dish that restaurant plausibly serves. Copy its name and city exactly as listed. Prefer the target cuisine for at least 2 of the 3.
-Step 3. If that list has fewer than 3 usable entries, use one of its restaurants more than once with a different dish each time. Recommending two dishes at the same real place is always better than naming a place that does not exist. Only when the list is completely empty may restaurant be "" — and the city must still be one they have logged.
+Step 3. Every recommendation must name a restaurant from that list. If it has fewer than 3 usable entries, use one of its restaurants more than once with a different dish each time. Two dishes at one real place beats naming a place that does not exist. An entry marked "(already visited)" is a fine choice — suggesting a new dish somewhere they liked is useful — but do not say "already visited" or "again" in your output. Only when the list is completely empty may restaurant be "".
 Step 4. Never write a restaurant name that is not on that list. An invented venue sends the user somewhere that does not exist, which is worse than any other flaw in the output.
 Step 5. Compare the highest flavor score to the second-highest. Gap under 0.15: mention no flavor dimension anywhere in your output. Gap 0.15 or more: you may cite that one dimension.
 Step 6. Write the three fields, obeying the writing rules.

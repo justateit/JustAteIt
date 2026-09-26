@@ -9,7 +9,7 @@ import httpx
 from shared.database import get_db
 from services.catalog_service.db import models
 from services.catalog_service.integrations.google_places import (
-    find_restaurants_by_cuisine,
+    find_restaurants,
     get_nearby_restaurant,
 )
 
@@ -89,15 +89,19 @@ def find_or_create_nearby_venue(payload: LatLngPayload, db: Session = Depends(ge
     }
 
 @app.get("/venues/search")
-def search_venues_by_cuisine(city: str, cuisine: str, limit: int = 8):
+def search_venues_by_cuisine(cities: str, cuisines: str, limit: int = 60):
     """
-    Real restaurants of a cuisine in a city, for grounding AI recommendations.
+    Real restaurants for grounding AI recommendations. `cities` and `cuisines`
+    are comma-separated, and all pairs are resolved in as few upstream calls as
+    possible (Overpass allows only two concurrent queries).
 
     Returns {"venues": []} when nothing is found — callers must omit the venue
     rather than let the model invent a restaurant name.
     """
-    print(f"\033[96m[CATALOG] Searching '{cuisine}' restaurants in '{city}'\033[0m")
-    return {"venues": find_restaurants_by_cuisine(city, cuisine, limit)}
+    city_list = [c.strip() for c in cities.split(",") if c.strip()]
+    cuisine_list = [c.strip() for c in cuisines.split(",") if c.strip()]
+    print(f"\033[96m[CATALOG] Searching {cuisine_list} restaurants in {city_list}\033[0m")
+    return {"venues": find_restaurants(city_list, cuisine_list, limit)}
 
 @app.get("/venues/{venue_id}/dishes")
 def get_venue_dishes(venue_id: str, db: Session = Depends(get_db)):
