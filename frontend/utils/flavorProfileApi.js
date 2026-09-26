@@ -29,10 +29,14 @@ export async function getFlavorProfile(userId) {
  * Fetch the current flavor profile for the recommendations for a user
  * @param {string} userId  - Clerk user ID
  * @param {string[]} exclude - Dish titles to exclude from results (optional)
+ * @param {string[]} excludeVenues - Restaurants just shown, so a refresh rotates
+ *   to different ones instead of repeating the same three with new dishes (optional)
  */
-export async function getRecommendations(userId, exclude = []) {
-  const params = exclude.length ? `?exclude=${encodeURIComponent(exclude.join(','))}`
-    : '';
+export async function getRecommendations(userId, exclude = [], excludeVenues = []) {
+  const qs = new URLSearchParams();
+  if (exclude.length) qs.set('exclude', exclude.join(','));
+  if (excludeVenues.length) qs.set('exclude_venues', excludeVenues.join(','));
+  const params = qs.toString() ? `?${qs}` : '';
   const res = await fetch(`${BASE_URL}/api/v1/flavor-profiles/${encodeURIComponent(userId)}/recommendations${params}`);
   if (!res.ok) throw new Error(`getRecommendations failed: ${res.status}`);
   return res.json();

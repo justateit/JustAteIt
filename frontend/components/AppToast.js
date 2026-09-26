@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { Animated, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import LiquidGlass from './LiquidGlass';
 
 /**
@@ -54,77 +54,88 @@ export default function AppToast({ toast, onDismiss }) {
   if (!toast?.message) return null;
 
   return (
-    <Animated.View
-      pointerEvents="box-none"
-      style={[
-        styles.wrap,
-        {
-          opacity: anim,
+    // box-none so the faint scrim reads as a dialog without freezing the form
+    // underneath for the 2.4s a success message is on screen.
+    <Animated.View pointerEvents="box-none" style={[styles.wrap, { opacity: anim }]}>
+      <View pointerEvents="none" style={styles.scrim} />
+
+      <Animated.View
+        style={{
           transform: [
             {
-              translateY: anim.interpolate({
+              scale: anim.interpolate({
                 inputRange: [0, 1],
-                outputRange: [-18, 0],
+                outputRange: [0.88, 1],
               }),
             },
           ],
-        },
-      ]}
-    >
-      <TouchableOpacity activeOpacity={0.9} onPress={dismiss} style={styles.touch}>
-        <LiquidGlass tint="light" borderRadius={16} style={styles.glass}>
-          <View style={styles.row}>
-            <Ionicons
-              name={isError ? 'alert-circle' : 'checkmark-circle'}
-              size={20}
-              color={isError ? '#D92D20' : '#FF6B4A'}
-            />
-            <Text style={[styles.text, isError && styles.textError]} numberOfLines={3}>
-              {toast.message}
-            </Text>
-          </View>
-        </LiquidGlass>
-      </TouchableOpacity>
+        }}
+      >
+        <TouchableOpacity activeOpacity={0.9} onPress={dismiss} style={styles.touch}>
+          <LiquidGlass tint="light" borderRadius={22} style={styles.glass}>
+            <View style={styles.card}>
+              <Ionicons
+                name={isError ? 'alert-circle' : 'checkmark-circle'}
+                size={40}
+                color={isError ? '#D92D20' : '#FF6B4A'}
+              />
+              <Text style={[styles.text, isError && styles.textError]} numberOfLines={4}>
+                {toast.message}
+              </Text>
+              {isError && <Text style={styles.hint}>Tap to dismiss</Text>}
+            </View>
+          </LiquidGlass>
+        </TouchableOpacity>
+      </Animated.View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 56 : 32,
-    left: 0,
-    right: 0,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
+    justifyContent: 'center',
     zIndex: 999,
   },
+  scrim: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(26,26,26,0.14)',
+  },
   touch: {
-    maxWidth: 420,
-    width: '88%',
+    maxWidth: 340,
+    minWidth: 240,
   },
   glass: {
-    borderRadius: 16,
+    borderRadius: 22,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 14,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.16,
+    shadowRadius: 24,
+    elevation: 10,
   },
-  row: {
-    flexDirection: 'row',
+  card: {
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    gap: 12,
+    paddingHorizontal: 28,
+    paddingVertical: 28,
   },
   text: {
-    flex: 1,
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: '#1a1a1a',
     letterSpacing: 0.2,
+    textAlign: 'center',
+    lineHeight: 22,
   },
   textError: {
     color: '#7A1710',
+  },
+  hint: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#8A8A8E',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
   },
 });
