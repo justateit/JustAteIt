@@ -16,6 +16,17 @@ from services.user_service.core.flavor_math import (
     FLAVOR_DIMS, update_dimension, adaptive_alpha, personality_label
 )
 
+# Plain-language names for the flavor dimensions. User testing found that diners
+# did not know what "umami" or "acid" meant, so the raw dimension names never
+# reach the reader — only these.
+FLAVOR_GLOSS = {
+    "spice":   "heat and spice",
+    "acid":    "bright, tangy flavors",
+    "umami":   "savory depth",
+    "sweet":   "sweetness",
+    "texture": "texture and crunch",
+}
+
 load_dotenv()
 
 # Optional: Auto-create tables (good for dev, but we already have an init_db script and migrations)
@@ -354,18 +365,18 @@ async def get_recommendations(user_id: str, exclude: str = "", db: Session = Dep
         f"{name} ({s['count']})" for name, s in sorted(cuisine_stats.items(), key=lambda x: x[1]["count"], reverse=True)[:5]
     ]
 
-    # Ground every pick in a restaurant that actually exists: the model is not a
-    # reliable source of truth for whether a business exists, so it never supplies
-    # one. We search BOTH top-rated cuisines (Step 2 can draw on either, and
-    # searching only the first left the odd pick out with no venue at all) across
-    # the cities this user dines in. Overpass rate-limits bursts — it answers one
-    # query fine but rejects a handful fired at once — so these run sequentially
-    # with a stagger, and the total is capped to keep the request tolerable.
-    # Venues the user has already logged are the reliable floor: each was resolved
-    # through Places/OSM when the meal was logged, so it is a real business, and
-    # reusing it costs no request. The external search only widens the pool — the
-    # public Overpass instance is slow and frequently answers "server too busy",
-    # so it can never be the only source or the venue line goes blank.
+    # Build the list of restaurants Claude is allowed to name. The model can't be
+    # trusted to know whether a business exists, so it never supplies one itself.
+    #
+    # Two sources, in this order:
+    #   1. Venues this user has already logged. Each was resolved through
+    #      Places/OSM when the meal was logged, so it's a real place, it's in a
+    #      city they actually visit, and reusing it costs no network call.
+    #   2. A search for more restaurants in their top cuisines.
+    #
+    # Source 1 comes first because it cannot fail. The public Overpass instance
+    # behind source 2 is slow and often answers "server too busy", so when it was
+    # the only source every recommendation came back with a blank venue.
     real_venues, seen_venues = [], set()
     for log in logs:
         name, city = log.get("venue_name"), log.get("city")
@@ -387,49 +398,67 @@ async def get_recommendations(user_id: str, exclude: str = "", db: Session = Dep
     avg_rating = round(sum(ratings) / len(ratings), 2) if ratings else 0
     critic_label = get_critic_label(avg_rating)
 
+    # ── Decisions made here, not in the prompt ────────────────────────────────
+    # Anything the model can get wrong by reasoning, we settle deterministically
+    # and hand over as a finished answer. Each of these replaced a prompt rule.
+
+    # The target cuisine, resolved from the ranked tuples rather than from the
+    # display strings in top_rated_cuisines (those read "Indian (avg 5.0 ...)").
+    target_cuisine = cuisine_ranked[0][0] if cuisine_ranked else None
+
+    # The flavor gap. Raw scores never reach the prompt: if the model cannot see
+    # "0.512" it cannot print it, and it cannot narrate a 0.02 difference as a
+    # preference. It gets a plain-language phrase or nothing at all.
+    ranked_flavors = sorted(
+        ((dim, getattr(profile, dim)) for dim in FLAVOR_DIMS),
+        key=lambda kv: kv[1], reverse=True,
+    )
+    standout_flavor = (
+        FLAVOR_GLOSS[ranked_flavors[0][0]]
+        if len(ranked_flavors) > 1 and (ranked_flavors[0][1] - ranked_flavors[1][1]) >= 0.15
+        else None
+    )
+
+    # Whether to mention a short history. A conditional that is always present in
+    # the prompt gets misapplied — it claimed "still thin" at six logs.
+    history_rule = (
+        "- In the breakdown only, note once that their history is still short, and don't describe a settled pattern."
+        if profile.review_count < 4
+        else "- Don't comment on how much they have logged."
+    )
+
     prompt = f"""
-Role: You are a culinary recommender with deep knowledge of restaurants, dishes, and flavor profiles.
+You recommend dishes at real restaurants based on a diner's history.
 
-User Profile:
-- Flavor scores (0 to 1, higher means stronger preference):
-    Spice: {profile.spice}
-    Acid: {profile.acid}
-    Umami: {profile.umami}
-    Sweet: {profile.sweet}
-    Texture: {profile.texture}
+<diner>
+- Cuisine to focus on (their highest rated): {target_cuisine or "not enough data"}
+- Their top-rated cuisines: {", ".join(top_rated_cuisines) or "none yet"}
+- Every cuisine they have logged, most frequent first: {", ".join(all_cuisines_by_frequency) or "none yet"}
+- Meals logged: {profile.review_count} across {len(cities)} cit{"y" if len(cities) == 1 else "ies"} ({", ".join(cities) or "unknown"})
+- How they rate: {avg_rating} average, {critic_label}
+{f"- One taste that clearly stands out for them: {standout_flavor}" if standout_flavor else "- No single taste stands out for them yet, so do not claim one does."}
+</diner>
 
-- Dining activity:
-    Total logs: {profile.review_count}
-    Cities visited: {cities}
+<restaurants>
+{chr(10).join(f"- {v}" for v in real_venues) if real_venues else "none found"}
+</restaurants>
 
-- Top-rated cuisines (ranked by how well they scored, not just how often they were logged): {top_rated_cuisines}
-- All cuisines logged, by frequency: {all_cuisines_by_frequency}
-- Rating breakdown: Average {avg_rating}, Critic Personality: {critic_label}
-- Real restaurants (verified to exist — the ONLY venues you may name): {real_venues if real_venues else "none found"}
+Recommend exactly 3 dishes.
+- Build each one around a restaurant from <restaurants>, copying its name and city exactly. Pick the restaurant first, then a dish it plausibly serves.
+- Naming a restaurant that is not listed sends the diner somewhere that does not exist, so reuse a listed restaurant with a different dish rather than inventing one. Only if <restaurants> is empty may restaurant be "".
+- Prefer venues NOT marked "(already visited)" when the list gives you a choice, so they discover somewhere new. Using a visited one is fine — but never say "already visited", "again", or "revisit".
+- At least 2 of the 3 should be {target_cuisine or "their top-rated cuisine"}.
+{f"- Do not recommend these dishes: {', '.join(excluded_dishes)}" if excluded_dishes else ""}
 
-{f"- Do NOT recommend any of these previously suggested dishes: {excluded_dishes}" if excluded_dishes else ""}
-
-Task: Recommend exactly 3 dishes. Work through these steps in order.
-
-Step 1. Set the target cuisine: the first entry in "Top-rated cuisines". Ties break on rating, never on log count.
-Step 2. Build each of the 3 recommendations around an entry from the "Real restaurants" list: pick the restaurant first, then a dish that restaurant plausibly serves. Copy its name and city exactly as listed. Prefer the target cuisine for at least 2 of the 3.
-Step 3. Every recommendation must name a restaurant from that list. If it has fewer than 3 usable entries, use one of its restaurants more than once with a different dish each time. Two dishes at one real place beats naming a place that does not exist. An entry marked "(already visited)" is a fine choice — suggesting a new dish somewhere they liked is useful — but do not say "already visited" or "again" in your output. Only when the list is completely empty may restaurant be "".
-Step 4. Never write a restaurant name that is not on that list. An invented venue sends the user somewhere that does not exist, which is worse than any other flaw in the output.
-Step 5. Compare the highest flavor score to the second-highest. Gap under 0.15: mention no flavor dimension anywhere in your output. Gap 0.15 or more: you may cite that one dimension.
-Step 6. Write the three fields, obeying the writing rules.
-
-Writing rules:
-- Short, plain sentences. State facts, not praise. Never compliment the user's taste.
-- Never print a raw score ("0.512") or say one dimension is "slightly ahead" of another.
-- Do not use the words "umami" or "acid" without a plain-language gloss: "savory depth", "bright and tangy".
+Style: short, plain, factual sentences. Never compliment the diner's taste, and never mention how these were chosen or where the data came from.
 - Banned words: beautifully, remarkably, perfectly, delightful, nuanced, journey, philosophy, curiosity, sophisticated, honor.
-- Under 5 logs, say the history is still thin. Do not describe a settled pattern.
-- Never describe the recommendation machinery: no mention of "verified" venues, restaurant lists, location history, or why a venue is missing. The reader wants places to eat, not a report on the data behind them.
+{history_rule}
 
 Fields:
-- insight: 1-2 sentences on what their logs actually show so far.
-- recommendations: per dish, an integer 0-100 "match", 3-4 short tags, and "reason" — one sentence tying the dish to a cuisine or dish they logged. Never cite a flavor score.
-- breakdown: 3-4 sentences, second person. Name the target cuisine and what they rated it, and cite their log count and cuisines. Do not re-describe the dishes.
+- insight: 2 sentences. The first on how widely they range — how many different cuisines across how many meals. The second on where they eat, and whether that is one area or several.
+- recommendations: per dish a "match" integer, 3-4 short tags, and "reason" — one sentence tying the dish to a cuisine or dish they have logged.
+  Score "match" as: start at 70; add 15 if the dish is their focus cuisine, or 8 if it is another cuisine they rated 4+; add 10 if that cuisine averages 4.5 or better for them; subtract 10 if they have logged that cuisine only once. Keep it in 0-100.
+- breakdown: 3-4 sentences, second person. Lead with the focus cuisine and what they rated it, then how their rating style shaped the picks. Do not re-describe the dishes, and do not repeat the insight.
 """
     # 4. Call Claude with a schema-constrained response — no manual JSON stripping/parsing needed
     response = client.messages.parse(
