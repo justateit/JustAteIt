@@ -1,6 +1,6 @@
 import os
 import requests
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 HEADERS = {"User-Agent": "JustAteIt-App/1.0 (dev@justateit.app)"}
@@ -63,6 +63,86 @@ def _fetch_from_osm(lat: str, lon: str) -> Tuple[Optional[str], Optional[str], O
         print(f"\033[91m[OPENSTREETMAP] Lookup error: {e}\033[0m")
     
     return None, None, None
+
+
+def _search_osm_by_cuisine(city: str, cuisine: str, limit: int) -> List[dict]:
+    """Free Overpass search for restaurants of a given cuisine inside a named city."""
+    # OSM cuisine tags are lowercase single words ("indian", "chinese", "thai").
+    tag = cuisine.strip().lower().split()[0] if cuisine.strip() else ""
+    if not tag:
+        return []
+    query = f"""
+    [out:json][timeout:10];
+    area["name"="{city}"]["boundary"="administrative"]->.searchArea;
+    (
+      node(area.searchArea)["amenity"="restaurant"]["cuisine"~"{tag}",i];
+      way(area.searchArea)["amenity"="restaurant"]["cuisine"~"{tag}",i];
+    );
+    out center {limit};
+    """
+    try:
+        resp = requests.post(
+            "https://overpass-api.de/api/interpreter",
+            data={"data": query}, headers=HEADERS, timeout=10,
+        )
+        if resp.status_code != 200:
+            print(f"\033[93m[OPENSTREETMAP] Cuisine search HTTP {resp.status_code} for '{cuisine}' in '{city}'\033[0m")
+            return []
+        found = []
+        for el in resp.json().get("elements", []):
+            tags = el.get("tags", {})
+            name = tags.get("name")
+            if not name:
+                continue
+            street = tags.get("addr:street")
+            found.append({
+                "name": name,
+                "address": f"{street}, {city}" if street else city,
+                "place_id": f"osm_{el.get('type', 'node')}_{el.get('id', '0')}",
+            })
+        print(f"\033[92m[OPENSTREETMAP] Found {len(found)} '{cuisine}' restaurant(s) in '{city}'\033[0m")
+        return found[:limit]
+    except Exception as e:
+        print(f"\033[91m[OPENSTREETMAP] Cuisine search error: {e}\033[0m")
+        return []
+
+
+def find_restaurants_by_cuisine(city: str, cuisine: str, limit: int = 8) -> List[dict]:
+    """
+    Returns real restaurants of `cuisine` in `city` as [{name, address, place_id}].
+
+    Unlike get_nearby_restaurant (which is coordinate-based and used while logging),
+    this searches by city name so recommendations can cite venues that actually
+    exist. Returns [] rather than guessing — callers must omit the venue instead
+    of inventing one.
+    """
+    if not city or not cuisine:
+        return []
+
+    if GOOGLE_API_KEY:
+        try:
+            url = (
+                f"https://maps.googleapis.com/maps/api/place/textsearch/json"
+                f"?query={requests.utils.quote(f'{cuisine} restaurant in {city}')}&key={GOOGLE_API_KEY}"
+            )
+            data = requests.get(url, timeout=6).json()
+            status = data.get("status")
+            if status == "OK" and data.get("results"):
+                found = [
+                    {
+                        "name": r.get("name"),
+                        "address": r.get("formatted_address", city),
+                        "place_id": r.get("place_id"),
+                    }
+                    for r in data["results"][:limit] if r.get("name")
+                ]
+                print(f"\033[92m[GOOGLE PLACES] Found {len(found)} '{cuisine}' restaurant(s) in '{city}'\033[0m")
+                return found
+            print(f"\033[93m[GOOGLE PLACES] Status '{status}' ({data.get('error_message')}) -> OpenStreetMap...\033[0m")
+        except Exception as e:
+            print(f"\033[91m[GOOGLE PLACES] Cuisine search error: {e} -> OpenStreetMap...\033[0m")
+
+    return _search_osm_by_cuisine(city, cuisine, limit)
 
 
 def get_nearby_restaurant(lat: str, lon: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:

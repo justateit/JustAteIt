@@ -1,4 +1,5 @@
 import anthropic
+import asyncio
 import httpx
 import os
 import json
@@ -281,6 +282,21 @@ async def fetch_user_logs(user_id: str) -> list:
         print(f"Failed to fetch logs from catalog_service: {e}")
         return []
 
+async def fetch_real_venues(city: str, cuisine: str, limit: int = 6) -> list:
+    """Real restaurants of `cuisine` in `city`, via catalog_service. Returns [] on failure."""
+    catalog_svc_url = os.getenv("CATALOG_SERVICE_URL", "http://localhost:8002")
+    try:
+        async with httpx.AsyncClient(timeout=12.0) as client:
+            response = await client.get(
+                f"{catalog_svc_url}/venues/search",
+                params={"city": city, "cuisine": cuisine, "limit": limit},
+            )
+            response.raise_for_status()
+            return response.json().get("venues", [])
+    except Exception as e:
+        print(f"Failed to fetch venues from catalog_service: {e}")
+        return []
+
 @app.get("/flavor-profiles/{user_id}/recommendations")
 async def get_recommendations(user_id: str, exclude: str = "", db: Session = Depends(get_db)):
     # 1. Look up the REAL flavor profile for this user. Same query get_flavor_profile() uses
@@ -329,6 +345,25 @@ async def get_recommendations(user_id: str, exclude: str = "", db: Session = Dep
         f"{name} ({s['count']})" for name, s in sorted(cuisine_stats.items(), key=lambda x: x[1]["count"], reverse=True)[:5]
     ]
 
+    # Ground the picks in restaurants that actually exist. We search the top-rated
+    # cuisines in the cities this user actually dines in, then require Claude to
+    # cite only these names (Step 3) — the model is not a reliable source of
+    # truth for whether a business exists, so it never supplies one itself.
+    # Overpass rate-limits bursts (it answers one query fine but rejects a
+    # handful fired at once), so these run sequentially and are deliberately
+    # few: the #1 cuisine in the first two of their cities. Step 2 already puts
+    # 2 of 3 picks in that cuisine, so this grounds most of the list; anything
+    # unmatched gets "" and the UI hides the venue line.
+    real_venues = []
+    if cuisine_ranked:
+        target_cuisine = cuisine_ranked[0][0]
+        for i, city in enumerate(cities[:2]):
+            if i:
+                await asyncio.sleep(1.0)  # stay under Overpass's burst limit
+            for v in await fetch_real_venues(city, target_cuisine, limit=5):
+                if v.get("name"):
+                    real_venues.append(f"{v['name']} — {target_cuisine} in {city}")
+
     ratings = [log["rating"] for log in logs if log.get("rating") is not None]
     avg_rating = round(sum(ratings) / len(ratings), 2) if ratings else 0
     critic_label = get_critic_label(avg_rating)
@@ -351,6 +386,7 @@ User Profile:
 - Top-rated cuisines (ranked by how well they scored, not just how often they were logged): {top_rated_cuisines}
 - All cuisines logged, by frequency: {all_cuisines_by_frequency}
 - Rating breakdown: Average {avg_rating}, Critic Personality: {critic_label}
+- Real restaurants (verified to exist — the ONLY venues you may name): {real_venues if real_venues else "none found"}
 
 {f"- Do NOT recommend any of these previously suggested dishes: {excluded_dishes}" if excluded_dishes else ""}
 
@@ -358,7 +394,7 @@ Task: Recommend exactly 3 dishes. Work through these steps in order.
 
 Step 1. Set the target cuisine: the first entry in "Top-rated cuisines". Ties break on rating, never on log count.
 Step 2. Choose 3 dishes. At least 2 must be from the target cuisine or one closely related. Do not give each logged cuisine one pick.
-Step 3. Pair each dish with a restaurant in one of their cities. Only name a real restaurant if you are confident it serves that dish; otherwise leave the cuisine and city to carry the pick. Never put a dish on a restaurant known for a different cuisine.
+Step 3. Set each dish's restaurant from the "Real restaurants" list only, copying the name exactly and using the city listed with it. Match the cuisine — never put a dish at a restaurant listed under a different cuisine. If that list has no suitable entry, return "" for restaurant and still give the city. You must never write a restaurant name that is not on that list: an invented venue sends the user to a place that does not exist.
 Step 4. Compare the highest flavor score to the second-highest. Gap under 0.15: mention no flavor dimension anywhere in your output. Gap 0.15 or more: you may cite that one dimension.
 Step 5. Write the three fields, obeying the writing rules.
 

@@ -8,7 +8,10 @@ import httpx
 
 from shared.database import get_db
 from services.catalog_service.db import models
-from services.catalog_service.integrations.google_places import get_nearby_restaurant
+from services.catalog_service.integrations.google_places import (
+    find_restaurants_by_cuisine,
+    get_nearby_restaurant,
+)
 
 app = FastAPI(title="Catalog & Review Service")
 
@@ -84,6 +87,17 @@ def find_or_create_nearby_venue(payload: LatLngPayload, db: Session = Depends(ge
             "place_id": place_id
         }
     }
+
+@app.get("/venues/search")
+def search_venues_by_cuisine(city: str, cuisine: str, limit: int = 8):
+    """
+    Real restaurants of a cuisine in a city, for grounding AI recommendations.
+
+    Returns {"venues": []} when nothing is found — callers must omit the venue
+    rather than let the model invent a restaurant name.
+    """
+    print(f"\033[96m[CATALOG] Searching '{cuisine}' restaurants in '{city}'\033[0m")
+    return {"venues": find_restaurants_by_cuisine(city, cuisine, limit)}
 
 @app.get("/venues/{venue_id}/dishes")
 def get_venue_dishes(venue_id: str, db: Session = Depends(get_db)):

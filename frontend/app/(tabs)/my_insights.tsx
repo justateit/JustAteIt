@@ -379,8 +379,12 @@ const MyInsights = ({ onPress }: Props) => {
                                                     <View style={{ flexDirection: 'column', alignItems: 'flex-start', flex: 1, gap: 4, minWidth: 0 }}>
                                                         <Text style={styles.dishName} numberOfLines={1} ellipsizeMode="tail">{rec.title}</Text>
                                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
-                                                            <Text style={[styles.restaurantName, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">{rec.restaurant}</Text>
-                                                            <Text style={styles.hyphen}>-</Text>
+                                                            {!!rec.restaurant && (
+                                                                <>
+                                                                    <Text style={[styles.restaurantName, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">{rec.restaurant}</Text>
+                                                                    <Text style={styles.hyphen}>-</Text>
+                                                                </>
+                                                            )}
                                                             <Text style={[styles.restaurantCity, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">{rec.location}</Text>
                                                         </View>
                                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
