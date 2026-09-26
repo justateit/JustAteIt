@@ -415,6 +415,23 @@ async def get_recommendations(user_id: str, exclude: str = "", db: Session = Dep
         if len(ranked_flavors) > 1 and (ranked_flavors[0][1] - ranked_flavors[1][1]) >= 0.15
         else None
     )
+    # What they actually enjoyed, in their own words. The flavor vector is the
+    # obvious place to look for "what they like", but it converges on 0.5 for
+    # every user, so it says nothing. Their highest-rated dishes and the notes
+    # they wrote about them are concrete evidence of taste, and already stored.
+    liked = sorted(
+        (log for log in logs if (log.get("rating") or 0) >= 4),
+        key=lambda log: log["rating"], reverse=True,
+    )[:5]
+    liked_dishes = []
+    for log in liked:
+        dish = log.get("dish_name") or "an unnamed dish"
+        entry = f"{dish} ({log.get('cuisine') or 'unknown cuisine'}, rated {log['rating']})"
+        note = (log.get("sensory_notes") or "").strip().replace("\n", " ")
+        if note:
+            entry += f' — they wrote: "{note[:160]}"'
+        liked_dishes.append(entry)
+
     history_rule = (
         "- In the breakdown only, note once that their history is still short, and don't describe a settled pattern."
         if profile.review_count < 4
@@ -433,6 +450,10 @@ You recommend dishes at real restaurants based on a diner's history.
 {f"- One taste that clearly stands out for them: {standout_flavor}" if standout_flavor else "- No single taste stands out for them yet, so do not claim one does."}
 </diner>
 
+<what_they_liked>
+{chr(10).join(f"- {d}" for d in liked_dishes) if liked_dishes else "- Nothing rated 4 or above yet."}
+</what_they_liked>
+
 <restaurants>
 {chr(10).join(f"- {v}" for v in real_venues) if real_venues else "none found"}
 </restaurants>
@@ -442,17 +463,19 @@ Recommend exactly 3 dishes.
 THE RESTAURANT RULE, which outranks everything else below: every "restaurant" you output must be copied character for character from <restaurants>. Do not reword, reorder, shorten, or combine the names — "Sichuan Taste" must never become "Taste of Sichuan", and two listed names must never be merged into a third. A name that is close but not identical is treated as invented and thrown away, so the diner loses that recommendation entirely. If you cannot fill 3 dishes from distinct listed venues, use a listed venue twice with different dishes. Only if <restaurants> is empty may restaurant be "".
 
 - Pick the restaurant first, then a dish it plausibly serves.
+- Choose dishes by what <what_they_liked> shows they enjoy, not just by cuisine. Read the dishes they rated highly and anything they wrote about them, and pick dishes that share those qualities — a similar richness, heat, preparation, or texture. Quote nothing directly, but let their own notes drive the choice.
 - Where the list gives you a choice, prefer venues NOT marked "(already visited)" so they discover somewhere new. A visited one is fine — but never write "already visited", "again", or "revisit".
 - At least 2 of the 3 should be {target_cuisine or "their top-rated cuisine"}.
 {f"- Do not recommend these dishes: {', '.join(excluded_dishes)}" if excluded_dishes else ""}
 
 Style: short, plain, factual sentences. Never compliment the diner's taste, and never mention how these were chosen or where the data came from.
+- Never say whether they have been to a restaurant before. No "already visited", "previously visited", "you've been to", "again", "revisit", "familiar", or "keeping them accessible". Write every pick as a suggestion on its own terms.
 - Banned words: beautifully, remarkably, perfectly, delightful, nuanced, journey, philosophy, curiosity, sophisticated, honor.
 {history_rule}
 
 Fields:
-- insight: 2 sentences, written TO the diner as "you" — never "this diner" or "they". The first on how widely they range, using the cuisine and meal counts given above and no other numbers. The second on where they eat, and whether that is one area or several.
-- recommendations: per dish a "match" integer, 3-4 short tags, and "reason" — one sentence tying the dish to a cuisine or dish they have logged.
+- insight: 2 sentences, written TO the diner as "you" — never "this diner" or "they". The first on what their highest-rated dishes have in common as food — the kind of cooking or the qualities they reach for — drawn from <what_they_liked>. The second on how widely they range, using the cuisine and meal counts above, and where they eat. Describe their taste, not their statistics.
+- recommendations: per dish a "match" integer, 3-4 short tags, and "reason" — one sentence tying the dish to a specific dish from <what_they_liked> and what they enjoyed about it, in taste terms ("same slow-cooked richness you liked in the butter chicken"). Name a real dish of theirs rather than a cuisine where you can; "matches your top-rated cuisine" is the weakest version of this sentence.
   Score "match" as: start at 70; add 15 if the dish is their focus cuisine, or 8 if it is another cuisine they rated 4+; add 10 if that cuisine averages 4.5 or better for them; subtract 10 if they have logged that cuisine only once. Keep it in 0-100.
 - breakdown: 3-4 sentences, second person. Lead with the focus cuisine and what they rated it, then how their rating style shaped the picks. Do not re-describe the dishes, and do not repeat the insight.
 """
