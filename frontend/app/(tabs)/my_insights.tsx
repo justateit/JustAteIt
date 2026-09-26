@@ -378,15 +378,19 @@ const MyInsights = ({ onPress }: Props) => {
                                                     {/* Dish Information */}
                                                     <View style={{ flexDirection: 'column', alignItems: 'flex-start', flex: 1, gap: 4, minWidth: 0 }}>
                                                         <Text style={styles.dishName} numberOfLines={1} ellipsizeMode="tail">{rec.title}</Text>
-                                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
-                                                            {!!rec.restaurant && (
-                                                                <>
+                                                        {(!!rec.restaurant || !!rec.location) && (
+                                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
+                                                                {!!rec.restaurant && (
                                                                     <Text style={[styles.restaurantName, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">{rec.restaurant}</Text>
+                                                                )}
+                                                                {!!rec.restaurant && !!rec.location && (
                                                                     <Text style={styles.hyphen}>-</Text>
-                                                                </>
-                                                            )}
-                                                            <Text style={[styles.restaurantCity, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">{rec.location}</Text>
-                                                        </View>
+                                                                )}
+                                                                {!!rec.location && (
+                                                                    <Text style={[styles.restaurantCity, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">{rec.location}</Text>
+                                                                )}
+                                                            </View>
+                                                        )}
                                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                                                             {(rec.tags ?? []).slice(0, 2).map((tag: string) => (
                                                                 <View key={tag} style={styles.cuisineTypeBubble}>

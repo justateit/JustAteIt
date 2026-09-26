@@ -345,24 +345,29 @@ async def get_recommendations(user_id: str, exclude: str = "", db: Session = Dep
         f"{name} ({s['count']})" for name, s in sorted(cuisine_stats.items(), key=lambda x: x[1]["count"], reverse=True)[:5]
     ]
 
-    # Ground the picks in restaurants that actually exist. We search the top-rated
-    # cuisines in the cities this user actually dines in, then require Claude to
-    # cite only these names (Step 3) — the model is not a reliable source of
-    # truth for whether a business exists, so it never supplies one itself.
-    # Overpass rate-limits bursts (it answers one query fine but rejects a
-    # handful fired at once), so these run sequentially and are deliberately
-    # few: the #1 cuisine in the first two of their cities. Step 2 already puts
-    # 2 of 3 picks in that cuisine, so this grounds most of the list; anything
-    # unmatched gets "" and the UI hides the venue line.
+    # Ground every pick in a restaurant that actually exists: the model is not a
+    # reliable source of truth for whether a business exists, so it never supplies
+    # one. We search BOTH top-rated cuisines (Step 2 can draw on either, and
+    # searching only the first left the odd pick out with no venue at all) across
+    # the cities this user dines in. Overpass rate-limits bursts — it answers one
+    # query fine but rejects a handful fired at once — so these run sequentially
+    # with a stagger, and the total is capped to keep the request tolerable.
     real_venues = []
-    if cuisine_ranked:
-        target_cuisine = cuisine_ranked[0][0]
-        for i, city in enumerate(cities[:2]):
-            if i:
-                await asyncio.sleep(1.0)  # stay under Overpass's burst limit
-            for v in await fetch_real_venues(city, target_cuisine, limit=5):
-                if v.get("name"):
-                    real_venues.append(f"{v['name']} — {target_cuisine} in {city}")
+    # City-major on purpose: both cuisines get searched in the first city before
+    # we spend the budget on a second one, so the list covers both cuisines even
+    # when a city turns up nothing (OSM cuisine tags are volunteer-supplied and
+    # thin in some suburbs — Gilbert AZ has restaurants but almost no tags).
+    lookups = [
+        (city, cuisine)
+        for city in cities[:3]
+        for cuisine in [name for name, _ in cuisine_ranked[:2]]
+    ]
+    for i, (city, cuisine) in enumerate(lookups[:4]):
+        if i:
+            await asyncio.sleep(1.0)  # stay under Overpass's burst limit
+        for v in await fetch_real_venues(city, cuisine, limit=4):
+            if v.get("name"):
+                real_venues.append(f"{v['name']} — {cuisine} in {city}")
 
     ratings = [log["rating"] for log in logs if log.get("rating") is not None]
     avg_rating = round(sum(ratings) / len(ratings), 2) if ratings else 0
@@ -393,10 +398,11 @@ User Profile:
 Task: Recommend exactly 3 dishes. Work through these steps in order.
 
 Step 1. Set the target cuisine: the first entry in "Top-rated cuisines". Ties break on rating, never on log count.
-Step 2. Choose 3 dishes. At least 2 must be from the target cuisine or one closely related. Do not give each logged cuisine one pick.
-Step 3. Set each dish's restaurant from the "Real restaurants" list only, copying the name exactly and using the city listed with it. Match the cuisine — never put a dish at a restaurant listed under a different cuisine. If that list has no suitable entry, return "" for restaurant and still give the city. You must never write a restaurant name that is not on that list: an invented venue sends the user to a place that does not exist.
-Step 4. Compare the highest flavor score to the second-highest. Gap under 0.15: mention no flavor dimension anywhere in your output. Gap 0.15 or more: you may cite that one dimension.
-Step 5. Write the three fields, obeying the writing rules.
+Step 2. Build each of the 3 recommendations around an entry from the "Real restaurants" list: pick the restaurant first, then a dish that restaurant plausibly serves. Copy its name and city exactly as listed. Prefer the target cuisine for at least 2 of the 3.
+Step 3. If that list has fewer than 3 usable entries, use one of its restaurants more than once with a different dish each time. Recommending two dishes at the same real place is always better than naming a place that does not exist. Only when the list is completely empty may restaurant be "" — and the city must still be one they have logged.
+Step 4. Never write a restaurant name that is not on that list. An invented venue sends the user somewhere that does not exist, which is worse than any other flaw in the output.
+Step 5. Compare the highest flavor score to the second-highest. Gap under 0.15: mention no flavor dimension anywhere in your output. Gap 0.15 or more: you may cite that one dimension.
+Step 6. Write the three fields, obeying the writing rules.
 
 Writing rules:
 - Short, plain sentences. State facts, not praise. Never compliment the user's taste.
@@ -404,6 +410,7 @@ Writing rules:
 - Do not use the words "umami" or "acid" without a plain-language gloss: "savory depth", "bright and tangy".
 - Banned words: beautifully, remarkably, perfectly, delightful, nuanced, journey, philosophy, curiosity, sophisticated, honor.
 - Under 5 logs, say the history is still thin. Do not describe a settled pattern.
+- Never describe the recommendation machinery: no mention of "verified" venues, restaurant lists, location history, or why a venue is missing. The reader wants places to eat, not a report on the data behind them.
 
 Fields:
 - insight: 1-2 sentences on what their logs actually show so far.
