@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Animated, Modal, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getFlavorProfile, getLogs, getRecommendations } from '../../utils/flavorProfileApi';
+import { getLevelProgress } from '../../utils/levels';
 
 
 interface Props {
@@ -148,18 +149,9 @@ const MyInsights = ({ onPress }: Props) => {
     // Which milestone the user has tapped open, if any. One at a time.
     const [expandedMilestone, setExpandedMilestone] = useState<string | null>(null);
 
-    // Compute a user's level based on how many points they have
-    const level = Math.floor((profileData?.points_count ?? 0) / 100) + 1;
-    const currentPoints = (profileData?.points_count ?? 0) % 100;
-    const pointsNeeded = 100;
-    const getLevelLabel = (level: number) => {
-        if (level >= 5) return 'Culinary Connoisseur';
-        if (level === 4) return 'Taste Architect';
-        if (level === 3) return 'Palate Pioneer';
-        if (level === 2) return 'Flavor Seeker';
-        if (level === 1) return 'Fresh Bite';
-        return 'Earn more points!';
-    }
+    // Level and progress come from utils/levels so this screen and the profile
+    // page can't drift apart on the thresholds.
+    const levelInfo = getLevelProgress(profileData?.points_count ?? 0);
 
     const cuisineCounts: any = (logsData ?? []).reduce(
         (acc: any, log: any) => {
@@ -267,14 +259,18 @@ const MyInsights = ({ onPress }: Props) => {
                     {/* Level Section */}
                     <View style={styles.levelContainer}>
                         <Text style={styles.currentLevelText}>CURRENT LEVEL</Text>
-                        <Text style={styles.userLevelText}>{getLevelLabel(level)}</Text>
+                        <Text style={styles.userLevelText}>{levelInfo.label}</Text>
                         {/* Progress bar */}
                         <View style={styles.progressBarBackground}>
-                            <View style={[styles.progressBarFill, { width: `${(currentPoints / pointsNeeded) * 100}%` }]} />
+                            <View style={[styles.progressBarFill, { width: `${Math.round(levelInfo.progress * 100)}%` }]} />
                         </View>
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, marginTop: 10 }}>
-                            <Text style={styles.pointsText}>{pointsNeeded - currentPoints} pts to {getLevelLabel(level + 1)}</Text>
-                            <Text style={styles.levelNumberText}>Level {level}</Text>
+                            <Text style={styles.pointsText}>
+                                {levelInfo.atMax
+                                    ? 'Top level reached'
+                                    : `${levelInfo.pointsToNext} pts to ${levelInfo.nextLabel}`}
+                            </Text>
+                            <Text style={styles.levelNumberText}>Level {levelInfo.level}</Text>
                         </View>
                     </View>
 

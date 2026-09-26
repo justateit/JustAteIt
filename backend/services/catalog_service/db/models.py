@@ -72,6 +72,31 @@ class Draft(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+class SavedLog(Base):
+    """
+    A dish a user bookmarked to try later.
+
+    Stores a snapshot of the dish rather than a FK to reviews, so a saved item
+    survives the original log changing or being deleted. source_id is the id of
+    the card it was saved from, and (user_id, source_id) is unique so tapping
+    save twice is idempotent rather than creating a duplicate.
+    """
+    __tablename__ = "saved_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(String, nullable=False)
+    source_id = Column(String, nullable=False)
+    dish_name = Column(String, nullable=False)
+    venue_name = Column(String, nullable=True)
+    city = Column(String, nullable=True)
+    cuisine = Column(String, nullable=True)
+    rating = Column(Float, nullable=True)
+    notes = Column(Text, nullable=True)
+    image_url = Column(String, nullable=True)
+    tags = Column(Text, nullable=True)  # JSON-encoded list, mirroring the card's tags
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Media(Base):
     __tablename__ = "media"
 

@@ -32,6 +32,7 @@ EXPECTED_TABLES = {
     "media",
     "flavor_audit_logs",
     "drafts",
+    "saved_logs",
 }
 
 EXPECTED_INDEXES = {
@@ -40,6 +41,7 @@ EXPECTED_INDEXES = {
     "idx_reviews_user_id": ("reviews", "user_id"),
     "idx_reviews_venue_id": ("reviews", "venue_id"),
     "idx_media_review_id": ("media", "review_id"),
+    "idx_saved_logs_user_id": ("saved_logs", "user_id"),
 }
 
 MIGRATION_NAME_RE = re.compile(r"^\d{14}_[a-z0-9_]+\.sql$")

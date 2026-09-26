@@ -307,3 +307,63 @@ export async function uploadAvatarImage(imageUri) {
   const data = await response.json();
   return data.url;
 }
+
+/**
+ * Bookmark a dish so it shows up on the Saved Logs page.
+ *
+ * Stores a snapshot rather than a reference, so the bookmark survives the
+ * original log being edited or deleted. Idempotent on (user, sourceId): saving
+ * the same card twice updates that row instead of creating a duplicate.
+ *
+ * @param {string} userId    - Clerk user ID
+ * @param {object} dish      - { sourceId, dishName, venueName, city, cuisine, rating, notes, imageUrl, tags }
+ * @returns {Promise<{success: boolean, saved_log_id: string, created: boolean}>}
+ */
+export async function saveLog(userId, dish) {
+  const res = await fetch(`${BASE_URL}/api/v1/saved-logs`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user_id: userId,
+      source_id: String(dish.sourceId),
+      dish_name: dish.dishName,
+      venue_name: dish.venueName ?? null,
+      city: dish.city ?? null,
+      cuisine: dish.cuisine ?? null,
+      rating: dish.rating ?? null,
+      notes: dish.notes ?? null,
+      image_url: dish.imageUrl ?? null,
+      tags: dish.tags ?? null,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `saveLog failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * Fetch every dish a user has bookmarked (newest first).
+ *
+ * @param {string} userId - Clerk user ID
+ * @returns {Promise<{saved_logs: any[], count: number}>}
+ */
+export async function getSavedLogs(userId) {
+  const res = await fetch(`${BASE_URL}/api/v1/saved-logs/${encodeURIComponent(userId)}`);
+  if (!res.ok) throw new Error(`getSavedLogs failed: ${res.status}`);
+  return res.json();
+}
+
+/**
+ * Remove a bookmark.
+ *
+ * @param {string} savedLogId - id from getSavedLogs (NOT the card's id)
+ */
+export async function deleteSavedLog(savedLogId) {
+  const res = await fetch(`${BASE_URL}/api/v1/saved-logs/${encodeURIComponent(savedLogId)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error(`deleteSavedLog failed: ${res.status}`);
+  return res.json();
+}
