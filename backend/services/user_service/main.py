@@ -378,11 +378,13 @@ async def get_recommendations(user_id: str, exclude: str = "", db: Session = Dep
     # behind source 2 is slow and often answers "server too busy", so when it was
     # the only source every recommendation came back with a blank venue.
     real_venues, seen_venues = [], set()
+    allowed_venue_names = set()  # enforced after generation, not just requested
     for log in logs:
         name, city = log.get("venue_name"), log.get("city")
         if not name or name == "Private Location" or (name, city) in seen_venues:
             continue
         seen_venues.add((name, city))
+        allowed_venue_names.add(name)
         real_venues.append(
             f"{name} — {log.get('cuisine') or 'unknown cuisine'} in {city or 'their area'} (already visited)"
         )
@@ -392,23 +394,18 @@ async def get_recommendations(user_id: str, exclude: str = "", db: Session = Dep
         if not name or (name, city) in seen_venues:
             continue
         seen_venues.add((name, city))
+        allowed_venue_names.add(name)
         real_venues.append(f"{name} — {v.get('cuisine', '')} in {city}")
+
+    print(f"\033[96m[USER] {len(real_venues)} venue(s) offered to the model: {sorted(allowed_venue_names)}\033[0m")
 
     ratings = [log["rating"] for log in logs if log.get("rating") is not None]
     avg_rating = round(sum(ratings) / len(ratings), 2) if ratings else 0
     critic_label = get_critic_label(avg_rating)
 
-    # ── Decisions made here, not in the prompt ────────────────────────────────
-    # Anything the model can get wrong by reasoning, we settle deterministically
-    # and hand over as a finished answer. Each of these replaced a prompt rule.
-
-    # The target cuisine, resolved from the ranked tuples rather than from the
-    # display strings in top_rated_cuisines (those read "Indian (avg 5.0 ...)").
     target_cuisine = cuisine_ranked[0][0] if cuisine_ranked else None
 
-    # The flavor gap. Raw scores never reach the prompt: if the model cannot see
-    # "0.512" it cannot print it, and it cannot narrate a 0.02 difference as a
-    # preference. It gets a plain-language phrase or nothing at all.
+    # The flavor gap
     ranked_flavors = sorted(
         ((dim, getattr(profile, dim)) for dim in FLAVOR_DIMS),
         key=lambda kv: kv[1], reverse=True,
@@ -418,9 +415,6 @@ async def get_recommendations(user_id: str, exclude: str = "", db: Session = Dep
         if len(ranked_flavors) > 1 and (ranked_flavors[0][1] - ranked_flavors[1][1]) >= 0.15
         else None
     )
-
-    # Whether to mention a short history. A conditional that is always present in
-    # the prompt gets misapplied — it claimed "still thin" at six logs.
     history_rule = (
         "- In the breakdown only, note once that their history is still short, and don't describe a settled pattern."
         if profile.review_count < 4
@@ -433,7 +427,7 @@ You recommend dishes at real restaurants based on a diner's history.
 <diner>
 - Cuisine to focus on (their highest rated): {target_cuisine or "not enough data"}
 - Their top-rated cuisines: {", ".join(top_rated_cuisines) or "none yet"}
-- Every cuisine they have logged, most frequent first: {", ".join(all_cuisines_by_frequency) or "none yet"}
+- They have logged {len(cuisine_stats)} distinct cuisine{"" if len(cuisine_stats) == 1 else "s"}. The most frequent are: {", ".join(all_cuisines_by_frequency) or "none yet"} (this list may be truncated — use the count above, never the length of this list)
 - Meals logged: {profile.review_count} across {len(cities)} cit{"y" if len(cities) == 1 else "ies"} ({", ".join(cities) or "unknown"})
 - How they rate: {avg_rating} average, {critic_label}
 {f"- One taste that clearly stands out for them: {standout_flavor}" if standout_flavor else "- No single taste stands out for them yet, so do not claim one does."}
@@ -444,9 +438,11 @@ You recommend dishes at real restaurants based on a diner's history.
 </restaurants>
 
 Recommend exactly 3 dishes.
-- Build each one around a restaurant from <restaurants>, copying its name and city exactly. Pick the restaurant first, then a dish it plausibly serves.
-- Naming a restaurant that is not listed sends the diner somewhere that does not exist, so reuse a listed restaurant with a different dish rather than inventing one. Only if <restaurants> is empty may restaurant be "".
-- Prefer venues NOT marked "(already visited)" when the list gives you a choice, so they discover somewhere new. Using a visited one is fine — but never say "already visited", "again", or "revisit".
+
+THE RESTAURANT RULE, which outranks everything else below: every "restaurant" you output must be copied character for character from <restaurants>. Do not reword, reorder, shorten, or combine the names — "Sichuan Taste" must never become "Taste of Sichuan", and two listed names must never be merged into a third. A name that is close but not identical is treated as invented and thrown away, so the diner loses that recommendation entirely. If you cannot fill 3 dishes from distinct listed venues, use a listed venue twice with different dishes. Only if <restaurants> is empty may restaurant be "".
+
+- Pick the restaurant first, then a dish it plausibly serves.
+- Where the list gives you a choice, prefer venues NOT marked "(already visited)" so they discover somewhere new. A visited one is fine — but never write "already visited", "again", or "revisit".
 - At least 2 of the 3 should be {target_cuisine or "their top-rated cuisine"}.
 {f"- Do not recommend these dishes: {', '.join(excluded_dishes)}" if excluded_dishes else ""}
 
@@ -455,7 +451,7 @@ Style: short, plain, factual sentences. Never compliment the diner's taste, and 
 {history_rule}
 
 Fields:
-- insight: 2 sentences. The first on how widely they range — how many different cuisines across how many meals. The second on where they eat, and whether that is one area or several.
+- insight: 2 sentences, written TO the diner as "you" — never "this diner" or "they". The first on how widely they range, using the cuisine and meal counts given above and no other numbers. The second on where they eat, and whether that is one area or several.
 - recommendations: per dish a "match" integer, 3-4 short tags, and "reason" — one sentence tying the dish to a cuisine or dish they have logged.
   Score "match" as: start at 70; add 15 if the dish is their focus cuisine, or 8 if it is another cuisine they rated 4+; add 10 if that cuisine averages 4.5 or better for them; subtract 10 if they have logged that cuisine only once. Keep it in 0-100.
 - breakdown: 3-4 sentences, second person. Lead with the focus cuisine and what they rated it, then how their rating style shaped the picks. Do not re-describe the dishes, and do not repeat the insight.
@@ -470,8 +466,14 @@ Fields:
     )
     result = response.parsed_output.model_dump()
 
+    # Enforce the venue constraint in code
+    for rec in result.get("recommendations", []):
+        name = (rec.get("restaurant") or "").strip()
+        if name and name not in allowed_venue_names:
+            print(f"\033[91m[USER] Rejected unlisted venue from model: {name!r}\033[0m")
+            rec["restaurant"] = ""
+
     profile.cached_recommendations = json.dumps(result)
     profile.recommendations_stale = False
     db.commit()
     return result
-        
