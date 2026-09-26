@@ -297,19 +297,43 @@ async def get_recommendations(user_id: str, exclude: str = "", db: Session = Dep
         return json.loads(profile.cached_recommendations)
 
     logs = await fetch_user_logs(user_id)
-    
+
     cities = sorted({log["city"] for log in logs if log.get("city")})
-    
-    cuisine_counts = {}
+
+    # Per-cuisine stats: how often it was logged AND how well it was actually
+    # rated. Frequency alone was the old signal here, and it's why a user
+    # who logged one 3-star American dish and two 5-star Asian dishes could
+    # still get an American dish as their top match — Claude had no explicit
+    # link between a cuisine and how it was rated, just a blended overall
+    # average. Ranking by rating (count as tiebreaker) fixes that directly.
+    cuisine_stats = {}
     for log in logs:
         cuisine = log.get("cuisine")
-        if cuisine:
-            cuisine_counts[cuisine] = cuisine_counts.get(cuisine, 0) + 1
-    top_cuisines = [
-        f"{name} ({count})"
-        for name, count in sorted(cuisine_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+        if not cuisine:
+            continue
+        stats = cuisine_stats.setdefault(cuisine, {"count": 0, "rating_sum": 0.0, "rated_count": 0})
+        stats["count"] += 1
+        if log.get("rating") is not None:
+            stats["rating_sum"] += log["rating"]
+            stats["rated_count"] += 1
+
+    cuisine_ranked = sorted(
+        cuisine_stats.items(),
+        key=lambda item: (
+            (item[1]["rating_sum"] / item[1]["rated_count"]) if item[1]["rated_count"] else 0,
+            item[1]["count"],
+        ),
+        reverse=True,
+    )
+    top_rated_cuisines = [
+        f"{name} (avg {round(s['rating_sum'] / s['rated_count'], 2)} over {s['count']} log{'s' if s['count'] != 1 else ''})"
+        if s["rated_count"] else f"{name} ({s['count']} log{'s' if s['count'] != 1 else ''}, unrated)"
+        for name, s in cuisine_ranked[:2]
     ]
-    
+    all_cuisines_by_frequency = [
+        f"{name} ({s['count']})" for name, s in sorted(cuisine_stats.items(), key=lambda x: x[1]["count"], reverse=True)[:5]
+    ]
+
     ratings = [log["rating"] for log in logs if log.get("rating") is not None]
     avg_rating = round(sum(ratings) / len(ratings), 2) if ratings else 0
     critic_label = get_critic_label(avg_rating)
@@ -329,15 +353,18 @@ User Profile:
     Total logs: {profile.review_count}
     Cities visited: {cities}
 
-- Top cuisines logged: {top_cuisines}
+- Top-rated cuisines (ranked by how well they scored, not just how often they were logged): {top_rated_cuisines}
+- All cuisines logged, by frequency: {all_cuisines_by_frequency}
 - Rating breakdown: Average {avg_rating}, Critic Personality: {critic_label}
 
 {f"- Do NOT recommend any of these previously suggested dishes: {excluded_dishes}" if excluded_dishes else ""}
 
 Task: Recommend exactly 3 dishes matching this profile.
+- The user's #1 top-rated cuisine is the strongest signal you have. Most or all of your 3 picks should come from that cuisine (or one closely related to it) unless it's backed by only a single log — in that case, treat it as a lead rather than a rule.
+- Only call out a flavor dimension (spice/acid/umami/sweet/texture) as "distinctive" if it's clearly apart from the others (roughly 0.15+ higher than the next-highest score). When the scores are all close together, don't force a "their top flavor is X" narrative — it isn't a real signal at that point, so lean on the cuisine/rating pattern instead.
 - insight: 1-2 sentence summary of the user's overall taste pattern
-- recommendations: for each dish, an integer 0-100 "match" confidence, up to 3-4 descriptive tags, and a "reason" (1 brief sentence on why this dish fits their palate)
-- breakdown: 3-4 sentences, friendly and second-person, explaining the methodology behind the 3 picks above: which of their flavor dimensions weighed most heavily and why, and how their logged cuisines, cities, and rating pattern shaped the selection. Name specific numbers from their profile. Do not re-describe the dishes themselves.
+- recommendations: for each dish, an integer 0-100 "match" confidence, up to 3-4 descriptive tags, and a "reason" (1 brief sentence on why this dish fits their palate — reference a specific cuisine or dish they've actually logged when you can, not just an abstract flavor score)
+- breakdown: 3-4 sentences, friendly and second-person, explaining the methodology: lead with which cuisine(s) they rated highest and why that drove the picks, only mention a flavor dimension if it's genuinely distinctive per the rule above, and name specific numbers from their profile. Do not re-describe the dishes themselves.
 """
     # 4. Call Claude with a schema-constrained response — no manual JSON stripping/parsing needed
     response = client.messages.parse(
