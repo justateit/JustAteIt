@@ -300,12 +300,7 @@ async def get_recommendations(user_id: str, exclude: str = "", db: Session = Dep
 
     cities = sorted({log["city"] for log in logs if log.get("city")})
 
-    # Per-cuisine stats: how often it was logged AND how well it was actually
-    # rated. Frequency alone was the old signal here, and it's why a user
-    # who logged one 3-star American dish and two 5-star Asian dishes could
-    # still get an American dish as their top match — Claude had no explicit
-    # link between a cuisine and how it was rated, just a blended overall
-    # average. Ranking by rating (count as tiebreaker) fixes that directly.
+    # Per-cuisine stats: how often it was logged AND how well it was actually rated
     cuisine_stats = {}
     for log in logs:
         cuisine = log.get("cuisine")
@@ -359,12 +354,25 @@ User Profile:
 
 {f"- Do NOT recommend any of these previously suggested dishes: {excluded_dishes}" if excluded_dishes else ""}
 
-Task: Recommend exactly 3 dishes matching this profile.
-- The user's #1 top-rated cuisine is the strongest signal you have. Most or all of your 3 picks should come from that cuisine (or one closely related to it) unless it's backed by only a single log — in that case, treat it as a lead rather than a rule.
-- Only call out a flavor dimension (spice/acid/umami/sweet/texture) as "distinctive" if it's clearly apart from the others (roughly 0.15+ higher than the next-highest score). When the scores are all close together, don't force a "their top flavor is X" narrative — it isn't a real signal at that point, so lean on the cuisine/rating pattern instead.
-- insight: 1-2 sentence summary of the user's overall taste pattern
-- recommendations: for each dish, an integer 0-100 "match" confidence, up to 3-4 descriptive tags, and a "reason" (1 brief sentence on why this dish fits their palate — reference a specific cuisine or dish they've actually logged when you can, not just an abstract flavor score)
-- breakdown: 3-4 sentences, friendly and second-person, explaining the methodology: lead with which cuisine(s) they rated highest and why that drove the picks, only mention a flavor dimension if it's genuinely distinctive per the rule above, and name specific numbers from their profile. Do not re-describe the dishes themselves.
+Task: Recommend exactly 3 dishes. Work through these steps in order.
+
+Step 1. Set the target cuisine: the first entry in "Top-rated cuisines". Ties break on rating, never on log count.
+Step 2. Choose 3 dishes. At least 2 must be from the target cuisine or one closely related. Do not give each logged cuisine one pick.
+Step 3. Pair each dish with a restaurant in one of their cities. Only name a real restaurant if you are confident it serves that dish; otherwise leave the cuisine and city to carry the pick. Never put a dish on a restaurant known for a different cuisine.
+Step 4. Compare the highest flavor score to the second-highest. Gap under 0.15: mention no flavor dimension anywhere in your output. Gap 0.15 or more: you may cite that one dimension.
+Step 5. Write the three fields, obeying the writing rules.
+
+Writing rules:
+- Short, plain sentences. State facts, not praise. Never compliment the user's taste.
+- Never print a raw score ("0.512") or say one dimension is "slightly ahead" of another.
+- Do not use the words "umami" or "acid" without a plain-language gloss: "savory depth", "bright and tangy".
+- Banned words: beautifully, remarkably, perfectly, delightful, nuanced, journey, philosophy, curiosity, sophisticated, honor.
+- Under 5 logs, say the history is still thin. Do not describe a settled pattern.
+
+Fields:
+- insight: 1-2 sentences on what their logs actually show so far.
+- recommendations: per dish, an integer 0-100 "match", 3-4 short tags, and "reason" — one sentence tying the dish to a cuisine or dish they logged. Never cite a flavor score.
+- breakdown: 3-4 sentences, second person. Name the target cuisine and what they rated it, and cite their log count and cuisines. Do not re-describe the dishes.
 """
     # 4. Call Claude with a schema-constrained response — no manual JSON stripping/parsing needed
     response = client.messages.parse(
