@@ -304,3 +304,55 @@ export async function uploadAvatarImage(imageUri) {
   const data = await response.json();
   return data.url;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Telemetry & Interactions (Recommendation Signals)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Log a single interaction event (impression, dwell, expand, save, skip, share).
+ * @param {{ user_id: string, dish_id?: string, venue_id?: string, interaction_type: string, dwell_time_ms?: number, session_id?: string, context?: object }} payload
+ */
+export async function logInteraction(payload) {
+  const res = await fetch(`${BASE_URL}/api/v1/interactions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`logInteraction failed: ${res.status}`);
+  return res.json();
+}
+
+/**
+ * Log a batch of interactions in one request.
+ * @param {Array<object>} interactions
+ */
+export async function logInteractionsBatch(interactions) {
+  if (!interactions || !interactions.length) return { status: 'ok', count: 0 };
+  const res = await fetch(`${BASE_URL}/api/v1/interactions/batch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ interactions }),
+  });
+  if (!res.ok) throw new Error(`logInteractionsBatch failed: ${res.status}`);
+  return res.json();
+}
+
+/**
+ * Fetch personalized algorithmic feed of recommended dishes.
+ * @param {{ userId?: string, lat?: number, lng?: number, page?: number, limit?: number }} options
+ */
+export async function getAlgorithmicFeed({ userId, lat, lng, page = 1, limit = 10 } = {}) {
+  const params = new URLSearchParams();
+  if (userId) params.append('user_id', userId);
+  if (lat != null) params.append('lat', String(lat));
+  if (lng != null) params.append('lng', String(lng));
+  params.append('page', String(page));
+  params.append('limit', String(limit));
+
+  const res = await fetch(`${BASE_URL}/api/v1/feed?${params.toString()}`);
+  if (!res.ok) throw new Error(`getAlgorithmicFeed failed: ${res.status}`);
+  return res.json();
+}
+
+

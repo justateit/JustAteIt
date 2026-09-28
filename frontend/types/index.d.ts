@@ -8,6 +8,10 @@ interface Dish {
     location: string;
     tastingNotes: string;
     tags: string[];
+    match_score?: number;
+    recommendation_reason?: string;
+    is_exploratory?: boolean;
+    distance_km?: number;
     onUpdated?: () => void;
     onDeleted?: () => void;
 }

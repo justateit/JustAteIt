@@ -32,6 +32,7 @@ EXPECTED_TABLES = {
     "media",
     "flavor_audit_logs",
     "drafts",
+    "user_interactions",
 }
 
 EXPECTED_INDEXES = {
@@ -40,6 +41,9 @@ EXPECTED_INDEXES = {
     "idx_reviews_user_id": ("reviews", "user_id"),
     "idx_reviews_venue_id": ("reviews", "venue_id"),
     "idx_media_review_id": ("media", "review_id"),
+    "idx_user_interactions_user_id": ("user_interactions", "user_id"),
+    "idx_user_interactions_dish_id": ("user_interactions", "dish_id"),
+    "idx_user_interactions_created_at": ("user_interactions", "created_at"),
 }
 
 MIGRATION_NAME_RE = re.compile(r"^\d{14}_[a-z0-9_]+\.sql$")
@@ -269,6 +273,9 @@ def test_expected_columns(tables):
                               "delta_texture", "new_spice", "new_acid",
                               "new_umami", "new_sweet", "new_texture",
                               "created_at"},
+        "user_interactions": {"id", "user_id", "dish_id", "venue_id",
+                              "interaction_type", "dwell_time_ms",
+                              "session_id", "context", "created_at"},
     }
     for table, cols in expected.items():
         assert set(tables[table]) == cols, f"column drift in {table}"
@@ -412,6 +419,9 @@ def test_seed_referential_integrity(seed_inserts):
     assert set(_seeded(seed_inserts, "media", "review_id")) <= reviews
     assert set(_seeded(seed_inserts, "flavor_audit_logs", "user_id")) <= users
     assert set(_seeded(seed_inserts, "flavor_audit_logs", "review_id")) <= reviews | {None}
+    assert set(_seeded(seed_inserts, "user_interactions", "user_id")) <= users
+    assert set(_seeded(seed_inserts, "user_interactions", "dish_id")) <= dishes | {None}
+    assert set(_seeded(seed_inserts, "user_interactions", "venue_id")) <= venues | {None}
 
 
 def test_seed_value_ranges(seed_inserts):

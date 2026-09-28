@@ -1,5 +1,5 @@
-from sqlalchemy import Column, String, Float, DateTime, ForeignKey, Text, Boolean
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Float, DateTime, ForeignKey, Text, Boolean, Integer, JSON, Uuid as UUID
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
@@ -82,3 +82,19 @@ class Media(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     review = relationship("Review", back_populates="media")
+
+class UserInteraction(Base):
+    __tablename__ = "user_interactions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(String, nullable=False)
+    dish_id = Column(UUID(as_uuid=True), ForeignKey("dishes.id", ondelete="CASCADE"), nullable=True)
+    venue_id = Column(UUID(as_uuid=True), ForeignKey("venues.id", ondelete="CASCADE"), nullable=True)
+    interaction_type = Column(String, nullable=False)
+    dwell_time_ms = Column(Integer, default=0)
+    session_id = Column(String, nullable=True)
+    context = Column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    dish = relationship("Dish")
+    venue = relationship("Venue")

@@ -1,3 +1,4 @@
+import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import React, { useEffect, useState } from 'react';
@@ -14,6 +15,7 @@ import {
     View,
 } from 'react-native';
 import { deleteLog, updateLog } from '../utils/flavorProfileApi';
+import { telemetry } from '../utils/telemetry';
 
 function formatDateDisplay(d?: string) {
     if (!d) return '';
@@ -42,9 +44,13 @@ const HorizontalDishCard = ({
     location,
     tastingNotes,
     tags,
+    match_score,
+    recommendation_reason,
+    is_exploratory,
     onUpdated,
     onDeleted,
 }: Dish) => {
+    const { user } = useUser();
     const [modalVisible, setModalVisible] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -164,7 +170,12 @@ const HorizontalDishCard = ({
         <>
             <TouchableOpacity
                 style={styles.cardTouchWrapper}
-                onPress={() => setModalVisible(true)}
+                onPress={() => {
+                    setModalVisible(true);
+                    if (user?.id && id) {
+                        telemetry.recordExpand(user.id, String(id), undefined, { title: currentTitle });
+                    }
+                }}
                 activeOpacity={0.9}
             >
                 <View style={styles.cardContainer}>
@@ -176,6 +187,16 @@ const HorizontalDishCard = ({
                     />
                     {/* Dark Overlay for text legibility */}
                     <View style={styles.cardOverlay} />
+
+                    {/* Match Score Badge (Top Left) */}
+                    {match_score ? (
+                        <View style={[styles.matchBadge, is_exploratory ? styles.exploratoryBadge : null]}>
+                            <Ionicons name={is_exploratory ? "compass-outline" : "sparkles"} size={11} color="#FFFFFF" />
+                            <Text style={styles.matchBadgeText}>
+                                {is_exploratory ? 'Exploration' : `${match_score}% Match`}
+                            </Text>
+                        </View>
+                    ) : null}
 
                     {/* Rating Badge */}
                     <View style={styles.ratingBadge}>
@@ -440,6 +461,17 @@ const HorizontalDishCard = ({
                                         &quot;{currentNotes || 'No sensory notes recorded.'}&quot;
                                     </Text>
 
+                                    {/* Algorithmic Palate Insight */}
+                                    {recommendation_reason ? (
+                                        <View style={styles.recommendationBox}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+                                                <Ionicons name="sparkles" size={13} color="#FF6B4A" />
+                                                <Text style={styles.recommendationHeading}>ALGORITHM INSIGHT</Text>
+                                            </View>
+                                            <Text style={styles.recommendationText}>{recommendation_reason}</Text>
+                                        </View>
+                                    ) : null}
+
                                     {/* Sensory Profile Pill */}
                                     <View style={styles.sensoryCard}>
                                         <View style={styles.sensoryIndicator}>
@@ -494,8 +526,33 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     cardOverlay: {
-        ...StyleSheet.absoluteFill,
+        ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(0, 0, 0, 0.32)',
+    },
+    matchBadge: {
+        position: 'absolute',
+        top: 14,
+        left: 14,
+        backgroundColor: 'rgba(23, 23, 23, 0.78)',
+        borderRadius: 16,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.25)',
+        zIndex: 2,
+    },
+    exploratoryBadge: {
+        backgroundColor: 'rgba(217, 83, 79, 0.85)',
+        borderColor: 'rgba(255, 255, 255, 0.4)',
+    },
+    matchBadgeText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        letterSpacing: 0.5,
     },
     ratingBadge: {
         position: 'absolute',
@@ -577,7 +634,7 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     modalImageOverlay: {
-        ...StyleSheet.absoluteFill,
+        ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(0, 0, 0, 0.35)',
     },
     closeBtn: {
@@ -732,6 +789,26 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
         fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
         marginBottom: 16,
+    },
+    recommendationBox: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 107, 74, 0.25)',
+    },
+    recommendationHeading: {
+        letterSpacing: 1.5,
+        fontSize: 10,
+        fontWeight: '800',
+        color: '#FF6B4A',
+    },
+    recommendationText: {
+        fontSize: 13,
+        lineHeight: 18,
+        color: '#444',
+        fontWeight: '500',
     },
     sensoryCard: {
         backgroundColor: '#FFFFFF',

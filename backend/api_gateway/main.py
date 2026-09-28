@@ -91,6 +91,18 @@ async def route_venues(request: Request, path: str = ""):
     full_path = f"venues/{path}" if path else "venues"
     return await proxy_request(ROUTES["catalog"], full_path, request)
 
+@app.api_route("/api/v1/interactions", methods=["GET", "POST", "PUT", "DELETE"])
+@app.api_route("/api/v1/interactions/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def route_interactions(request: Request, path: str = ""):
+    full_path = f"interactions/{path}" if path else "interactions"
+    return await proxy_request(ROUTES["catalog"], full_path, request)
+
+@app.api_route("/api/v1/feed", methods=["GET"])
+@app.api_route("/api/v1/feed/{path:path}", methods=["GET"])
+async def route_feed(request: Request, path: str = ""):
+    full_path = f"feed/{path}" if path else "feed"
+    return await proxy_request(ROUTES["catalog"], full_path, request)
+
 @app.api_route("/api/v1/media", methods=["GET", "POST", "PUT", "DELETE"])
 @app.api_route("/api/v1/media/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def route_media(request: Request, path: str = ""):

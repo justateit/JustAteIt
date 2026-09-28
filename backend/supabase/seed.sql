@@ -11,7 +11,7 @@
 --
 -- Fixture UUIDs follow 00000000-0000-4000-8000-0000CCCCNNNN where
 -- CCCC is a per-table code (0101 venues, 0201 dishes, 0301 reviews,
--- 0401 media, 0501 audit logs, 0601 drafts) and NNNN is the row number.
+-- 0401 media, 0501 audit logs, 0601 drafts, 0701 user interactions) and NNNN is the row number.
 -- ============================================================
 
 -- ── Users (Clerk-style TEXT ids, clearly synthetic) ─────────────
@@ -93,3 +93,15 @@ INSERT INTO flavor_audit_logs (id, user_id, review_id, delta_spice, delta_acid, 
    '00000000-0000-4000-8000-000003010003',
    0.120, -0.020, 0.020, -0.050, 0.070, 0.62, 0.48, 0.72, 0.25, 0.52,
    '2026-01-10 19:45:00+00');
+
+-- ── User interactions (telemetry signals for recommendations) ──
+INSERT INTO user_interactions (id, user_id, dish_id, venue_id, interaction_type, dwell_time_ms, session_id, context, created_at) VALUES
+  ('00000000-0000-4000-8000-000007010001', 'user_seed_demo_0001',
+   '00000000-0000-4000-8000-000002010001', '00000000-0000-4000-8000-000001010001',
+   'dwell', 4200, 'session_seed_0001', '{"device": "ios", "feed_position": 1}',
+   '2026-01-08 17:55:00+00'),
+  ('00000000-0000-4000-8000-000007010002', 'user_seed_demo_0002',
+   '00000000-0000-4000-8000-000002010002', '00000000-0000-4000-8000-000001010001',
+   'expand', 8500, 'session_seed_0002', '{"device": "android", "feed_position": 0}',
+   '2026-01-10 19:30:00+00');
+
