@@ -113,8 +113,8 @@ const DishCard = ({ id, title, restaurant, date, rating, image, location, tastin
                                 <Text style={{ letterSpacing: 2, color: colorScheme === 'dark' ? '#888' : '#010101a4' }}>REVIEWER SCORE</Text>
                                 <TouchableOpacity>
                                     {/* Number Circle */}
-                                    <View style={styles.circle}>
-                                        <Ionicons name="share-social-outline" size={20} color="#0101016c" />
+                                    <View style={[styles.circle, { borderColor: colorScheme === 'dark' ? '#555' : 'gray', backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'transparent' }]}>
+                                        <Ionicons name="share-social-outline" size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#0101016c'} />
                                     </View>
                                 </TouchableOpacity>
                             </View>
