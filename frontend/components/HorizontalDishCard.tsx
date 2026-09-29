@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { Image } from 'expo-image';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -67,12 +67,19 @@ const HorizontalDishCard = ({
     const [editRating, setEditRating] = useState(rating);
     const [editNotes, setEditNotes] = useState(tastingNotes);
 
-    useEffect(() => {
+    const [prevProps, setPrevProps] = useState({ title, restaurant, rating, tastingNotes });
+    if (
+        prevProps.title !== title ||
+        prevProps.restaurant !== restaurant ||
+        prevProps.rating !== rating ||
+        prevProps.tastingNotes !== tastingNotes
+    ) {
+        setPrevProps({ title, restaurant, rating, tastingNotes });
         setCurrentTitle(title);
         setCurrentRestaurant(restaurant);
         setCurrentRating(rating);
         setCurrentNotes(tastingNotes);
-    }, [title, restaurant, rating, tastingNotes]);
+    }
 
     const openEditMode = () => {
         setEditTitle(currentTitle);

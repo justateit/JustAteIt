@@ -34,8 +34,8 @@ const SCREEN_HEIGHT = Dimensions.get('window').height;
  * and measures its own layout offset within the ScrollView content.
  */
 function AnimatedSection({ children, scrollY, delay = 0, style }) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(20)).current;
+  const [opacity] = useState(() => new Animated.Value(0));
+  const [translateY] = useState(() => new Animated.Value(20));
   const isAnimated = useRef(false);
   const layoutY = useRef(0);
 

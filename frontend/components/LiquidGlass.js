@@ -1,4 +1,3 @@
-import { Colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme-context';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
