@@ -1,15 +1,5 @@
 /**
  * Level curve for the points system.
- *
- * Kept here rather than inline because two screens render a Level card — the
- * Insights tab and the profile page — and when the thresholds were duplicated in
- * both, changing one silently left the other disagreeing about the user's level.
- *
- * The curve escalates instead of being a flat 100 per level. There are only five
- * named levels, and the 20 milestones award 1410 points between them (plus 10 per
- * log), so a flat curve pushed users to the top rank within their first few
- * entries — the rank stopped meaning anything. These thresholds are sized so that
- * "Culinary Connoisseur" needs sustained logging and most of the milestones.
  */
 
 // Cumulative total points required to REACH each level. Index 0 is level 1.
@@ -56,9 +46,6 @@ export function getLevelProgress(totalPoints) {
   return {
     level,
     label: getLevelLabel(level),
-    // null at max level, so callers show "max level" rather than promising a
-    // next rank that does not exist — the old code advertised the level the
-    // user was already on.
     nextLabel: atMax ? null : getLevelLabel(level + 1),
     atMax,
     pointsIntoLevel,
