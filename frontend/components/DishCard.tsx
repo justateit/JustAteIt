@@ -8,7 +8,7 @@ import { useTheme } from '@/hooks/use-theme-context';
 const { width } = Dimensions.get('window');
 const gap = width * 0.3
 
-const DishCard = ({ id, title, restaurant, date, rating, image, location, tastingNotes, tags }: Dish) => {
+const DishCard = ({ id, title, restaurant, date, rating, image, location, tastingNotes, chemistryInsight, tags }: Dish) => {
     const [modalVisible, setModalVisible] = useState(false);
     const { colorScheme } = useTheme();
 
@@ -140,12 +140,16 @@ const DishCard = ({ id, title, restaurant, date, rating, image, location, tastin
                                 </Text>
                             </View>
                             {/* Chemistry Insight */}
-                            <Text style={{ letterSpacing: 2, fontWeight: '700', color: '#FF6B4A', marginLeft: 10, paddingTop: 20, paddingBottom: 20 }}>CHEMISTRY INSIGHT</Text>
-                            <View style={{ backgroundColor: Colors[colorScheme].card, paddingHorizontal: 20, paddingVertical: 20, borderLeftColor: '#FF6B4A', borderLeftWidth: 4 }}>
-                                <Text style={{ color: Colors[colorScheme].text }}>
-                                    {chemistryInsight}
-                                </Text>
-                            </View>
+                            {chemistryInsight ? (
+                                <>
+                                    <Text style={{ letterSpacing: 2, fontWeight: '700', color: '#FF6B4A', marginLeft: 10, paddingTop: 20, paddingBottom: 20 }}>CHEMISTRY INSIGHT</Text>
+                                    <View style={{ backgroundColor: Colors[colorScheme].card, paddingHorizontal: 20, paddingVertical: 20, borderLeftColor: '#FF6B4A', borderLeftWidth: 4 }}>
+                                        <Text style={{ color: Colors[colorScheme].text }}>
+                                            {chemistryInsight}
+                                        </Text>
+                                    </View>
+                                </>
+                            ) : null}
                             <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#01010150' }]} />
                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
                                 {tags.map((tag) => (
