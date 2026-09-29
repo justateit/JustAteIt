@@ -2,12 +2,12 @@ import HorizontalDishCard from '@/components/HorizontalDishCard';
 import { SearchBar } from '@/components/SearchBar';
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { getSavedLogs } from '../../utils/flavorProfileApi';
+import { deleteSavedLog, getSavedLogs } from '../../utils/flavorProfileApi';
 
 export default function HomeScreen() {
     const [fontsLoaded] = useFonts({
@@ -16,13 +16,28 @@ export default function HomeScreen() {
     });
 
     const [activeFilter, setActiveFilter] = useState('all');
+    const [removingId, setRemovingId] = useState<string | null>(null);
     const { user } = useUser();
+    const queryClient = useQueryClient();
 
     const { data: savedLogs, isLoading } = useQuery({
         queryKey: ['savedLogs', user?.id],
         queryFn: () => getSavedLogs(user!.id).then((d: any) => d.saved_logs ?? []),
         enabled: !!user?.id,
     });
+
+    const handleRemove = async (savedLogId: string) => {
+        if (removingId) return; // one at a time
+        setRemovingId(savedLogId);
+        try {
+            await deleteSavedLog(savedLogId);
+            queryClient.invalidateQueries({ queryKey: ['savedLogs', user?.id] });
+        } catch (err) {
+            console.error('[RemoveSavedLog]', err);
+        } finally {
+            setRemovingId(null);
+        }
+    };
 
     // Map the saved-log shape onto the props HorizontalDishCard expects.
     const cards = useMemo(() => (savedLogs ?? []).map((s: any) => ({
@@ -112,7 +127,24 @@ export default function HomeScreen() {
                     data={visibleCards}
                     showsVerticalScrollIndicator={false}
                     keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => <HorizontalDishCard {...item} />}
+                    renderItem={({ item }) => (
+                        <View style={styles.cardWrap}>
+                            <HorizontalDishCard {...item} />
+                            <TouchableOpacity
+                                style={styles.removeBadge}
+                                onPress={() => handleRemove(item.id)}
+                                disabled={removingId === item.id}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Remove ${item.title} from saved`}
+                            >
+                                {removingId === item.id ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                ) : (
+                                    <Ionicons name="bookmark" size={16} color="#FFFFFF" />
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    )}
                     scrollEnabled={false}
                     contentContainerStyle={{ gap: 12 }}
                 />
@@ -193,5 +225,20 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         maxWidth: 240,
         lineHeight: 18,
+    },
+    cardWrap: {
+        position: 'relative',
+    },
+    removeBadge: {
+        position: 'absolute',
+        top: 10,
+        left: 10,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10,
     }
 });

@@ -527,9 +527,7 @@ async def publish_draft(draft_id: str, background_tasks: BackgroundTasks, db: Se
 @app.post("/saved-logs")
 def save_log(payload: SavedLogPayload, db: Session = Depends(get_db)):
     """
-    Bookmark a dish. Idempotent: saving the same card twice updates the existing
-    row rather than erroring on the (user_id, source_id) unique constraint, so a
-    double-tap is harmless.
+    Bookmark a dish
     """
     print(f"\033[96m[CATALOG] Saving log '{payload.dish_name}' for {payload.user_id}\033[0m")
 

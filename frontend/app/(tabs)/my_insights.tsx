@@ -92,13 +92,9 @@ const MyInsights = ({ onPress }: Props) => {
         enabled: !!user?.id,
     });
 
-    // Milestones. Order and grouping must match MILESTONES in user_service/main.py:
-    // the list is shown four at a time and rotates to the next four once a group
-    // is complete, so an out-of-order entry would strand the user on a group they
-    // cannot finish.
+    // Milestones
+    // the list is shown four at a time and rotates to the next four once a group is complete
     const MILESTONE_DEFS = [
-        // `points` must match the same milestone in user_service/main.py — it is
-        // shown to the user, and the backend is what actually awards it.
         // Tier 1 — first steps
         { id: "first_log", title: "First Bite", points: 25, hint: "Log your very first dish" },
         { id: "first_note", title: "In Your Own Words", points: 25, hint: "Add tasting notes to a log — these are what shape your recommendations" },
@@ -127,10 +123,7 @@ const MyInsights = ({ onPress }: Props) => {
     ];
     const achievedIds: string[] = profileData?.achieved_milestones ?? [];
 
-    // Show one group of four at a time: the first group that isn't fully earned.
-    // Derived rather than stored, so it needs no extra state and stays correct if
-    // a milestone arrives out of order. Falls back to the last group once all are
-    // done, so the section never renders empty.
+    // Show one group of four at a time: the first group that isn't fully earned
     const MILESTONE_GROUP_SIZE = 4;
     const milestoneGroups = Array.from(
         { length: Math.ceil(MILESTONE_DEFS.length / MILESTONE_GROUP_SIZE) },
@@ -264,13 +257,13 @@ const MyInsights = ({ onPress }: Props) => {
                         <View style={styles.progressBarBackground}>
                             <View style={[styles.progressBarFill, { width: `${Math.round(levelInfo.progress * 100)}%` }]} />
                         </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, marginTop: 10 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+                            <Text style={styles.levelNumberText}>Level {levelInfo.level}</Text>
                             <Text style={styles.pointsText}>
                                 {levelInfo.atMax
                                     ? 'Top level reached'
                                     : `${levelInfo.pointsToNext} pts to ${levelInfo.nextLabel}`}
                             </Text>
-                            <Text style={styles.levelNumberText}>Level {levelInfo.level}</Text>
                         </View>
                     </View>
 

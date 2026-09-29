@@ -311,9 +311,8 @@ export async function uploadAvatarImage(imageUri) {
 /**
  * Bookmark a dish so it shows up on the Saved Logs page.
  *
- * Stores a snapshot rather than a reference, so the bookmark survives the
- * original log being edited or deleted. Idempotent on (user, sourceId): saving
- * the same card twice updates that row instead of creating a duplicate.
+ * Stores a snapshot rather than a reference, so the bookmark survives the original log being edited or deleted. 
+ * Saving the same card twice updates that row instead of creating a duplicate.
  *
  * @param {string} userId    - Clerk user ID
  * @param {object} dish      - { sourceId, dishName, venueName, city, cuisine, rating, notes, imageUrl, tags }

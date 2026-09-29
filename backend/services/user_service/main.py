@@ -16,9 +16,7 @@ from services.user_service.core.flavor_math import (
     FLAVOR_DIMS, update_dimension, adaptive_alpha, personality_label
 )
 
-# Plain-language names for the flavor dimensions. User testing found that diners
-# did not know what "umami" or "acid" meant, so the raw dimension names never
-# reach the reader — only these.
+# Plain-language names for the flavor dimensions. User testing found that diners did not know what "umami" or "acid" meant, so the raw dimension names never reach the reader.
 FLAVOR_GLOSS = {
     "spice":   "heat and spice",
     "acid":    "bright, tangy flavors",
@@ -45,10 +43,7 @@ class RatingPayload(BaseModel):
     user_id: str
     dish_id: str
     rating:  float   # 1-5 stars
-
-    # For the microservice, the catalog service will likely send the base stats of the dish
-    # alongside the rating so we don't have to do a cross-service HTTP call here,
-    # OR we do a synchronous HTTP call to Catalog. We'll simulate passing it in for now.
+    
     dish_base_spice: float = 0.5
     dish_base_acid: float = 0.5
     dish_base_umami: float = 0.5
@@ -193,23 +188,24 @@ async def update_flavor_profile(payload: RatingPayload, db: Session = Depends(ge
     profile.review_count += 1
     profile.recommendations_stale = True
 
+    # Every time a rating comes in, recompute four stats from scratch, then sweep the full milestone list once and hand out points for anything newly unlocked.
     logs = await fetch_user_logs(payload.user_id)
     stats = {
         "review_count": profile.review_count,
         "cities_visited": len({log["city"] for log in logs if log.get("city")}),
         "cuisines_tried": len({log["cuisine"] for log in logs if log.get("cuisine")}),
         "has_five_star": any(log.get("rating") == 5 for log in logs),
-        # Beyond raw counts: milestones that reward the habits that make the
-        # recommendations better. Notes and photos are what the AI actually
-        # reads, so they are worth encouraging rather than just logging volume.
+        # How many different real restaurants a user has eaten at
+        # Builds a set of venue names
         "venues_visited": len({
             log["venue_name"] for log in logs
             if log.get("venue_name") and log["venue_name"] != "Private Location"
         }),
-        "notes_written": sum(1 for log in logs if (log.get("sensory_notes") or "").strip()),
-        "photos_added": sum(1 for log in logs if log.get("image_url")),
-        "five_star_count": sum(1 for log in logs if log.get("rating") == 5),
+        "notes_written": sum(1 for log in logs if (log.get("sensory_notes") or "").strip()), # How many logs have actual text in sensory_notes
+        "photos_added": sum(1 for log in logs if log.get("image_url")), # how many logs have an image attached
+        "five_star_count": sum(1 for log in logs if log.get("rating") == 5), # How many times they've given a full 5 stars
     }
+    # Loads the list of milestone ids this user has already earned
     achieved = json.loads(profile.achieved_milestones) if profile.achieved_milestones else []
     for milestone in MILESTONES:
         if milestone["id"] not in achieved and milestone["condition"](stats):
@@ -245,9 +241,7 @@ def get_critic_label(avg: float) -> str:
         return "Merciless"
     return "New Foodie"
 
-# Ordered in tiers of four, easiest first. The UI shows one tier at a time and
-# advances when all four are earned, so ORDER IS MEANINGFUL — adding a hard
-# milestone in an early tier would stall a user on a group they can't finish.
+# Ordered in tiers of four, easiest first. The UI shows one tier at a time and advances when all four are earned
 # Existing ids are preserved so nobody loses a milestone they already earned.
 MILESTONES = [
     # ── Tier 1: first steps ───────────────────────────────────────────────
@@ -501,10 +495,6 @@ async def get_recommendations(
         real_venues.append(f"{name} — {v.get('cuisine', '')} in {city}")
 
     # On a refresh, sink the venues the user just saw to the bottom of the list.
-    # Excluding them outright risks emptying it, but leaving the order untouched
-    # meant every refresh produced the same three restaurants with new dishes —
-    # and the restaurant is the most prominent thing on the card, so the whole
-    # refresh read as broken.
     if shown_venues:
         fresh = [v for v in real_venues if v.split(" — ")[0] not in shown_venues]
         repeats = [v for v in real_venues if v.split(" — ")[0] in shown_venues]
@@ -529,15 +519,13 @@ async def get_recommendations(
         if len(ranked_flavors) > 1 and (ranked_flavors[0][1] - ranked_flavors[1][1]) >= 0.15
         else None
     )
-    # What they actually enjoyed, in their own words. The flavor vector is the
-    # obvious place to look for "what they like", but it converges on 0.5 for
-    # every user, so it says nothing. Their highest-rated dishes and the notes
-    # they wrote about them are concrete evidence of taste, and already stored.
+    # What they liked
     liked = sorted(
         (log for log in logs if (log.get("rating") or 0) >= 4),
         key=lambda log: log["rating"], reverse=True,
     )[:5]
     liked_dishes = []
+    # Filter down to only logs rated 4 or 5 stars, sort those highest-rated first
     for log in liked:
         dish = log.get("dish_name") or "an unnamed dish"
         entry = f"{dish} ({log.get('cuisine') or 'unknown cuisine'}, rated {log['rating']})"
@@ -545,7 +533,7 @@ async def get_recommendations(
         if note:
             entry += f' — they wrote: "{note[:160]}"'
         liked_dishes.append(entry)
-
+    # If they have fewer than 4 logs, give the model permission to mention that their history is thin. Otherwise, tell it flatly not to bring up log count at all
     history_rule = (
         "- In the breakdown only, note once that their history is still short, and don't describe a settled pattern."
         if profile.review_count < 4

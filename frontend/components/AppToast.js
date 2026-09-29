@@ -6,26 +6,11 @@ import LiquidGlass from './LiquidGlass';
 /**
  * In-app message banner, styled to match the app instead of the platform's bare
  * alert() dialog.
- *
- * Successes fade themselves out — confirming a save shouldn't cost the user a
- * tap. Errors stay until dismissed, because a failed save is something they
- * need to notice and act on.
- *
- * Usage:
- *   const [toast, setToast] = useState(null);
- *   setToast({ message: 'Log archived', type: 'success' });
- *   <AppToast toast={toast} onDismiss={() => setToast(null)} />
- */
+*/
 export default function AppToast({ toast, onDismiss }) {
-  // useState rather than useRef so the value is created once without tripping
-  // the react-hooks/refs lint rule that CI enforces.
   const [anim] = useState(() => new Animated.Value(0));
   const isError = toast?.type === 'error';
 
-  // The parent's `toast` is the single source of truth — mirroring it into local
-  // state here would mean calling setState inside an effect, which React now
-  // flags as a cascading render. Dismissal runs the exit animation, then hands
-  // control back to the parent to clear the prop, which unmounts this.
   const dismiss = () => {
     Animated.timing(anim, { toValue: 0, duration: 180, useNativeDriver: true }).start(
       () => onDismiss?.(),
@@ -47,15 +32,11 @@ export default function AppToast({ toast, onDismiss }) {
 
     const timer = setTimeout(dismiss, 2400);
     return () => clearTimeout(timer);
-    // dismiss/onDismiss are intentionally omitted: they are new closures on every
-    // parent render, and including them would restart the timer each time.
   }, [toast, anim]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!toast?.message) return null;
 
   return (
-    // box-none so the faint scrim reads as a dialog without freezing the form
-    // underneath for the 2.4s a success message is on screen.
     <Animated.View pointerEvents="box-none" style={[styles.wrap, { opacity: anim }]}>
       <View pointerEvents="none" style={styles.scrim} />
 

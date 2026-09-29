@@ -75,11 +75,6 @@ class Draft(Base):
 class SavedLog(Base):
     """
     A dish a user bookmarked to try later.
-
-    Stores a snapshot of the dish rather than a FK to reviews, so a saved item
-    survives the original log changing or being deleted. source_id is the id of
-    the card it was saved from, and (user_id, source_id) is unique so tapping
-    save twice is idempotent rather than creating a duplicate.
     """
     __tablename__ = "saved_logs"
 
