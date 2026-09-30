@@ -5,11 +5,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { router } from 'expo-router';
-import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme-context';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { deleteSavedLog, getSavedLogs } from '../../utils/flavorProfileApi';
 
 export default function HomeScreen() {
