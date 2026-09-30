@@ -252,60 +252,30 @@ const HorizontalDishCard = ({
                                 <Ionicons name="close" size={20} color="#FFFFFF" />
                             </TouchableOpacity>
 
-                            {/* Top Right Actions */}
-                            <View style={styles.topActionsRow}>
-                                {!isEditing ? (
-                                    <>
-                                        <TouchableOpacity
-                                            style={styles.editBadge}
-                                            onPress={openEditMode}
-                                            activeOpacity={0.8}
-                                        >
-                                            <Ionicons name="pencil" size={13} color="#FFFFFF" />
-                                            <Text style={styles.badgeActionText}>EDIT</Text>
-                                        </TouchableOpacity>
+                            {isEditing && (
+                                <View style={styles.topActionsRow}>
+                                    <TouchableOpacity
+                                        style={styles.cancelBadge}
+                                        onPress={cancelEditMode}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Text style={styles.cancelBadgeText}>CANCEL</Text>
+                                    </TouchableOpacity>
 
-                                        <TouchableOpacity
-                                            style={styles.deleteBadge}
-                                            onPress={handleDelete}
-                                            disabled={isDeleting}
-                                            activeOpacity={0.8}
-                                        >
-                                            {isDeleting ? (
-                                                <ActivityIndicator size="small" color="#FFFFFF" />
-                                            ) : (
-                                                <>
-                                                    <Ionicons name="trash-outline" size={13} color="#FFFFFF" />
-                                                    <Text style={styles.badgeActionText}>DELETE</Text>
-                                                </>
-                                            )}
-                                        </TouchableOpacity>
-                                    </>
-                                ) : (
-                                    <>
-                                        <TouchableOpacity
-                                            style={styles.cancelBadge}
-                                            onPress={cancelEditMode}
-                                            activeOpacity={0.8}
-                                        >
-                                            <Text style={styles.cancelBadgeText}>CANCEL</Text>
-                                        </TouchableOpacity>
-
-                                        <TouchableOpacity
-                                            style={styles.saveBadge}
-                                            onPress={handleSave}
-                                            disabled={isSaving}
-                                            activeOpacity={0.8}
-                                        >
-                                            {isSaving ? (
-                                                <ActivityIndicator size="small" color="#FFFFFF" />
-                                            ) : (
-                                                <Text style={styles.saveBadgeText}>SAVE</Text>
-                                            )}
-                                        </TouchableOpacity>
-                                    </>
-                                )}
-                            </View>
+                                    <TouchableOpacity
+                                        style={styles.saveBadge}
+                                        onPress={handleSave}
+                                        disabled={isSaving}
+                                        activeOpacity={0.8}
+                                    >
+                                        {isSaving ? (
+                                            <ActivityIndicator size="small" color="#FFFFFF" />
+                                        ) : (
+                                            <Text style={styles.saveBadgeText}>SAVE</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                            )}
 
                             {/* Header Dish & Venue info (view mode) */}
                             {!isEditing && (
@@ -471,9 +441,16 @@ const HorizontalDishCard = ({
                                             <TouchableOpacity
                                                 style={[styles.actionPill, styles.deletePill, { backgroundColor: colorScheme === 'dark' ? 'rgba(217, 56, 30, 0.2)' : '#FDEEEB' }]}
                                                 onPress={handleDelete}
+                                                disabled={isDeleting}
                                             >
-                                                <Ionicons name="trash-outline" size={16} color="#D9381E" />
-                                                <Text style={[styles.actionPillText, styles.deletePillText]}>Delete</Text>
+                                                {isDeleting ? (
+                                                    <ActivityIndicator size="small" color="#D9381E" />
+                                                ) : (
+                                                    <>
+                                                        <Ionicons name="trash-outline" size={16} color="#D9381E" />
+                                                        <Text style={[styles.actionPillText, styles.deletePillText]}>Delete</Text>
+                                                    </>
+                                                )}
                                             </TouchableOpacity>
                                         </View>
                                     </View>
@@ -559,7 +536,7 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     cardOverlay: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         backgroundColor: 'rgba(0, 0, 0, 0.32)',
     },
     ratingBadge: {
@@ -589,10 +566,10 @@ const styles = StyleSheet.create({
         padding: 16,
     },
     dishName: {
-        fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
-        fontSize: 22,
+        fontFamily: "LibreBaskerville",
+        fontSize: 25,
         color: '#FFFFFF',
-        fontWeight: '700',
+        fontWeight: '900',
         marginBottom: 4,
         textShadowColor: 'rgba(0, 0, 0, 0.4)',
         textShadowOffset: { width: 0, height: 1 },
@@ -621,10 +598,11 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: '#F7F4EC',
-        borderTopLeftRadius: 28,
-        borderTopRightRadius: 28,
-        maxHeight: '90%',
+        backgroundColor: '#F4F0E6',
+        borderRadius: 24,
+        maxHeight: '85%',
+        marginHorizontal: 16,
+        marginBottom: 60,
         overflow: 'hidden',
     },
     modalImageContainer: {
@@ -638,7 +616,7 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     modalImageOverlay: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         backgroundColor: 'rgba(0, 0, 0, 0.35)',
     },
     closeBtn: {
@@ -729,10 +707,10 @@ const styles = StyleSheet.create({
         padding: 18,
     },
     modalDishTitle: {
-        fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+        fontFamily: "LibreBaskerville",
         fontSize: 24,
         color: '#FFFFFF',
-        fontWeight: '700',
+        fontWeight: '900',
         marginBottom: 4,
     },
 
@@ -786,19 +764,19 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     ratingBigNumber: {
-        fontSize: 54,
+        fontSize: 44,
         fontWeight: '700',
         color: '#FF6B4A',
-        fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+        fontFamily: "LibreBaskerville-Bold",
         letterSpacing: 1,
     },
     ratingSlash: {
-        fontSize: 22,
+        fontSize: 16,
         color: '#999',
         marginLeft: 4,
     },
     ratingMax: {
-        fontSize: 22,
+        fontSize: 16,
         color: '#999',
         marginLeft: 4,
     },

@@ -1,8 +1,9 @@
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import LiquidGlass from './LiquidGlass';
 import { getFlavorProfile } from '../utils/flavorProfileApi';
 import { getLevelProgress } from '../utils/levels';
@@ -321,10 +322,15 @@ export function LevelCard() {
         queryFn: () => getFlavorProfile(userId),
         enabled: !!userId,
     });
-    // Shared with the Insights tab via utils/levels so both cards always agree.
     const levelInfo = getLevelProgress(profileData?.points_count ?? 0);
     return (
-        <View style={styles.levelContainer}>
+        <TouchableOpacity
+            style={styles.levelContainer}
+            activeOpacity={0.85}
+            onPress={() => router.push('/my_insights')}
+            accessibilityRole="button"
+            accessibilityLabel="See your full insights"
+        >
             <Text style={styles.currentLevelText}>CURRENT LEVEL</Text>
             <Text style={styles.userLevelText}>{levelInfo.label}</Text>
             {/* Progress bar */}
@@ -342,7 +348,7 @@ export function LevelCard() {
                     <Ionicons name="arrow-forward" size={14} color="#ffffffff" />
                 </View>
             </View>
-        </View>
+        </TouchableOpacity>
     );
 }
 
