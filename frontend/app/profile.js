@@ -1,10 +1,11 @@
 import HorizontalDishCard from '@/components/HorizontalDishCard';
-import LiquidGlass from '@/components/LiquidGlass';
-import { DiningFrequencyCard, TasteDNACard } from '@/components/ProfileCards';
+import { DiningFrequencyCard, LevelCard } from '@/components/ProfileCards';
 import { useUser } from '@clerk/clerk-expo';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
+import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
@@ -105,10 +106,17 @@ export default function App() {
                     </Text>
 
                     {/* Stats — liquid glass */}
-                    <LiquidGlass
-                        borderRadius={18}
-                        style={styles.statsWrapper}
-                    >
+                    <View style={styles.statsWrapper}>
+                        <BlurView
+                            intensity={Platform.OS === 'ios' ? 50 : 35}
+                            tint="light"
+                            experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
+                            style={StyleSheet.absoluteFill}
+                        />
+                        <LinearGradient
+                            colors={['rgba(255,255,255,0.55)', 'rgba(255,255,255,0.15)']}
+                            style={StyleSheet.absoluteFill}
+                        />
                         <View style={styles.statsContainer}>
                             <View style={styles.statItem}>
                                 <Text style={[styles.statNumber, { color: Colors[colorScheme].text }]}>{logs.length}</Text>
@@ -123,7 +131,7 @@ export default function App() {
                                 <Text style={[styles.statLabel, { color: colorScheme === 'dark' ? '#AAA' : '#777' }]}>FOLLOWING</Text>
                             </View>
                         </View>
-                    </LiquidGlass>
+                    </View>
                 </View>
 
                 <View style={[styles.toggleContainer, { backgroundColor: colorScheme === 'dark' ? Colors.dark.input : '#e5dfd5ff' }]}>
@@ -149,7 +157,7 @@ export default function App() {
                         {/* Info Cards — stacked */}
                         <View style={styles.cardsContainer}>
                             <DiningFrequencyCard />
-                            <TasteDNACard />
+                            <LevelCard />
                         </View>
 
                         {/* The Journal Section */}

@@ -1,4 +1,6 @@
 import { TasteDNACard } from '@/components/ProfileCards';
+import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme-context';
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -16,6 +18,7 @@ interface Props {
 const MyInsights = ({ onPress }: Props) => {
 
     const queryClient = useQueryClient();
+    const { colorScheme } = useTheme();
     const [modalVisible, setModalVisible] = useState(false);
 
     /* Animation when closing the AI insights modal */
@@ -230,7 +233,7 @@ const MyInsights = ({ onPress }: Props) => {
 
     return (
         <>
-            <SafeAreaView style={styles.safeArea}>
+            <SafeAreaView style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}>
                 <ScrollView
                     style={styles.container}
                     showsVerticalScrollIndicator={false}
@@ -244,9 +247,9 @@ const MyInsights = ({ onPress }: Props) => {
                             onPress={() => {
                                 router.push('/profile')
                             }}>
-                            <Ionicons name="arrow-back" size={28} color="#918f8fff" />
+                            <Ionicons name="arrow-back" size={28} color={Colors[colorScheme].icon} />
                         </TouchableOpacity>
-                        <Text style={styles.title}>My Insights</Text>
+                        <Text style={[styles.title, { color: Colors[colorScheme].text }]}>My Insights</Text>
                     </View>
 
                     {/* Level Section */}
@@ -268,7 +271,7 @@ const MyInsights = ({ onPress }: Props) => {
                     </View>
 
                     {/* Milestones section — one group of four at a time */}
-                    <View style={styles.milestonesContainer}>
+                    <View style={[styles.milestonesContainer, { backgroundColor: Colors[colorScheme].card }]}>
                         <View style={styles.milestonesHeader}>
                             <Text style={styles.milestonesTitle}>MILESTONES</Text>
                             <Text style={styles.milestonesProgress}>
@@ -296,7 +299,11 @@ const MyInsights = ({ onPress }: Props) => {
                                                 color={isAchieved ? "#E86A33" : "#c4c4c4"}
                                             />
                                             <View style={styles.milestoneTextGroup}>
-                                                <Text style={[styles.milestoneText, isAchieved && styles.milestoneTextAchieved]}>
+                                                <Text style={[
+                                                    styles.milestoneText,
+                                                    !isAchieved && { color: colorScheme === 'dark' ? '#777' : '#b5b5b5' },
+                                                    isAchieved && [styles.milestoneTextAchieved, { color: Colors[colorScheme].text }],
+                                                ]}>
                                                     {milestone.title}
                                                 </Text>
                                             </View>
@@ -312,7 +319,7 @@ const MyInsights = ({ onPress }: Props) => {
 
                                         {isOpen && (
                                             <View style={styles.milestoneDetail}>
-                                                <Text style={styles.milestoneDetailText}>{milestone.hint}</Text>
+                                                <Text style={[styles.milestoneDetailText, { color: colorScheme === 'dark' ? '#AAA' : '#757575' }]}>{milestone.hint}</Text>
                                                 <Text style={styles.milestoneDetailPoints}>
                                                     {isAchieved
                                                         ? `Earned · ${milestone.points} points added to your total`
@@ -332,15 +339,15 @@ const MyInsights = ({ onPress }: Props) => {
                     </View>
 
                     {/* Top cuisines section */}
-                    <View style={styles.topCuisineContainer}>
+                    <View style={[styles.topCuisineContainer, { backgroundColor: Colors[colorScheme].card }]}>
                         <Text style={styles.topCuisineTitle}>TOP CUISINES</Text>
                         <View style={{ flexDirection: 'column', alignItems: 'center', gap: 12, marginTop: 12 }}>
 
                             {topCuisines.map((cuisine) => (
                                 <React.Fragment key={cuisine.name}>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                                        <Text style={styles.cuisineText}>{cuisine.name}</Text>
-                                        <Text style={styles.cuisineQuantityText}>{cuisine.count}</Text>
+                                        <Text style={[styles.cuisineText, { color: Colors[colorScheme].text }]}>{cuisine.name}</Text>
+                                        <Text style={[styles.cuisineQuantityText, { color: Colors[colorScheme].text }]}>{cuisine.count}</Text>
                                     </View>
 
                                     <View style={styles.cuisineProgressBarBackground}>
@@ -352,7 +359,7 @@ const MyInsights = ({ onPress }: Props) => {
                     </View>
 
                     {/* Rating breakdown section */}
-                    <View style={styles.ratingBreakdownContainer}>
+                    <View style={[styles.ratingBreakdownContainer, { backgroundColor: Colors[colorScheme].card }]}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, }}>
                             <Text style={styles.ratingBreakdownTitle}>RATING BREAKDOWN</Text>
                             <View style={styles.criticBubble}>
@@ -363,8 +370,8 @@ const MyInsights = ({ onPress }: Props) => {
                             <View style={{ flexDirection: 'row', gap: 40, marginLeft: 10 }}>
                                 <View style={{ flexDirection: 'column', alignItems: 'center', marginTop: 5 }}>
                                     <View style={[styles.ratingCircle, { backgroundColor: getRatingColor(averageRating) }]}>
-                                        <View style={styles.innerCircle}>
-                                            <Text style={styles.averageRating}>{averageRating.toFixed(1)}</Text>
+                                        <View style={[styles.innerCircle, { backgroundColor: Colors[colorScheme].card }]}>
+                                            <Text style={[styles.averageRating, { color: Colors[colorScheme].text }]}>{averageRating.toFixed(1)}</Text>
                                             <Text style={styles.averageRatingText}>avg</Text>
 
                                         </View>
@@ -374,41 +381,41 @@ const MyInsights = ({ onPress }: Props) => {
                                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, width: 120 }}>
                                             <View style={styles.ratingColorBoxDark} />
-                                            <Text style={styles.ratingText}>5 Stars</Text>
+                                            <Text style={[styles.ratingText, { color: Colors[colorScheme].text }]}>5 Stars</Text>
                                         </View>
-                                        <Text style={styles.ratingPercentage}>{(Math.round((ratings.fiveStars / totalRatings) * 100)) || '0'}%</Text>
+                                        <Text style={[styles.ratingPercentage, { color: Colors[colorScheme].text }]}>{(Math.round((ratings.fiveStars / totalRatings) * 100)) || '0'}%</Text>
                                     </View>
 
                                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, width: 120 }}>
                                             <View style={styles.ratingColorBoxMed} />
-                                            <Text style={styles.ratingText}>4 Stars</Text>
+                                            <Text style={[styles.ratingText, { color: Colors[colorScheme].text }]}>4 Stars</Text>
                                         </View>
-                                        <Text style={styles.ratingPercentage}>{(Math.round((ratings.fourStars / totalRatings) * 100)) || '0'}%</Text>
+                                        <Text style={[styles.ratingPercentage, { color: Colors[colorScheme].text }]}>{(Math.round((ratings.fourStars / totalRatings) * 100)) || '0'}%</Text>
                                     </View>
 
                                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, width: 120 }}>
                                             <View style={styles.ratingColorBoxLight} />
-                                            <Text style={styles.ratingText}>3 Stars</Text>
+                                            <Text style={[styles.ratingText, { color: Colors[colorScheme].text }]}>3 Stars</Text>
                                         </View>
-                                        <Text style={styles.ratingPercentage}>{(Math.round((ratings.threeStars / totalRatings) * 100)) || '0'}%</Text>
+                                        <Text style={[styles.ratingPercentage, { color: Colors[colorScheme].text }]}>{(Math.round((ratings.threeStars / totalRatings) * 100)) || '0'}%</Text>
                                     </View>
 
                                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, width: 120 }}>
                                             <View style={styles.ratingColorBoxLighter} />
-                                            <Text style={styles.ratingText}>2 Stars</Text>
+                                            <Text style={[styles.ratingText, { color: Colors[colorScheme].text }]}>2 Stars</Text>
                                         </View>
-                                        <Text style={styles.ratingPercentage}>{(Math.round((ratings.twoStars / totalRatings) * 100)) || '0'}%</Text>
+                                        <Text style={[styles.ratingPercentage, { color: Colors[colorScheme].text }]}>{(Math.round((ratings.twoStars / totalRatings) * 100)) || '0'}%</Text>
                                     </View>
 
                                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, width: 120 }}>
                                             <View style={styles.ratingColorBoxLightest} />
-                                            <Text style={styles.ratingText}>1 Stars</Text>
+                                            <Text style={[styles.ratingText, { color: Colors[colorScheme].text }]}>1 Stars</Text>
                                         </View>
-                                        <Text style={styles.ratingPercentage}>{(Math.round((ratings.oneStar / totalRatings) * 100)) || '0'}%</Text>
+                                        <Text style={[styles.ratingPercentage, { color: Colors[colorScheme].text }]}>{(Math.round((ratings.oneStar / totalRatings) * 100)) || '0'}%</Text>
                                     </View>
                                 </View>
                             </View>
@@ -509,17 +516,17 @@ const MyInsights = ({ onPress }: Props) => {
                 animationType="none"
                 onRequestClose={closeModal}>
                 <View style={styles.modalOverlay}>
-                    <Animated.View style={[styles.modalContent, { transform: [{ translateY: slideDownAnim }, { translateY: slideUpAnim }] }]}>
+                    <Animated.View style={[styles.modalContent, { backgroundColor: Colors[colorScheme].background, transform: [{ translateY: slideDownAnim }, { translateY: slideUpAnim }] }]}>
 
                         <View {...panResponder.panHandlers} style={{ alignItems: 'center', paddingVertical: 8 }}>
                             <View style={styles.dragHandle} />
                         </View>
-                        <Text style={styles.manageText}>Manage recommendations</Text>
+                        <Text style={[styles.manageText, { color: Colors[colorScheme].text }]}>Manage recommendations</Text>
                         <View style={{ flexDirection: 'column', alignItems: 'center' }}>
 
                             {/* Refresh Suggestions */}
                             <TouchableOpacity style={{ width: '100%' }} onPress={handleRefreshSuggestions} disabled={refreshingRecs}>
-                                <View style={styles.recommendationCard}>
+                                <View style={[styles.recommendationCard, { backgroundColor: Colors[colorScheme].card, borderColor: colorScheme === "dark" ? "#333" : "#848484ff" }]}>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                                         <View style={styles.recommendationContainer}>
                                             {refreshingRecs ? (
@@ -529,7 +536,7 @@ const MyInsights = ({ onPress }: Props) => {
                                             )}
                                         </View>
                                         <View style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 7, flex: 1, marginRight: 20 }}>
-                                            <Text style={styles.recommendationText}>Refresh suggestions</Text>
+                                            <Text style={[styles.recommendationText, { color: Colors[colorScheme].text }]}>Refresh suggestions</Text>
                                             <Text style={styles.recommendationDescription}>Surface 3 new dishes for you</Text>
                                         </View>
                                     </View>
@@ -538,13 +545,13 @@ const MyInsights = ({ onPress }: Props) => {
 
                             {/* Why these dishes */}
                             <TouchableOpacity style={{ width: '100%' }} onPress={() => setShowBreakdown(!showBreakdown)}>
-                                <View style={styles.recommendationCard}>
+                                <View style={[styles.recommendationCard, { backgroundColor: Colors[colorScheme].card, borderColor: colorScheme === "dark" ? "#333" : "#848484ff" }]}>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                                         <View style={styles.recommendationContainer}>
                                             <Ionicons name="information-circle-outline" size={35} color="#E86A33" />
                                         </View>
                                         <View style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 7, marginRight: 20, flex: 1 }}>
-                                            <Text style={styles.recommendationText}>Why these dishes</Text>
+                                            <Text style={[styles.recommendationText, { color: Colors[colorScheme].text }]}>Why these dishes</Text>
                                             <Text style={styles.recommendationDescription}>See how your taste profile works</Text>
                                         </View>
                                     </View>
@@ -552,8 +559,8 @@ const MyInsights = ({ onPress }: Props) => {
                             </TouchableOpacity>
 
                             {showBreakdown && (
-                                <View style={{ width: '100%', backgroundColor: 'white', borderRadius: 16, padding: 20, marginTop: 8, borderLeftColor: '#E86A33', borderLeftWidth: 4 }}>
-                                    <Text style={{ color: '#1a1a1a', lineHeight: 22 }}>
+                                <View style={{ width: '100%', backgroundColor: Colors[colorScheme].card, borderRadius: 16, padding: 20, marginTop: 8, borderLeftColor: '#E86A33', borderLeftWidth: 4 }}>
+                                    <Text style={{ color: Colors[colorScheme].text, lineHeight: 22 }}>
                                         {recsData?.breakdown ?? 'Analyzing your taste profile...'}
                                     </Text>
                                 </View>
@@ -567,7 +574,7 @@ const MyInsights = ({ onPress }: Props) => {
                                     closeModal();
                                 }}
                             >
-                                <View style={styles.recommendationCard}>
+                                <View style={[styles.recommendationCard, { backgroundColor: Colors[colorScheme].card, borderColor: colorScheme === "dark" ? "#333" : "#848484ff" }]}>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                                         {aiInsightsEnabled ? (
                                             <>
@@ -585,7 +592,7 @@ const MyInsights = ({ onPress }: Props) => {
                                                     <Ionicons name="eye-outline" size={35} color="#E86A33" />
                                                 </View>
                                                 <View style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 7, flex: 1, marginRight: 20 }}>
-                                                    <Text style={styles.recommendationText}>Turn on AI insights</Text>
+                                                    <Text style={[styles.recommendationText, { color: Colors[colorScheme].text }]}>Turn on AI insights</Text>
                                                     <Text style={styles.recommendationDescription}>Enable personalized recommendations</Text>
                                                 </View>
                                             </>
@@ -616,33 +623,33 @@ const MyInsights = ({ onPress }: Props) => {
                         onRequestClose={() => setDishModalVisible(false)}
                     >
                         <View style={styles.modalOverlay}>
-                            <View style={styles.dishModalContent}>
+                            <View style={[styles.dishModalContent, { backgroundColor: Colors[colorScheme].background }]}>
                                 {/* Header */}
                                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', padding: 20, paddingBottom: 12, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
                                     <View style={{ flex: 1, paddingRight: 12 }}>
-                                        <Text style={styles.dishModalName}>{selectedDish.title}</Text>
+                                        <Text style={[styles.dishModalName, { color: Colors[colorScheme].text }]}>{selectedDish.title}</Text>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                            <Ionicons name="location-outline" size={11} color="#888" />
-                                            <Text style={{ fontSize: 10, color: '#888' }}>{selectedDish.restaurant}</Text>
+                                            <Ionicons name="location-outline" size={11} color={Colors[colorScheme].icon} />
+                                            <Text style={{ fontSize: 10, color: Colors[colorScheme].icon }}>{selectedDish.restaurant}</Text>
                                         </View>
                                     </View>
                                     <TouchableOpacity onPress={() => setDishModalVisible(false)}>
-                                        <Ionicons name="close-circle" size={28} color="#c4c4c4" />
+                                        <Ionicons name="close-circle" size={28} color={colorScheme === 'dark' ? '#555' : '#c4c4c4'} />
                                     </TouchableOpacity>
                                 </View>
                                 {/* Details */}
                                 <ScrollView style={{ padding: 20 }} contentContainerStyle={{ paddingBottom: 40 }}>
-                                    <Text style={{ fontSize: 10, letterSpacing: 2, color: '#010101a4', marginBottom: 8 }}>REVIEWER SCORE</Text>
+                                    <Text style={{ fontSize: 10, letterSpacing: 2, color: Colors[colorScheme].icon, marginBottom: 8 }}>REVIEWER SCORE</Text>
                                     <View style={{ flexDirection: 'row', alignItems: 'baseline', marginBottom: 20 }}>
                                         <Text style={{ fontSize: 66, fontWeight: '700', color: '#FF6B4A', letterSpacing: 2, marginRight: 4 }}>{selectedDish.match}</Text>
                                         <Text style={{ fontSize: 22, color: '#737588' }}>%</Text>
                                     </View>
-                                    <Text style={{ fontSize: 10, letterSpacing: 2, color: '#010101a4', marginBottom: 8 }}>TASTING NOTES</Text>
-                                    <Text style={{ color: 'black', lineHeight: 19, marginBottom: 20, fontStyle: 'italic' }}>&quot;{selectedDish.tastingNotes}&quot;</Text>
+                                    <Text style={{ fontSize: 10, letterSpacing: 2, color: Colors[colorScheme].icon, marginBottom: 8 }}>TASTING NOTES</Text>
+                                    <Text style={{ color: Colors[colorScheme].text, lineHeight: 19, marginBottom: 20, fontStyle: 'italic' }}>&quot;{selectedDish.tastingNotes}&quot;</Text>
                                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
                                         {(selectedDish.tags ?? []).map((tag: string) => (
-                                            <View key={tag} style={{ backgroundColor: 'white', paddingHorizontal: 10, paddingVertical: 10, borderColor: 'gray', borderWidth: 0.2 }}>
-                                                <Text>#{tag}</Text>
+                                            <View key={tag} style={{ backgroundColor: Colors[colorScheme].card, paddingHorizontal: 10, paddingVertical: 10, borderColor: 'gray', borderWidth: 0.2 }}>
+                                                <Text style={{ color: Colors[colorScheme].text }}>#{tag}</Text>
                                             </View>
                                         ))}
                                     </View>

@@ -47,6 +47,10 @@ export default function LiquidGlass({
         shadowColor, shadowOffset, shadowOpacity, shadowRadius, elevation,
         margin, marginTop, marginBottom, marginLeft, marginRight,
         marginHorizontal, marginVertical,
+        width: flatStyle.width,
+        height: flatStyle.height,
+        flex: flatStyle.flex,
+        alignSelf: flatStyle.alignSelf,
     };
 
     return (
@@ -64,7 +68,15 @@ export default function LiquidGlass({
                 {/* 2. Translucent gradient fill — from .lg-glass CSS:
                      linear-gradient(135deg, rgba(255,255,255,0.26), rgba(255,255,255,0.08) 60%, rgba(255,255,255,0.16)) */}
                 <LinearGradient
-                    colors={[
+                    colors={activeTint === 'dark' ? [
+                        'rgba(0, 0, 0, 0.80)',
+                        'rgba(0, 0, 0, 0.60)',
+                        'rgba(0, 0, 0, 0.50)',
+                    ] : activeTint === 'default' ? [
+                        'rgba(120, 120, 120, 0.35)',
+                        'rgba(120, 120, 120, 0.15)',
+                        'rgba(120, 120, 120, 0.25)',
+                    ] : [
                         'rgba(255, 255, 255, 0.26)',
                         'rgba(255, 255, 255, 0.08)',
                         'rgba(255, 255, 255, 0.16)',
@@ -79,7 +91,15 @@ export default function LiquidGlass({
                      the reference's inset 1.8px 3px white highlights.
                      Kept deliberately soft so it reads as a gentle lit edge. */}
                 <LinearGradient
-                    colors={[
+                    colors={activeTint === 'dark' ? [
+                        'rgba(255, 255, 255, 0.12)',
+                        'rgba(255, 255, 255, 0.03)',
+                        'transparent',
+                    ] : activeTint === 'default' ? [
+                        'rgba(255, 255, 255, 0.20)',
+                        'rgba(255, 255, 255, 0.05)',
+                        'transparent',
+                    ] : [
                         'rgba(255, 255, 255, 0.30)',
                         'rgba(255, 255, 255, 0.06)',
                         'transparent',
