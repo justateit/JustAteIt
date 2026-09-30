@@ -3,14 +3,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import React, { useState } from 'react';
-import { ActivityIndicator, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme-context';
 import { getSavedLogs, saveLog } from '../utils/flavorProfileApi';
 
 const { width } = Dimensions.get('window');
 const gap = width * 0.3
 
-const DishCard = ({ id, title, restaurant, date, rating, image, location, tastingNotes, tags }: Dish) => {
+const DishCard = ({ id, title, restaurant, date, rating, image, location, tastingNotes, chemistryInsight, tags }: Dish) => {
     const [modalVisible, setModalVisible] = useState(false);
+    const { colorScheme } = useTheme();
     const { user } = useUser();
     const queryClient = useQueryClient();
     const [saving, setSaving] = useState(false);
@@ -111,8 +114,8 @@ const DishCard = ({ id, title, restaurant, date, rating, image, location, tastin
                 onRequestClose={() => setModalVisible(false)}
             >
 
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
+                <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+                    <View style={[styles.modalContent, { backgroundColor: Colors[colorScheme].background }]}>
                         {/*The image of the dish*/}
                         <View style={{ width: '100%', height: 220, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' }}>
                             <Image
@@ -167,11 +170,11 @@ const DishCard = ({ id, title, restaurant, date, rating, image, location, tastin
                             contentContainerStyle={{ paddingBottom: 40 }} >
                             {/* Reviewer Score and share button */}
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: gap, marginHorizontal: 10, marginVertical: 10, }}>
-                                <Text style={{ letterSpacing: 2, color: '#010101a4' }}>REVIEWER SCORE</Text>
+                                <Text style={{ letterSpacing: 2, color: colorScheme === 'dark' ? '#888' : '#010101a4' }}>REVIEWER SCORE</Text>
                                 <TouchableOpacity>
                                     {/* Number Circle */}
-                                    <View style={styles.circle}>
-                                        <Ionicons name="share-social-outline" size={20} color="#0101016c" />
+                                    <View style={[styles.circle, { borderColor: colorScheme === 'dark' ? '#555' : 'gray', backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'transparent' }]}>
+                                        <Ionicons name="share-social-outline" size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#0101016c'} />
                                     </View>
                                 </TouchableOpacity>
                             </View>
@@ -181,26 +184,37 @@ const DishCard = ({ id, title, restaurant, date, rating, image, location, tastin
                                 <Text style={{ fontSize: 16, color: '#737588', letterSpacing: 1 }}>/</Text>
                                 <Text style={{ fontSize: 16, color: '#737588', letterSpacing: 1, marginLeft: 4 }}>5.0</Text>
                             </View>
-                            <View style={styles.divider} />
+                            <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#01010150' }]} />
                             {/* Tasting Notes */}
-                            <Text style={{ fontSize: 12, letterSpacing: 2, color: '#010101a4', marginLeft: 10, paddingTop: 15 }}>TASTING NOTES</Text>
-                            <Text style={{ fontSize: 14, color: 'black', padding: 15, lineHeight: 19, fontFamily: "LibreBaskerville" }}>&quot;{tastingNotes}&quot;</Text>
-                            <View style={{ backgroundColor: 'white', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 10 }}>
+                            <Text style={{ letterSpacing: 2, color: colorScheme === 'dark' ? '#888' : '#010101a4', marginLeft: 10, paddingTop: 15 }}>TASTING NOTES</Text>
+                            <Text style={{ color: Colors[colorScheme].text, padding: 15, lineHeight: 19, fontFamily: "LibreBaskerville" }}>&quot;{tastingNotes}&quot;</Text>
+                            <View style={{ backgroundColor: Colors[colorScheme].card, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 10 }}>
                                 <View style={{ flexDirection: 'row', gap: 8, margin: 10, alignItems: 'center' }}>
                                     <View style={{ backgroundColor: '#FF6B4A', borderRadius: 25, width: 8, height: 8 }} />
-                                    <Text style={{ letterSpacing: 2, fontSize: 12, color: '#0101018d' }}>SENSORY PROFILE</Text>
+                                    <Text style={{ letterSpacing: 2, fontSize: 12, color: colorScheme === 'dark' ? '#AAA' : '#0101018d' }}>SENSORY PROFILE</Text>
 
 
                                 </View>
-                                <Text style={{ color: 'black' }}>
+                                <Text style={{ color: Colors[colorScheme].text }}>
 
                                 </Text>
                             </View>
-                            <View style={styles.divider} />
+                            {/* Chemistry Insight */}
+                            {chemistryInsight ? (
+                                <>
+                                    <Text style={{ letterSpacing: 2, fontWeight: '700', color: '#FF6B4A', marginLeft: 10, paddingTop: 20, paddingBottom: 20 }}>CHEMISTRY INSIGHT</Text>
+                                    <View style={{ backgroundColor: Colors[colorScheme].card, paddingHorizontal: 20, paddingVertical: 20, borderLeftColor: '#FF6B4A', borderLeftWidth: 4 }}>
+                                        <Text style={{ color: Colors[colorScheme].text }}>
+                                            {chemistryInsight}
+                                        </Text>
+                                    </View>
+                                </>
+                            ) : null}
+                            <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#01010150' }]} />
                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
                                 {tags.map((tag) => (
-                                    <View key={tag} style={styles.tagBox}>
-                                        <Text>#{tag}</Text>
+                                    <View key={tag} style={[styles.tagBox, { backgroundColor: Colors[colorScheme].card, borderColor: colorScheme === 'dark' ? '#444' : 'gray' }]}>
+                                        <Text style={{ color: Colors[colorScheme].text }}>#{tag}</Text>
                                     </View>
                                 ))}
                             </View>

@@ -6,10 +6,12 @@ import { router } from 'expo-router';
 
 import React from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
+import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme-context';
 
 const SavedDrafts = () => {
     const { user } = useUser();
+    const { colorScheme } = useTheme();
     const { data, isLoading } = useQuery({
         queryKey: ['drafts', user?.id],
         queryFn: () => getDrafts(user!.id).then(d => d.drafts ?? []),
@@ -19,7 +21,7 @@ const SavedDrafts = () => {
 
     return (
         <ScrollView
-            style={styles.container}
+            style={[styles.container, { backgroundColor: Colors[colorScheme].background }]}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
                 minHeight: "100%",
@@ -31,24 +33,24 @@ const SavedDrafts = () => {
                     onPress={() => {
                         router.push('/profile')
                     }}>
-                    <Ionicons name="arrow-back" size={28} color="#918f8fff" />
+                    <Ionicons name="arrow-back" size={28} color={Colors[colorScheme].icon} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Saved Drafts</Text>
+                <Text style={[styles.title, { color: Colors[colorScheme].text }]}>Saved Drafts</Text>
             </View>
-
 
             {isLoading ? (
                 <ActivityIndicator size="small" color="#E86A33" style={{ marginVertical: 40 }} />
             ) : drafts.length === 0 ? (
                 <Text style={{ textAlign: 'center', color: '#9FA1B7', paddingVertical: 40 }}>No saved drafts yet.</Text>
             ) : (
-                <View style={styles.journalListContainer}>
+                <View style={[styles.journalListContainer, { backgroundColor: Colors[colorScheme].card }]}>
                     {drafts.map((item, index) => (
                         <View
                             key={item.id}
                             style={[
                                 styles.journalItem,
-                                index === drafts.length - 1 && styles.lastJournalItem
+                                index === drafts.length - 1 && styles.lastJournalItem,
+                                { borderBottomColor: colorScheme === 'dark' ? '#333' : '#F0F0F0' }
                             ]}
                         >
                             <TouchableOpacity
@@ -56,7 +58,7 @@ const SavedDrafts = () => {
                                 onPress={() => router.push({ pathname: '/record-experience', params: { draftId: item.id } })}
                             >
                                 <View style={styles.journalTextContainer}>
-                                    <Text style={styles.journalItemTitle}>{item.dish_name || 'Untitled Draft'}</Text>
+                                    <Text style={[styles.journalItemTitle, { color: Colors[colorScheme].text }]}>{item.dish_name || 'Untitled Draft'}</Text>
                                     <View style={{ flexDirection: "row", alignItems: "center" }}>
                                         <Text style={{ fontSize: 12, color: "#737588ff", fontWeight: '600', letterSpacing: 1 }}>
                                             {new Date(item.updated_at).toLocaleDateString()}

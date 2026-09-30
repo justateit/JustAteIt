@@ -1,43 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@/hooks/use-theme-context';
 import LiquidGlass from './LiquidGlass';
 
 export default function BottomNav() {
   const insets = useSafeAreaInsets();
+  const { colorScheme } = useTheme();
+  const isDark = colorScheme === 'dark';
 
-  // Calculated dimensions to ensure the halo matches the pill size
   const pillWidth = 160;
-  const pillHeight = 24 + 14 + 2;
   const pillRadius = 50;
 
   return (
     <View style={[styles.wrapper, { paddingBottom: insets.bottom + 12 }]} pointerEvents="box-none">
-
-      {/* --- THE FEATHERED EDGE HALO --- */}
-      <View style={[styles.haloContainer, {
-        width: pillWidth + 20,
-        height: pillHeight + 20,
-        borderRadius: pillRadius + 10
-      }]}>
-        <LinearGradient
-          colors={[
-            'rgba(255, 255, 255, 0.2)',
-            'rgba(255, 255, 255, 0.05)',
-            'transparent'
-          ]}
-          start={{ x: 0.2, y: 0.2 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-      </View>
-
       {/* --- THE MAIN 3D MOLDED LIQUID GLASS PILL --- */}
       <View style={styles.shadowContainer}>
         <LiquidGlass
-          tint="default"
+          tint={isDark ? 'dark' : 'light'}
           intensity={65}
           borderRadius={pillRadius}
           style={styles.pill}
@@ -48,8 +29,8 @@ export default function BottomNav() {
               onPress={() => router.replace('/(tabs)')}
               activeOpacity={0.8}
             >
-              <View style={styles.iconCircleDark}>
-                <Ionicons name="compass" size={20} color="#1d1d1f" />
+              <View style={[styles.iconCircleDark, isDark && styles.iconCircleDarkTheme]}>
+                <Ionicons name="compass" size={20} color={isDark ? '#FFFFFF' : '#1d1d1f'} />
               </View>
             </TouchableOpacity>
 
@@ -68,8 +49,8 @@ export default function BottomNav() {
               onPress={() => router.replace('/profile')}
               activeOpacity={0.8}
             >
-              <View style={styles.iconCircleDark}>
-                <Ionicons name="person-outline" size={20} color="#1d1d1f" />
+              <View style={[styles.iconCircleDark, isDark && styles.iconCircleDarkTheme]}>
+                <Ionicons name="person-outline" size={20} color={isDark ? '#FFFFFF' : '#1d1d1f'} />
               </View>
             </TouchableOpacity>
           </View>
@@ -89,17 +70,6 @@ const styles = StyleSheet.create({
     pointerEvents: 'box-none',
     height: 100,
     justifyContent: 'flex-end',
-  },
-  haloContainer: {
-    position: 'absolute',
-    bottom: 2,
-    opacity: 0.5,
-    overflow: 'hidden',
-    shadowColor: '#FFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
-    elevation: 0,
   },
   shadowContainer: {
     borderRadius: 50,
@@ -126,6 +96,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.70)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  iconCircleDarkTheme: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
   iconCircleOrange: {
     width: 36,
