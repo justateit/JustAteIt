@@ -1,9 +1,13 @@
+import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import React, { useState } from 'react';
 import { Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme-context';
+import { ActivityIndicator, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { getSavedLogs, saveLog } from '../utils/flavorProfileApi';
 
 const { width } = Dimensions.get('window');
 const gap = width * 0.3
@@ -11,6 +15,48 @@ const gap = width * 0.3
 const DishCard = ({ id, title, restaurant, date, rating, image, location, tastingNotes, chemistryInsight, tags }: Dish) => {
     const [modalVisible, setModalVisible] = useState(false);
     const { colorScheme } = useTheme();
+    const { user } = useUser();
+    const queryClient = useQueryClient();
+    const [saving, setSaving] = useState(false);
+    const [justSaved, setJustSaved] = useState(false);
+
+    // Already-saved cards come back from the Saved Logs query, matched on the id
+    // of the card they were saved from. That query is cached, so this costs no
+    // extra request per card.
+    const { data: savedData } = useQuery({
+        queryKey: ['savedLogs', user?.id],
+        queryFn: () => getSavedLogs(user!.id).then((d: any) => d.saved_logs ?? []),
+        enabled: !!user?.id,
+    });
+    const isSaved =
+        justSaved || (savedData ?? []).some((s: any) => s.source_id === String(id));
+
+    const handleSave = async () => {
+        if (!user?.id || saving || isSaved) return;
+        setSaving(true);
+        try {
+            await saveLog(user.id, {
+                sourceId: id,
+                dishName: title,
+                venueName: restaurant,
+                city: location,
+                // The card carries tags rather than a cuisine field; the first tag
+                // is the cuisine by convention in this data.
+                cuisine: tags?.[0] ?? null,
+                rating,
+                notes: tastingNotes,
+                imageUrl: typeof image === 'string' ? image : null,
+                tags,
+            });
+            setJustSaved(true);
+            // Refresh the Saved Logs page and every other card's saved state.
+            queryClient.invalidateQueries({ queryKey: ['savedLogs', user.id] });
+        } catch (err) {
+            console.error('[SaveLog]', err);
+        } finally {
+            setSaving(false);
+        }
+    };
 
     return (
         <>
@@ -88,10 +134,25 @@ const DishCard = ({ id, title, restaurant, date, rating, image, location, tastin
                                 <Ionicons name="close-circle" size={32} color="rgba(255, 255, 255, 0.63)" />
                             </TouchableOpacity>
                             {/*Save Button*/}
-                            <TouchableOpacity style={styles.saveBadge}>
-
-                                <Text style={styles.saveText}>SAVE</Text>
-
+                            <TouchableOpacity
+                                style={[styles.saveBadge, isSaved && styles.saveBadgeSaved]}
+                                onPress={handleSave}
+                                disabled={saving || isSaved}
+                                accessibilityRole="button"
+                                accessibilityLabel={isSaved ? `${title} is saved` : `Save ${title} to your saved logs`}
+                            >
+                                {saving ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                ) : (
+                                    <>
+                                        <Ionicons
+                                            name={isSaved ? 'bookmark' : 'bookmark-outline'}
+                                            size={11}
+                                            color="#FFFFFF"
+                                        />
+                                        <Text style={styles.saveText}>{isSaved ? 'SAVED' : 'SAVE'}</Text>
+                                    </>
+                                )}
                             </TouchableOpacity>
                             {/* Dish name + restaurant + calendar */}
                             <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16 }}>
@@ -191,6 +252,9 @@ const styles = StyleSheet.create({
         gap: 4,
         marginTop: 0,
         marginBottom: 0,
+    },
+    saveBadgeSaved: {
+        backgroundColor: 'rgba(40,40,40,0.72)',
     },
     saveBadge: {
         position: 'absolute',

@@ -1,3 +1,4 @@
+import AppToast from '@/components/AppToast';
 import LiquidGlass from '@/components/LiquidGlass';
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -114,6 +115,8 @@ export default function RecordExperience() {
   const [uploading, setUploading] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
+  // { message, type: 'success' | 'error' } — rendered by <AppToast /> below.
+  const [toast, setToast] = useState(null);
   const [imageUri, setImageUri] = useState(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
@@ -224,10 +227,10 @@ export default function RecordExperience() {
         }
       }
 
-      alert('Upload Successful!');
+      setToast({ message: 'Photo uploaded', type: 'success' });
     } catch (error) {
       console.error('[Upload]', error);
-      alert('Upload failed');
+      setToast({ message: "Couldn't upload that photo. Try again.", type: 'error' });
     } finally {
       setUploading(false);
     }
@@ -235,11 +238,11 @@ export default function RecordExperience() {
 
   const handleArchive = async () => {
     if (!dish.trim()) {
-      alert('Please enter a dish name before archiving.');
+      setToast({ message: 'Add a dish name before archiving.', type: 'error' });
       return;
     }
     if (!user) {
-      alert('You must be signed in to save a log.');
+      setToast({ message: 'Sign in to save a log.', type: 'error' });
       return;
     }
     setArchiving(true);
@@ -276,7 +279,7 @@ export default function RecordExperience() {
           image_url: imageUri || null,
         });
       }
-      alert('Log archived! ✓');
+      setToast({ message: 'Log archived', type: 'success' });
       // Reset form
       setDish('');
       setVenue('');
@@ -287,7 +290,7 @@ export default function RecordExperience() {
       setImageUri(null);
     } catch (err) {
       console.error('[Archive]', err);
-      alert('Failed to save log. Check your connection and try again.');
+      setToast({ message: "Couldn't save your log. Check your connection and try again.", type: 'error' });
     } finally {
       setArchiving(false);
     }
@@ -295,7 +298,7 @@ export default function RecordExperience() {
 
   const handleSaveDraft = async () => {
     if (!user) {
-      alert('You must be signed in to save a draft.');
+      setToast({ message: 'Sign in to save a draft.', type: 'error' });
       return;
     }
     setSavingDraft(true);
@@ -327,10 +330,10 @@ export default function RecordExperience() {
           image_url: imageUri || null,
         });
       }
-      alert('Draft saved! ✓');
+      setToast({ message: 'Draft saved', type: 'success' });
     } catch (err) {
       console.error('[SaveDraft]', err);
-      alert('Failed to save draft. Check your connection and try again.');
+      setToast({ message: "Couldn't save your draft. Check your connection and try again.", type: 'error' });
     } finally {
       setSavingDraft(false);
     }
@@ -730,6 +733,10 @@ export default function RecordExperience() {
           <View style={styles.bottomPadding} />
         </ScrollView>
       </SafeAreaView>
+
+      {/* Sits outside SafeAreaView so it floats over the form rather than
+          shifting it, and above the ScrollView in the stacking order. */}
+      <AppToast toast={toast} onDismiss={() => setToast(null)} />
     </View>
   );
 }

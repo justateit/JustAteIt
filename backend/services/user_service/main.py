@@ -16,6 +16,15 @@ from services.user_service.core.flavor_math import (
     FLAVOR_DIMS, update_dimension, adaptive_alpha, personality_label
 )
 
+# Plain-language names for the flavor dimensions. User testing found that diners did not know what "umami" or "acid" meant, so the raw dimension names never reach the reader.
+FLAVOR_GLOSS = {
+    "spice":   "heat and spice",
+    "acid":    "bright, tangy flavors",
+    "umami":   "savory depth",
+    "sweet":   "sweetness",
+    "texture": "texture and crunch",
+}
+
 load_dotenv()
 
 # Optional: Auto-create tables (good for dev, but we already have an init_db script and migrations)
@@ -34,10 +43,7 @@ class RatingPayload(BaseModel):
     user_id: str
     dish_id: str
     rating:  float   # 1-5 stars
-
-    # For the microservice, the catalog service will likely send the base stats of the dish
-    # alongside the rating so we don't have to do a cross-service HTTP call here,
-    # OR we do a synchronous HTTP call to Catalog. We'll simulate passing it in for now.
+    
     dish_base_spice: float = 0.5
     dish_base_acid: float = 0.5
     dish_base_umami: float = 0.5
@@ -182,13 +188,24 @@ async def update_flavor_profile(payload: RatingPayload, db: Session = Depends(ge
     profile.review_count += 1
     profile.recommendations_stale = True
 
+    # Every time a rating comes in, recompute four stats from scratch, then sweep the full milestone list once and hand out points for anything newly unlocked.
     logs = await fetch_user_logs(payload.user_id)
     stats = {
         "review_count": profile.review_count,
         "cities_visited": len({log["city"] for log in logs if log.get("city")}),
         "cuisines_tried": len({log["cuisine"] for log in logs if log.get("cuisine")}),
         "has_five_star": any(log.get("rating") == 5 for log in logs),
+        # How many different real restaurants a user has eaten at
+        # Builds a set of venue names
+        "venues_visited": len({
+            log["venue_name"] for log in logs
+            if log.get("venue_name") and log["venue_name"] != "Private Location"
+        }),
+        "notes_written": sum(1 for log in logs if (log.get("sensory_notes") or "").strip()), # How many logs have actual text in sensory_notes
+        "photos_added": sum(1 for log in logs if log.get("image_url")), # how many logs have an image attached
+        "five_star_count": sum(1 for log in logs if log.get("rating") == 5), # How many times they've given a full 5 stars
     }
+    # Loads the list of milestone ids this user has already earned
     achieved = json.loads(profile.achieved_milestones) if profile.achieved_milestones else []
     for milestone in MILESTONES:
         if milestone["id"] not in achieved and milestone["condition"](stats):
@@ -224,7 +241,10 @@ def get_critic_label(avg: float) -> str:
         return "Merciless"
     return "New Foodie"
 
+# Ordered in tiers of four, easiest first. The UI shows one tier at a time and advances when all four are earned
+# Existing ids are preserved so nobody loses a milestone they already earned.
 MILESTONES = [
+    # ── Tier 1: first steps ───────────────────────────────────────────────
     {
         "id": "first_log",
         "title": "First Bite",
@@ -232,22 +252,16 @@ MILESTONES = [
         "condition": lambda stats: stats["review_count"] >= 1,
     },
     {
-        "id": "three_cities",
-        "title": "City Hopper",
-        "points": 50,
-        "condition": lambda stats: stats["cities_visited"] >= 3,
+        "id": "first_note",
+        "title": "In Your Own Words",
+        "points": 25,
+        "condition": lambda stats: stats["notes_written"] >= 1,
     },
     {
-        "id": "twenty_five_dishes",
-        "title": "Dedicated Foodie",
-        "points": 50,
-        "condition": lambda stats: stats["review_count"] >= 25,
-    },
-    {
-        "id": "five_cuisines",
-        "title": "Flavor Explorer",
-        "points": 50,
-        "condition": lambda stats: stats["cuisines_tried"] >= 5,
+        "id": "first_photo",
+        "title": "Picture This",
+        "points": 25,
+        "condition": lambda stats: stats["photos_added"] >= 1,
     },
     {
         "id": "five_star_find",
@@ -255,16 +269,104 @@ MILESTONES = [
         "points": 25,
         "condition": lambda stats: stats["has_five_star"],
     },
+    # ── Tier 2: building the habit ────────────────────────────────────────
+    {
+        "id": "five_logs",
+        "title": "Getting Going",
+        "points": 40,
+        "condition": lambda stats: stats["review_count"] >= 5,
+    },
+    {
+        "id": "three_cuisines",
+        "title": "Branching Out",
+        "points": 40,
+        "condition": lambda stats: stats["cuisines_tried"] >= 3,
+    },
+    {
+        "id": "two_cities",
+        "title": "Out of Town",
+        "points": 40,
+        "condition": lambda stats: stats["cities_visited"] >= 2,
+    },
+    {
+        "id": "three_venues",
+        "title": "Around the Block",
+        "points": 40,
+        "condition": lambda stats: stats["venues_visited"] >= 3,
+    },
+    # ── Tier 3: committed ─────────────────────────────────────────────────
+    {
+        "id": "ten_logs",
+        "title": "Ten Down",
+        "points": 60,
+        "condition": lambda stats: stats["review_count"] >= 10,
+    },
+    {
+        "id": "five_cuisines",
+        "title": "Flavor Explorer",
+        "points": 60,
+        "condition": lambda stats: stats["cuisines_tried"] >= 5,
+    },
+    {
+        "id": "three_cities",
+        "title": "City Hopper",
+        "points": 60,
+        "condition": lambda stats: stats["cities_visited"] >= 3,
+    },
+    {
+        "id": "five_notes",
+        "title": "Notekeeper",
+        "points": 60,
+        "condition": lambda stats: stats["notes_written"] >= 5,
+    },
+    # ── Tier 4: dedicated ─────────────────────────────────────────────────
+    {
+        "id": "twenty_five_dishes",
+        "title": "Dedicated Foodie",
+        "points": 80,
+        "condition": lambda stats: stats["review_count"] >= 25,
+    },
+    {
+        "id": "eight_cuisines",
+        "title": "Globe Taster",
+        "points": 80,
+        "condition": lambda stats: stats["cuisines_tried"] >= 8,
+    },
     {
         "id": "five_cities",
         "title": "World Traveler",
-        "points": 75,
+        "points": 80,
         "condition": lambda stats: stats["cities_visited"] >= 5,
+    },
+    {
+        "id": "ten_photos",
+        "title": "Food Photographer",
+        "points": 80,
+        "condition": lambda stats: stats["photos_added"] >= 10,
+    },
+    # ── Tier 5: the long haul ─────────────────────────────────────────────
+    {
+        "id": "ten_venues",
+        "title": "Neighbourhood Regular",
+        "points": 120,
+        "condition": lambda stats: stats["venues_visited"] >= 10,
+    },
+    {
+        "id": "ten_five_stars",
+        "title": "Hall of Fame",
+        "points": 120,
+        "condition": lambda stats: stats["five_star_count"] >= 10,
+    },
+    {
+        "id": "fifty_dishes",
+        "title": "Half Century",
+        "points": 150,
+        "condition": lambda stats: stats["review_count"] >= 50,
     },
     {
         "id": "hundred_dishes",
         "title": "Century Club",
-        "points": 100,
+        "points": 200,
         "condition": lambda stats: stats["review_count"] >= 100,
     },
 ]
@@ -281,15 +383,46 @@ async def fetch_user_logs(user_id: str) -> list:
         print(f"Failed to fetch logs from catalog_service: {e}")
         return []
 
+async def fetch_real_venues(cities: list, cuisines: list, limit: int = 60) -> list:
+    """
+    Real restaurants for these cities/cuisines, via catalog_service.
+
+    One call covers every pair — the upstream venue APIs are slow and rate
+    limited, so this must not be called in a loop. Returns [] on failure, which
+    callers treat as "name no restaurant" rather than falling back to a guess.
+    """
+    catalog_svc_url = os.getenv("CATALOG_SERVICE_URL", "http://localhost:8002")
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            response = await client.get(
+                f"{catalog_svc_url}/venues/search",
+                params={
+                    "cities": ",".join(cities),
+                    "cuisines": ",".join(cuisines),
+                    "limit": limit,
+                },
+            )
+            response.raise_for_status()
+            return response.json().get("venues", [])
+    except Exception as e:
+        print(f"Failed to fetch venues from catalog_service: {e}")
+        return []
+
 @app.get("/flavor-profiles/{user_id}/recommendations")
-async def get_recommendations(user_id: str, exclude: str = "", db: Session = Depends(get_db)):
+async def get_recommendations(
+    user_id: str,
+    exclude: str = "",
+    exclude_venues: str = "",
+    db: Session = Depends(get_db),
+):
     # 1. Look up the REAL flavor profile for this user. Same query get_flavor_profile() uses
     profile = db.query(models.FlavorProfile).filter(models.FlavorProfile.user_id == user_id).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found.")
 
     excluded_dishes = [d.strip() for d in exclude.split(",") if d.strip()]
-    is_refresh_request = bool(excluded_dishes)
+    shown_venues = {v.strip() for v in exclude_venues.split(",") if v.strip()}
+    is_refresh_request = bool(excluded_dishes or shown_venues)
 
     # Serve the cached picks when nothing has changed since they were generated
     # (no new log, no explicit refresh) — skips the Claude call entirely.
@@ -297,47 +430,157 @@ async def get_recommendations(user_id: str, exclude: str = "", db: Session = Dep
         return json.loads(profile.cached_recommendations)
 
     logs = await fetch_user_logs(user_id)
-    
+
     cities = sorted({log["city"] for log in logs if log.get("city")})
-    
-    cuisine_counts = {}
+
+    # Per-cuisine stats: how often it was logged AND how well it was actually rated
+    cuisine_stats = {}
     for log in logs:
         cuisine = log.get("cuisine")
-        if cuisine:
-            cuisine_counts[cuisine] = cuisine_counts.get(cuisine, 0) + 1
-    top_cuisines = [
-        f"{name} ({count})"
-        for name, count in sorted(cuisine_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+        if not cuisine:
+            continue
+        stats = cuisine_stats.setdefault(cuisine, {"count": 0, "rating_sum": 0.0, "rated_count": 0})
+        stats["count"] += 1
+        if log.get("rating") is not None:
+            stats["rating_sum"] += log["rating"]
+            stats["rated_count"] += 1
+
+    cuisine_ranked = sorted(
+        cuisine_stats.items(),
+        key=lambda item: (
+            (item[1]["rating_sum"] / item[1]["rated_count"]) if item[1]["rated_count"] else 0,
+            item[1]["count"],
+        ),
+        reverse=True,
+    )
+    top_rated_cuisines = [
+        f"{name} (avg {round(s['rating_sum'] / s['rated_count'], 2)} over {s['count']} log{'s' if s['count'] != 1 else ''})"
+        if s["rated_count"] else f"{name} ({s['count']} log{'s' if s['count'] != 1 else ''}, unrated)"
+        for name, s in cuisine_ranked[:2]
     ]
-    
+    all_cuisines_by_frequency = [
+        f"{name} ({s['count']})" for name, s in sorted(cuisine_stats.items(), key=lambda x: x[1]["count"], reverse=True)[:5]
+    ]
+
+    # Build the list of restaurants Claude is allowed to name. The model can't be
+    # trusted to know whether a business exists, so it never supplies one itself.
+    #
+    # Two sources, in this order:
+    #   1. Venues this user has already logged. Each was resolved through
+    #      Places/OSM when the meal was logged, so it's a real place, it's in a
+    #      city they actually visit, and reusing it costs no network call.
+    #   2. A search for more restaurants in their top cuisines.
+    #
+    # Source 1 comes first because it cannot fail. The public Overpass instance
+    # behind source 2 is slow and often answers "server too busy", so when it was
+    # the only source every recommendation came back with a blank venue.
+    real_venues, seen_venues = [], set()
+    allowed_venue_names = set()  # enforced after generation, not just requested
+    for log in logs:
+        name, city = log.get("venue_name"), log.get("city")
+        if not name or name == "Private Location" or (name, city) in seen_venues:
+            continue
+        seen_venues.add((name, city))
+        allowed_venue_names.add(name)
+        real_venues.append(
+            f"{name} — {log.get('cuisine') or 'unknown cuisine'} in {city or 'their area'} (already visited)"
+        )
+
+    for v in await fetch_real_venues(cities[:2], [name for name, _ in cuisine_ranked[:2]]):
+        name, city = v.get("name"), v.get("city")
+        if not name or (name, city) in seen_venues:
+            continue
+        seen_venues.add((name, city))
+        allowed_venue_names.add(name)
+        real_venues.append(f"{name} — {v.get('cuisine', '')} in {city}")
+
+    # On a refresh, sink the venues the user just saw to the bottom of the list.
+    if shown_venues:
+        fresh = [v for v in real_venues if v.split(" — ")[0] not in shown_venues]
+        repeats = [v for v in real_venues if v.split(" — ")[0] in shown_venues]
+        real_venues = fresh + repeats
+        print(f"\033[96m[USER] Refresh: deprioritized {len(repeats)} just-shown venue(s)\033[0m")
+
+    print(f"\033[96m[USER] {len(real_venues)} venue(s) offered to the model: {sorted(allowed_venue_names)}\033[0m")
+
     ratings = [log["rating"] for log in logs if log.get("rating") is not None]
     avg_rating = round(sum(ratings) / len(ratings), 2) if ratings else 0
     critic_label = get_critic_label(avg_rating)
 
+    target_cuisine = cuisine_ranked[0][0] if cuisine_ranked else None
+
+    # The flavor gap
+    ranked_flavors = sorted(
+        ((dim, getattr(profile, dim)) for dim in FLAVOR_DIMS),
+        key=lambda kv: kv[1], reverse=True,
+    )
+    standout_flavor = (
+        FLAVOR_GLOSS[ranked_flavors[0][0]]
+        if len(ranked_flavors) > 1 and (ranked_flavors[0][1] - ranked_flavors[1][1]) >= 0.15
+        else None
+    )
+    # What they liked
+    liked = sorted(
+        (log for log in logs if (log.get("rating") or 0) >= 4),
+        key=lambda log: log["rating"], reverse=True,
+    )[:5]
+    liked_dishes = []
+    # Filter down to only logs rated 4 or 5 stars, sort those highest-rated first
+    for log in liked:
+        dish = log.get("dish_name") or "an unnamed dish"
+        entry = f"{dish} ({log.get('cuisine') or 'unknown cuisine'}, rated {log['rating']})"
+        note = (log.get("sensory_notes") or "").strip().replace("\n", " ")
+        if note:
+            entry += f' — they wrote: "{note[:160]}"'
+        liked_dishes.append(entry)
+    # If they have fewer than 4 logs, give the model permission to mention that their history is thin. Otherwise, tell it flatly not to bring up log count at all
+    history_rule = (
+        "- In the breakdown only, note once that their history is still short, and don't describe a settled pattern."
+        if profile.review_count < 4
+        else "- Don't comment on how much they have logged."
+    )
+
     prompt = f"""
-Role: You are a culinary recommender with deep knowledge of restaurants, dishes, and flavor profiles.
+You recommend dishes at real restaurants based on a diner's history.
 
-User Profile:
-- Flavor scores (0 to 1, higher means stronger preference):
-    Spice: {profile.spice}
-    Acid: {profile.acid}
-    Umami: {profile.umami}
-    Sweet: {profile.sweet}
-    Texture: {profile.texture}
+<diner>
+- Cuisine to focus on (their highest rated): {target_cuisine or "not enough data"}
+- Their top-rated cuisines: {", ".join(top_rated_cuisines) or "none yet"}
+- They have logged {len(cuisine_stats)} distinct cuisine{"" if len(cuisine_stats) == 1 else "s"}. The most frequent are: {", ".join(all_cuisines_by_frequency) or "none yet"} (this list may be truncated — use the count above, never the length of this list)
+- Meals logged: {profile.review_count} across {len(cities)} cit{"y" if len(cities) == 1 else "ies"} ({", ".join(cities) or "unknown"})
+- How they rate: {avg_rating} average, {critic_label}
+{f"- One taste that clearly stands out for them: {standout_flavor}" if standout_flavor else "- No single taste stands out for them yet, so do not claim one does."}
+</diner>
 
-- Dining activity:
-    Total logs: {profile.review_count}
-    Cities visited: {cities}
+<what_they_liked>
+{chr(10).join(f"- {d}" for d in liked_dishes) if liked_dishes else "- Nothing rated 4 or above yet."}
+</what_they_liked>
 
-- Top cuisines logged: {top_cuisines}
-- Rating breakdown: Average {avg_rating}, Critic Personality: {critic_label}
+<restaurants>
+{chr(10).join(f"- {v}" for v in real_venues) if real_venues else "none found"}
+</restaurants>
 
-{f"- Do NOT recommend any of these previously suggested dishes: {excluded_dishes}" if excluded_dishes else ""}
+Recommend exactly 3 dishes.
 
-Task: Recommend exactly 3 dishes matching this profile.
-- insight: 1-2 sentence summary of the user's overall taste pattern
-- recommendations: for each dish, an integer 0-100 "match" confidence, up to 3-4 descriptive tags, and a "reason" (1 brief sentence on why this dish fits their palate)
-- breakdown: 3-4 sentences, friendly and second-person, explaining the methodology behind the 3 picks above: which of their flavor dimensions weighed most heavily and why, and how their logged cuisines, cities, and rating pattern shaped the selection. Name specific numbers from their profile. Do not re-describe the dishes themselves.
+THE RESTAURANT RULE, which outranks everything else below: every "restaurant" you output must be copied character for character from <restaurants>. Do not reword, reorder, shorten, or combine the names — "Sichuan Taste" must never become "Taste of Sichuan", and two listed names must never be merged into a third. A name that is close but not identical is treated as invented and thrown away, so the diner loses that recommendation entirely. If you cannot fill 3 dishes from distinct listed venues, use a listed venue twice with different dishes. Only if <restaurants> is empty may restaurant be "".
+
+- Pick the restaurant first, then a dish it plausibly serves.
+- Choose dishes by what <what_they_liked> shows they enjoy, not just by cuisine. Read the dishes they rated highly and anything they wrote about them, and pick dishes that share those qualities — a similar richness, heat, preparation, or texture. Quote nothing directly, but let their own notes drive the choice.
+- Where the list gives you a choice, prefer venues NOT marked "(already visited)" so they discover somewhere new. A visited one is fine — but never write "already visited", "again", or "revisit".
+- At least 2 of the 3 should be {target_cuisine or "their top-rated cuisine"}.
+{f"- Do not recommend these dishes: {', '.join(excluded_dishes)}" if excluded_dishes else ""}
+{f"- They just saw these restaurants, so favour others from the list where you can: {', '.join(sorted(shown_venues))}" if shown_venues else ""}
+
+Style: short, plain, factual sentences. Never compliment the diner's taste, and never mention how these were chosen or where the data came from.
+- Never say whether they have been to a restaurant before. No "already visited", "previously visited", "you've been to", "again", "revisit", "familiar", or "keeping them accessible". Write every pick as a suggestion on its own terms.
+- Banned words: beautifully, remarkably, perfectly, delightful, nuanced, journey, philosophy, curiosity, sophisticated, honor.
+{history_rule}
+
+Fields:
+- insight: 2 sentences, written TO the diner as "you" — never "this diner" or "they". The first on what their highest-rated dishes have in common as food — the kind of cooking or the qualities they reach for — drawn from <what_they_liked>. The second on how widely they range, using the cuisine and meal counts above, and where they eat. Describe their taste, not their statistics.
+- recommendations: per dish a "match" integer, 3-4 short tags, and "reason" — one sentence tying the dish to a specific dish from <what_they_liked> and what they enjoyed about it, in taste terms ("same slow-cooked richness you liked in the butter chicken"). Name a real dish of theirs rather than a cuisine where you can; "matches your top-rated cuisine" is the weakest version of this sentence.
+  Score "match" as: start at 70; add 15 if the dish is their focus cuisine, or 8 if it is another cuisine they rated 4+; add 10 if that cuisine averages 4.5 or better for them; subtract 10 if they have logged that cuisine only once. Keep it in 0-100.
+- breakdown: 3-4 sentences, second person. Lead with the focus cuisine and what they rated it, then how their rating style shaped the picks. Do not re-describe the dishes, and do not repeat the insight.
 """
     # 4. Call Claude with a schema-constrained response — no manual JSON stripping/parsing needed
     response = client.messages.parse(
@@ -349,8 +592,14 @@ Task: Recommend exactly 3 dishes matching this profile.
     )
     result = response.parsed_output.model_dump()
 
+    # Enforce the venue constraint in code
+    for rec in result.get("recommendations", []):
+        name = (rec.get("restaurant") or "").strip()
+        if name and name not in allowed_venue_names:
+            print(f"\033[91m[USER] Rejected unlisted venue from model: {name!r}\033[0m")
+            rec["restaurant"] = ""
+
     profile.cached_recommendations = json.dumps(result)
     profile.recommendations_stale = False
     db.commit()
     return result
-        
