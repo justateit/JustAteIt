@@ -1,11 +1,13 @@
 import HorizontalDishCard from '@/components/HorizontalDishCard';
 import { SearchBar } from '@/components/SearchBar';
-import { freshLogs } from '@/data/mockdata';
+import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { deleteSavedLog, getSavedLogs } from '../../utils/flavorProfileApi';
 
 export default function HomeScreen() {
     const [fontsLoaded] = useFonts({
@@ -14,6 +16,51 @@ export default function HomeScreen() {
     });
 
     const [activeFilter, setActiveFilter] = useState('all');
+    const [removingId, setRemovingId] = useState<string | null>(null);
+    const { user } = useUser();
+    const queryClient = useQueryClient();
+
+    const { data: savedLogs, isLoading } = useQuery({
+        queryKey: ['savedLogs', user?.id],
+        queryFn: () => getSavedLogs(user!.id).then((d: any) => d.saved_logs ?? []),
+        enabled: !!user?.id,
+    });
+
+    const handleRemove = async (savedLogId: string) => {
+        if (removingId) return; // one at a time
+        setRemovingId(savedLogId);
+        try {
+            await deleteSavedLog(savedLogId);
+            queryClient.invalidateQueries({ queryKey: ['savedLogs', user?.id] });
+        } catch (err) {
+            console.error('[RemoveSavedLog]', err);
+        } finally {
+            setRemovingId(null);
+        }
+    };
+
+    // Map the saved-log shape onto the props HorizontalDishCard expects.
+    const cards = useMemo(() => (savedLogs ?? []).map((s: any) => ({
+        id: s.id,
+        title: s.dish_name || 'Untitled Dish',
+        restaurant: s.venue_name || 'Unknown Place',
+        date: s.created_at ? s.created_at.slice(0, 10) : '',
+        rating: s.rating ?? 0,
+        image: s.image_url || null,
+        location: s.city || '',
+        tastingNotes: s.notes || '',
+        tags: s.tags ?? [],
+    })), [savedLogs]);
+
+    const visibleCards = useMemo(() => {
+        if (activeFilter === 'recent') return cards.slice(0, 5);
+        if (activeFilter === 'cuisine') {
+            // Group by cuisine by sorting on the first tag, so dishes of the same
+            // kind sit together rather than being filtered out.
+            return [...cards].sort((a, b) => (a.tags[0] ?? '').localeCompare(b.tags[0] ?? ''));
+        }
+        return cards;
+    }, [cards, activeFilter]);
 
     if (!fontsLoaded) return null;
 
@@ -63,14 +110,45 @@ export default function HomeScreen() {
                 </TouchableOpacity>
             </View>
 
-            <FlatList
-                data={freshLogs}
-                showsVerticalScrollIndicator={false}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <HorizontalDishCard {...item} />}
-                scrollEnabled={false}
-                contentContainerStyle={{ gap: 12 }}
-            />
+            {isLoading ? (
+                <View style={styles.stateBox}>
+                    <ActivityIndicator size="small" color="#E86A33" />
+                </View>
+            ) : visibleCards.length === 0 ? (
+                <View style={styles.stateBox}>
+                    <Ionicons name="bookmark-outline" size={30} color="#c9c4b5" />
+                    <Text style={styles.emptyTitle}>Nothing saved yet</Text>
+                    <Text style={styles.emptyText}>
+                        Tap SAVE on any dish to keep it here for later.
+                    </Text>
+                </View>
+            ) : (
+                <FlatList
+                    data={visibleCards}
+                    showsVerticalScrollIndicator={false}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item }) => (
+                        <View style={styles.cardWrap}>
+                            <HorizontalDishCard {...item} />
+                            <TouchableOpacity
+                                style={styles.removeBadge}
+                                onPress={() => handleRemove(item.id)}
+                                disabled={removingId === item.id}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Remove ${item.title} from saved`}
+                            >
+                                {removingId === item.id ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                ) : (
+                                    <Ionicons name="bookmark" size={16} color="#FFFFFF" />
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                    scrollEnabled={false}
+                    contentContainerStyle={{ gap: 12 }}
+                />
+            )}
 
 
             {/* Bottom padding for scrollability */}
@@ -129,5 +207,38 @@ const styles = StyleSheet.create({
     },
     filterTextActive: {
         color: '#fff',
+    },
+    stateBox: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 56,
+    },
+    emptyTitle: {
+        fontFamily: 'LibreBaskerville',
+        fontSize: 17,
+        color: '#6b6759',
+    },
+    emptyText: {
+        fontSize: 13,
+        color: '#9a9482',
+        textAlign: 'center',
+        maxWidth: 240,
+        lineHeight: 18,
+    },
+    cardWrap: {
+        position: 'relative',
+    },
+    removeBadge: {
+        position: 'absolute',
+        top: 10,
+        left: 10,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10,
     }
 });

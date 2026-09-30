@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Animated, Modal, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getFlavorProfile, getLogs, getRecommendations } from '../../utils/flavorProfileApi';
+import { getLevelProgress } from '../../utils/levels';
 
 
 interface Props {
@@ -92,29 +93,58 @@ const MyInsights = ({ onPress }: Props) => {
     });
 
     // Milestones
+    // the list is shown four at a time and rotates to the next four once a group is complete
     const MILESTONE_DEFS = [
-        { id: "first_log", title: "First Bite" },
-        { id: "three_cities", title: "City Hopper" },
-        { id: "twenty_five_dishes", title: "Dedicated Foodie" },
-        { id: "five_cuisines", title: "Flavor Explorer" },
-        { id: "five_star_find", title: "Five-Star Find" },
-        { id: "five_cities", title: "World Traveler" },
-        { id: "hundred_dishes", title: "Century Club" },
+        // Tier 1 — first steps
+        { id: "first_log", title: "First Bite", points: 25, hint: "Log your very first dish" },
+        { id: "first_note", title: "In Your Own Words", points: 25, hint: "Add tasting notes to a log — these are what shape your recommendations" },
+        { id: "first_photo", title: "Picture This", points: 25, hint: "Add a photo to one of your logs" },
+        { id: "five_star_find", title: "Five-Star Find", points: 25, hint: "Rate a dish the full 5 stars" },
+        // Tier 2 — building the habit
+        { id: "five_logs", title: "Getting Going", points: 40, hint: "Log 5 dishes in total" },
+        { id: "three_cuisines", title: "Branching Out", points: 40, hint: "Try 3 different cuisines" },
+        { id: "two_cities", title: "Out of Town", points: 40, hint: "Log a dish in a second city" },
+        { id: "three_venues", title: "Around the Block", points: 40, hint: "Eat at 3 different places" },
+        // Tier 3 — committed
+        { id: "ten_logs", title: "Ten Down", points: 60, hint: "Log 10 dishes in total" },
+        { id: "five_cuisines", title: "Flavor Explorer", points: 60, hint: "Try 5 different cuisines" },
+        { id: "three_cities", title: "City Hopper", points: 60, hint: "Log dishes in 3 different cities" },
+        { id: "five_notes", title: "Notekeeper", points: 60, hint: "Write tasting notes on 5 dishes" },
+        // Tier 4 — dedicated
+        { id: "twenty_five_dishes", title: "Dedicated Foodie", points: 80, hint: "Log 25 dishes in total" },
+        { id: "eight_cuisines", title: "Globe Taster", points: 80, hint: "Try 8 different cuisines" },
+        { id: "five_cities", title: "World Traveler", points: 80, hint: "Log dishes in 5 different cities" },
+        { id: "ten_photos", title: "Food Photographer", points: 80, hint: "Add photos to 10 logs" },
+        // Tier 5 — the long haul
+        { id: "ten_venues", title: "Neighbourhood Regular", points: 120, hint: "Eat at 10 different places" },
+        { id: "ten_five_stars", title: "Hall of Fame", points: 120, hint: "Find 10 dishes worth 5 stars" },
+        { id: "fifty_dishes", title: "Half Century", points: 150, hint: "Log 50 dishes in total" },
+        { id: "hundred_dishes", title: "Century Club", points: 200, hint: "Log 100 dishes in total" },
     ];
     const achievedIds: string[] = profileData?.achieved_milestones ?? [];
 
-    // Compute a user's level based on how many points they have
-    const level = Math.floor((profileData?.points_count ?? 0) / 100) + 1;
-    const currentPoints = (profileData?.points_count ?? 0) % 100;
-    const pointsNeeded = 100;
-    const getLevelLabel = (level: number) => {
-        if (level >= 5) return 'Culinary Connoisseur';
-        if (level === 4) return 'Taste Architect';
-        if (level === 3) return 'Palate Pioneer';
-        if (level === 2) return 'Flavor Seeker';
-        if (level === 1) return 'Fresh Bite';
-        return 'Earn more points!';
-    }
+    // Show one group of four at a time: the first group that isn't fully earned
+    const MILESTONE_GROUP_SIZE = 4;
+    const milestoneGroups = Array.from(
+        { length: Math.ceil(MILESTONE_DEFS.length / MILESTONE_GROUP_SIZE) },
+        (_, i) => MILESTONE_DEFS.slice(i * MILESTONE_GROUP_SIZE, (i + 1) * MILESTONE_GROUP_SIZE),
+    );
+    const firstUnfinished = milestoneGroups.findIndex((group) =>
+        group.some((m) => !achievedIds.includes(m.id)),
+    );
+    // -1 means every group is earned; stay on the last one rather than snapping
+    // back to set 1, which would look like the progress had been reset.
+    const activeGroupIndex =
+        firstUnfinished === -1 ? Math.max(0, milestoneGroups.length - 1) : firstUnfinished;
+    const visibleMilestones = milestoneGroups[activeGroupIndex] ?? [];
+    const allMilestonesDone = firstUnfinished === -1;
+
+    // Which milestone the user has tapped open, if any. One at a time.
+    const [expandedMilestone, setExpandedMilestone] = useState<string | null>(null);
+
+    // Level and progress come from utils/levels so this screen and the profile
+    // page can't drift apart on the thresholds.
+    const levelInfo = getLevelProgress(profileData?.points_count ?? 0);
 
     const cuisineCounts: any = (logsData ?? []).reduce(
         (acc: any, log: any) => {
@@ -184,7 +214,10 @@ const MyInsights = ({ onPress }: Props) => {
         if (!user?.id || refreshingRecs) return;
         setRefreshingRecs(true);
         const previousDishes = displayRecs.map((r: any) => r.title);
-        const fresh = await getRecommendations(user?.id, previousDishes);
+        // Send the venues too, or every refresh returns the same three restaurants
+        // with different dishes — which reads as nothing having changed.
+        const previousVenues = displayRecs.map((r: any) => r.restaurant).filter(Boolean);
+        const fresh = await getRecommendations(user?.id, previousDishes, previousVenues);
         queryClient.setQueryData(['recommendations', user?.id], fresh);
         setRefreshingRecs(false);
         closeModal();
@@ -219,37 +252,83 @@ const MyInsights = ({ onPress }: Props) => {
                     {/* Level Section */}
                     <View style={styles.levelContainer}>
                         <Text style={styles.currentLevelText}>CURRENT LEVEL</Text>
-                        <Text style={styles.userLevelText}>{getLevelLabel(level)}</Text>
+                        <Text style={styles.userLevelText}>{levelInfo.label}</Text>
                         {/* Progress bar */}
                         <View style={styles.progressBarBackground}>
-                            <View style={[styles.progressBarFill, { width: `${(currentPoints / pointsNeeded) * 100}%` }]} />
+                            <View style={[styles.progressBarFill, { width: `${Math.round(levelInfo.progress * 100)}%` }]} />
                         </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, marginTop: 10 }}>
-                            <Text style={styles.pointsText}>{pointsNeeded - currentPoints} pts to {getLevelLabel(level + 1)}</Text>
-                            <Text style={styles.levelNumberText}>Level {level}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+                            <Text style={styles.levelNumberText}>Level {levelInfo.level}</Text>
+                            <Text style={styles.pointsText}>
+                                {levelInfo.atMax
+                                    ? 'Top level reached'
+                                    : `${levelInfo.pointsToNext} pts to ${levelInfo.nextLabel}`}
+                            </Text>
                         </View>
                     </View>
 
-                    {/* Milestones section */}
+                    {/* Milestones section — one group of four at a time */}
                     <View style={styles.milestonesContainer}>
-                        <Text style={styles.milestonesTitle}>MILESTONES</Text>
+                        <View style={styles.milestonesHeader}>
+                            <Text style={styles.milestonesTitle}>MILESTONES</Text>
+                            <Text style={styles.milestonesProgress}>
+                                {allMilestonesDone
+                                    ? 'ALL COMPLETE'
+                                    : `SET ${activeGroupIndex + 1} OF ${milestoneGroups.length}`}
+                            </Text>
+                        </View>
                         <View style={styles.milestonesList}>
-                            {MILESTONE_DEFS.map((milestone) => {
+                            {visibleMilestones.map((milestone) => {
                                 const isAchieved = achievedIds.includes(milestone.id);
+                                const isOpen = expandedMilestone === milestone.id;
                                 return (
-                                    <View key={milestone.id} style={styles.milestoneItem}>
-                                        <Ionicons
-                                            name={isAchieved ? "checkmark-circle" : "ellipse-outline"}
-                                            size={22}
-                                            color={isAchieved ? "#E86A33" : "#c4c4c4"}
-                                        />
-                                        <Text style={[styles.milestoneText, isAchieved && styles.milestoneTextAchieved]}>
-                                            {milestone.title}
-                                        </Text>
-                                    </View>
+                                    <TouchableOpacity
+                                        key={milestone.id}
+                                        activeOpacity={0.7}
+                                        onPress={() => setExpandedMilestone(isOpen ? null : milestone.id)}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={`${milestone.title}, worth ${milestone.points} points. ${isAchieved ? 'Earned.' : milestone.hint}`}
+                                    >
+                                        <View style={styles.milestoneItem}>
+                                            <Ionicons
+                                                name={isAchieved ? "checkmark-circle" : "ellipse-outline"}
+                                                size={22}
+                                                color={isAchieved ? "#E86A33" : "#c4c4c4"}
+                                            />
+                                            <View style={styles.milestoneTextGroup}>
+                                                <Text style={[styles.milestoneText, isAchieved && styles.milestoneTextAchieved]}>
+                                                    {milestone.title}
+                                                </Text>
+                                            </View>
+                                            <Text style={[styles.milestonePoints, isAchieved && styles.milestonePointsAchieved]}>
+                                                +{milestone.points}
+                                            </Text>
+                                            <Ionicons
+                                                name={isOpen ? "chevron-up" : "chevron-down"}
+                                                size={14}
+                                                color="#c4c4c4"
+                                            />
+                                        </View>
+
+                                        {isOpen && (
+                                            <View style={styles.milestoneDetail}>
+                                                <Text style={styles.milestoneDetailText}>{milestone.hint}</Text>
+                                                <Text style={styles.milestoneDetailPoints}>
+                                                    {isAchieved
+                                                        ? `Earned · ${milestone.points} points added to your total`
+                                                        : `Worth ${milestone.points} points`}
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
                                 );
                             })}
                         </View>
+                        {!allMilestonesDone && (
+                            <Text style={styles.milestonesFooter}>
+                                Finish these four to unlock the next set
+                            </Text>
+                        )}
                     </View>
 
                     {/* Top cuisines section */}
@@ -378,11 +457,19 @@ const MyInsights = ({ onPress }: Props) => {
                                                     {/* Dish Information */}
                                                     <View style={{ flexDirection: 'column', alignItems: 'flex-start', flex: 1, gap: 4, minWidth: 0 }}>
                                                         <Text style={styles.dishName} numberOfLines={1} ellipsizeMode="tail">{rec.title}</Text>
-                                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
-                                                            <Text style={[styles.restaurantName, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">{rec.restaurant}</Text>
-                                                            <Text style={styles.hyphen}>-</Text>
-                                                            <Text style={[styles.restaurantCity, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">{rec.location}</Text>
-                                                        </View>
+                                                        {(!!rec.restaurant || !!rec.location) && (
+                                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
+                                                                {!!rec.restaurant && (
+                                                                    <Text style={[styles.restaurantName, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">{rec.restaurant}</Text>
+                                                                )}
+                                                                {!!rec.restaurant && !!rec.location && (
+                                                                    <Text style={styles.hyphen}>-</Text>
+                                                                )}
+                                                                {!!rec.location && (
+                                                                    <Text style={[styles.restaurantCity, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">{rec.location}</Text>
+                                                                )}
+                                                            </View>
+                                                        )}
                                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                                                             {(rec.tags ?? []).slice(0, 2).map((tag: string) => (
                                                                 <View key={tag} style={styles.cuisineTypeBubble}>
@@ -619,10 +706,27 @@ const styles = StyleSheet.create({
         marginTop: 20,
         marginBottom: 20,
     },
+    milestonesHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
     milestonesTitle: {
         color: '#757575ff',
         fontWeight: 600,
         fontSize: 15,
+    },
+    milestonesProgress: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#E86A33',
+        letterSpacing: 1,
+    },
+    milestonesFooter: {
+        fontSize: 11,
+        color: '#a0a0a0',
+        marginTop: 16,
+        fontStyle: 'italic',
     },
     milestonesList: {
         flexDirection: 'column',
@@ -633,6 +737,45 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
+    },
+    milestoneTextGroup: {
+        flex: 1,
+        gap: 2,
+    },
+    milestoneHint: {
+        fontSize: 11,
+        color: '#c4c4c4',
+        fontWeight: '400',
+    },
+    milestonePoints: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#c4c4c4',
+        letterSpacing: 0.4,
+    },
+    milestonePointsAchieved: {
+        color: '#E86A33',
+    },
+    milestoneDetail: {
+        marginTop: 8,
+        marginLeft: 32,
+        paddingLeft: 12,
+        paddingVertical: 2,
+        borderLeftWidth: 2,
+        borderLeftColor: '#F0E4DE',
+        gap: 4,
+    },
+    milestoneDetailText: {
+        fontSize: 12,
+        color: '#757575',
+        lineHeight: 17,
+    },
+    milestoneDetailPoints: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#E86A33',
+        letterSpacing: 0.6,
+        textTransform: 'uppercase',
     },
     milestoneText: {
         fontSize: 14,

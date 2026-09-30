@@ -1,0 +1,122 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import LiquidGlass from './LiquidGlass';
+
+/**
+ * In-app message banner, styled to match the app instead of the platform's bare
+ * alert() dialog.
+*/
+export default function AppToast({ toast, onDismiss }) {
+  const [anim] = useState(() => new Animated.Value(0));
+  const isError = toast?.type === 'error';
+
+  const dismiss = () => {
+    Animated.timing(anim, { toValue: 0, duration: 180, useNativeDriver: true }).start(
+      () => onDismiss?.(),
+    );
+  };
+
+  useEffect(() => {
+    if (!toast?.message) return;
+
+    Animated.spring(anim, {
+      toValue: 1,
+      friction: 9,
+      tension: 70,
+      useNativeDriver: true,
+    }).start();
+
+    // Errors wait for a tap; successes clear themselves.
+    if (toast.type === 'error') return;
+
+    const timer = setTimeout(dismiss, 2400);
+    return () => clearTimeout(timer);
+  }, [toast, anim]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!toast?.message) return null;
+
+  return (
+    <Animated.View pointerEvents="box-none" style={[styles.wrap, { opacity: anim }]}>
+      <View pointerEvents="none" style={styles.scrim} />
+
+      <Animated.View
+        style={{
+          transform: [
+            {
+              scale: anim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.88, 1],
+              }),
+            },
+          ],
+        }}
+      >
+        <TouchableOpacity activeOpacity={0.9} onPress={dismiss} style={styles.touch}>
+          <LiquidGlass tint="light" borderRadius={22} style={styles.glass}>
+            <View style={styles.card}>
+              <Ionicons
+                name={isError ? 'alert-circle' : 'checkmark-circle'}
+                size={40}
+                color={isError ? '#D92D20' : '#FF6B4A'}
+              />
+              <Text style={[styles.text, isError && styles.textError]} numberOfLines={4}>
+                {toast.message}
+              </Text>
+              {isError && <Text style={styles.hint}>Tap to dismiss</Text>}
+            </View>
+          </LiquidGlass>
+        </TouchableOpacity>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 999,
+  },
+  scrim: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(26,26,26,0.14)',
+  },
+  touch: {
+    maxWidth: 340,
+    minWidth: 240,
+  },
+  glass: {
+    borderRadius: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.16,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  card: {
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 28,
+    paddingVertical: 28,
+  },
+  text: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    letterSpacing: 0.2,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  textError: {
+    color: '#7A1710',
+  },
+  hint: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#8A8A8E',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+});

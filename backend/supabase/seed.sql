@@ -11,7 +11,8 @@
 --
 -- Fixture UUIDs follow 00000000-0000-4000-8000-0000CCCCNNNN where
 -- CCCC is a per-table code (0101 venues, 0201 dishes, 0301 reviews,
--- 0401 media, 0501 audit logs, 0601 drafts) and NNNN is the row number.
+-- 0401 media, 0501 audit logs, 0601 drafts, 0701 saved logs) and NNNN
+-- is the row number.
 -- ============================================================
 
 -- ── Users (Clerk-style TEXT ids, clearly synthetic) ─────────────
@@ -78,6 +79,14 @@ INSERT INTO drafts (id, user_id, dish_name, venue_name, city, cuisine, is_restau
    'Draft: Spicy Miso Ramen Redo', 'Seed Ramen Bar', 'Sampleville', 'Japanese',
    TRUE, 'Still deciding on a rating fixture.', NULL, NULL,
    '2026-01-11 08:00:00+00', '2026-01-11 08:00:00+00');
+
+-- ── Saved logs (dishes bookmarked to try; snapshots, not FKs) ───
+INSERT INTO saved_logs (id, user_id, source_id, dish_name, venue_name, city, cuisine, rating, notes, image_url, tags, created_at) VALUES
+  ('00000000-0000-4000-8000-000007010001', 'user_seed_demo_0001',
+   'seed-card-0001', 'Salsa Verde Tacos', 'Placeholder Taqueria', 'Sampleville',
+   'Mexican', 4.0, 'Bookmarked to try the spicier version next visit.',
+   'https://media.example.com/seed/saved/tacos-0001.jpg', '["Mexican","Bright"]',
+   '2026-01-12 09:30:00+00');
 
 -- ── Flavor audit logs (one entry per seeded review) ─────────────
 INSERT INTO flavor_audit_logs (id, user_id, review_id, delta_spice, delta_acid, delta_umami, delta_sweet, delta_texture, new_spice, new_acid, new_umami, new_sweet, new_texture, created_at) VALUES

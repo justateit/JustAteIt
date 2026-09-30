@@ -1,6 +1,7 @@
+import json
 import os
 import uuid
-from typing import Optional
+from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
@@ -8,7 +9,10 @@ import httpx
 
 from shared.database import get_db
 from services.catalog_service.db import models
-from services.catalog_service.integrations.google_places import get_nearby_restaurant
+from services.catalog_service.integrations.google_places import (
+    find_restaurants,
+    get_nearby_restaurant,
+)
 
 app = FastAPI(title="Catalog & Review Service")
 
@@ -48,6 +52,18 @@ class DraftPayload(BaseModel):
     sensory_notes: Optional[str] = None
     image_url: Optional[str] = None
 
+class SavedLogPayload(BaseModel):
+    user_id: str
+    source_id: str          # id of the card this was saved from
+    dish_name: str
+    venue_name: Optional[str] = None
+    city: Optional[str] = None
+    cuisine: Optional[str] = None
+    rating: Optional[float] = None
+    notes: Optional[str] = None
+    image_url: Optional[str] = None
+    tags: Optional[List[str]] = None
+
 class DraftUpdatePayload(BaseModel):
     dish_name: Optional[str] = None
     venue_name: Optional[str] = None
@@ -84,6 +100,21 @@ def find_or_create_nearby_venue(payload: LatLngPayload, db: Session = Depends(ge
             "place_id": place_id
         }
     }
+
+@app.get("/venues/search")
+def search_venues_by_cuisine(cities: str, cuisines: str, limit: int = 60):
+    """
+    Real restaurants for grounding AI recommendations. `cities` and `cuisines`
+    are comma-separated, and all pairs are resolved in as few upstream calls as
+    possible (Overpass allows only two concurrent queries).
+
+    Returns {"venues": []} when nothing is found — callers must omit the venue
+    rather than let the model invent a restaurant name.
+    """
+    city_list = [c.strip() for c in cities.split(",") if c.strip()]
+    cuisine_list = [c.strip() for c in cuisines.split(",") if c.strip()]
+    print(f"\033[96m[CATALOG] Searching {cuisine_list} restaurants in {city_list}\033[0m")
+    return {"venues": find_restaurants(city_list, cuisine_list, limit)}
 
 @app.get("/venues/{venue_id}/dishes")
 def get_venue_dishes(venue_id: str, db: Session = Depends(get_db)):
@@ -489,3 +520,76 @@ async def publish_draft(draft_id: str, background_tasks: BackgroundTasks, db: Se
     db.commit()
 
     return {"success": True, "review_id": str(review.id)}
+
+
+# ── Saved logs (bookmarks) ────────────────────────────────────────────────────
+
+@app.post("/saved-logs")
+def save_log(payload: SavedLogPayload, db: Session = Depends(get_db)):
+    """
+    Bookmark a dish
+    """
+    print(f"\033[96m[CATALOG] Saving log '{payload.dish_name}' for {payload.user_id}\033[0m")
+
+    existing = db.query(models.SavedLog).filter(
+        models.SavedLog.user_id == payload.user_id,
+        models.SavedLog.source_id == payload.source_id,
+    ).first()
+
+    fields = payload.model_dump(exclude={"user_id", "source_id", "tags"})
+    fields["tags"] = json.dumps(payload.tags) if payload.tags else None
+
+    if existing:
+        for key, value in fields.items():
+            setattr(existing, key, value)
+        db.commit()
+        db.refresh(existing)
+        return {"success": True, "saved_log_id": str(existing.id), "created": False}
+
+    saved = models.SavedLog(
+        user_id=payload.user_id,
+        source_id=payload.source_id,
+        **fields,
+    )
+    db.add(saved)
+    db.commit()
+    db.refresh(saved)
+    return {"success": True, "saved_log_id": str(saved.id), "created": True}
+
+
+@app.get("/saved-logs/{user_id}")
+def get_saved_logs(user_id: str, db: Session = Depends(get_db)):
+    """All dishes this user has bookmarked, newest first."""
+    rows = db.query(models.SavedLog)\
+        .filter(models.SavedLog.user_id == user_id)\
+        .order_by(models.SavedLog.created_at.desc())\
+        .all()
+
+    saved = [{
+        "id": str(r.id),
+        "source_id": r.source_id,
+        "dish_name": r.dish_name,
+        "venue_name": r.venue_name,
+        "city": r.city,
+        "cuisine": r.cuisine,
+        "rating": r.rating,
+        "notes": r.notes,
+        "image_url": r.image_url,
+        # Stored JSON-encoded; a malformed value shouldn't take down the list.
+        "tags": json.loads(r.tags) if r.tags else [],
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+    } for r in rows]
+
+    print(f"\033[92m[CATALOG] Retrieved {len(saved)} saved log(s) for {user_id}\033[0m")
+    return {"saved_logs": saved, "count": len(saved)}
+
+
+@app.delete("/saved-logs/{saved_log_id}")
+def delete_saved_log(saved_log_id: str, db: Session = Depends(get_db)):
+    """Remove a bookmark."""
+    saved = db.query(models.SavedLog).filter(models.SavedLog.id == saved_log_id).first()
+    if not saved:
+        raise HTTPException(status_code=404, detail="Saved log not found")
+    db.delete(saved)
+    db.commit()
+    return {"success": True}

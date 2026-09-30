@@ -72,6 +72,26 @@ class Draft(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+class SavedLog(Base):
+    """
+    A dish a user bookmarked to try later.
+    """
+    __tablename__ = "saved_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(String, nullable=False)
+    source_id = Column(String, nullable=False)
+    dish_name = Column(String, nullable=False)
+    venue_name = Column(String, nullable=True)
+    city = Column(String, nullable=True)
+    cuisine = Column(String, nullable=True)
+    rating = Column(Float, nullable=True)
+    notes = Column(Text, nullable=True)
+    image_url = Column(String, nullable=True)
+    tags = Column(Text, nullable=True)  # JSON-encoded list, mirroring the card's tags
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Media(Base):
     __tablename__ = "media"
 

@@ -48,10 +48,21 @@ async def proxy_request(service_url: str, path: str, request: Request):
              
              print(f"\033[92m[GATEWAY] {request.method} {path} returned status {response.status_code}\033[0m")
              
-             return JSONResponse(
-                 status_code=response.status_code, 
-                 content=response.json() if response.content else {"message": "Empty response"}
-             )
+             try:
+                 payload = response.json() if response.content else {"message": "Empty response"}
+             except ValueError:
+                 # A downstream crash renders as an HTML/plain-text traceback, not
+                 # JSON. Decoding it used to raise into the handler below and come
+                 # back as "503 Service Unavailable: Expecting value: line 1
+                 # column 1", which hid the real status and message. Pass both
+                 # through instead so the failure is readable from the client.
+                 snippet = response.text[:600]
+                 print(f"\033[91m[GATEWAY] Non-JSON {response.status_code} from {url}: {snippet[:300]}\033[0m")
+                 payload = {
+                     "detail": f"Upstream {response.status_code} from {path}: {snippet}"
+                 }
+
+             return JSONResponse(status_code=response.status_code, content=payload)
         except httpx.TimeoutException:
              print(f"\033[91m[GATEWAY TIMEOUT] {request.method} {url} timed out after 60s\033[0m")
              raise HTTPException(status_code=504, detail="Gateway Timeout")
@@ -83,6 +94,12 @@ async def route_reviews(request: Request, path: str = ""):
 @app.api_route("/api/v1/drafts/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def route_drafts(request: Request, path: str = ""):
     full_path = f"drafts/{path}" if path else "drafts"
+    return await proxy_request(ROUTES["catalog"], full_path, request)
+
+@app.api_route("/api/v1/saved-logs", methods=["GET", "POST", "PUT", "DELETE"])
+@app.api_route("/api/v1/saved-logs/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def route_saved_logs(request: Request, path: str = ""):
+    full_path = f"saved-logs/{path}" if path else "saved-logs"
     return await proxy_request(ROUTES["catalog"], full_path, request)
 
 @app.api_route("/api/v1/venues", methods=["GET", "POST", "PUT", "DELETE"])
