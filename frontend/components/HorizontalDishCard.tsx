@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import VenueAutocomplete from '@/components/VenueAutocomplete';
 import { Image } from 'expo-image';
 import React, { useState } from 'react';
 import {
@@ -330,40 +330,14 @@ const HorizontalDishCard = ({
 
                                     <View style={[styles.inputGroup, { zIndex: 999 }]}>
                                         <Text style={[styles.inputLabel, { color: Colors[colorScheme].text }]}>VENUE / RESTAURANT</Text>
-                                        <View style={{ zIndex: 999 }}>
-                                          <GooglePlacesAutocomplete
-                                            placeholder="Search for a restaurant..."
-                                            onPress={(data) => {
-                                              setEditRestaurant(data.structured_formatting?.main_text || data.description.split(',')[0]);
-                                            }}
-                                            query={{
-                                              key: process.env.EXPO_PUBLIC_GOOGLE_API_KEY,
-                                              language: 'en',
-                                              types: 'establishment',
-                                            }}
-                                            styles={{
-                                              container: { flex: 0 },
-                                              textInput: [styles.textInput, { color: Colors[colorScheme].text, backgroundColor: colorScheme === 'dark' ? '#222' : '#FFF', borderColor: colorScheme === 'dark' ? '#444' : '#E0E0E0' }],
-                                              listView: {
-                                                position: 'absolute',
-                                                top: 45,
-                                                backgroundColor: Colors[colorScheme].card,
-                                                borderRadius: 8,
-                                                elevation: 5,
-                                                zIndex: 1000,
-                                              },
-                                              description: { color: Colors[colorScheme].text }
-                                            }}
-                                            textInputProps={{
-                                              placeholderTextColor: colorScheme === 'dark' ? '#AAA' : '#999',
-                                              defaultValue: editRestaurant
-                                            }}
-                                            requestUrl={{
-                                              useOnWeb: true,
-                                              url: 'http://localhost:8000/api/v1/places',
-                                            }}
-                                          />
-                                        </View>
+                                        <VenueAutocomplete
+                                          placeholder="Search for a restaurant…"
+                                          defaultValue={editRestaurant}
+                                          onSelect={(suggestion) => {
+                                            setEditRestaurant(suggestion.name);
+                                          }}
+                                          containerStyle={{ zIndex: 999 }}
+                                        />
                                     </View>
 
                                     <View style={styles.inputGroup}>

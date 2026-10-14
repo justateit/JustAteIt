@@ -17,9 +17,6 @@ export default function Root({ children }: PropsWithChildren) {
           However, body scrolling is often nice to have for mobile web. If you want to enable it, remove this line.
         */}
         <ScrollViewStyleReset />
-        
-        {/* Load Google Maps JS API to prevent CORS issues with GooglePlacesAutocomplete on Web */}
-        <script src={`https://maps.googleapis.com/maps/api/js?key=${process.env.EXPO_PUBLIC_GOOGLE_API_KEY}&libraries=places`}></script>
       </head>
       <body>{children}</body>
     </html>

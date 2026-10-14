@@ -12,6 +12,7 @@ from services.catalog_service.db import models
 from services.catalog_service.integrations.google_places import (
     find_restaurants,
     get_nearby_restaurant,
+    search_venues_autocomplete,
 )
 
 app = FastAPI(title="Catalog & Review Service")
@@ -28,6 +29,7 @@ class ReviewPayload(BaseModel):
     rating: float
     sensory_notes: Optional[str] = None
     image_url: Optional[str] = None
+    meal_type: Optional[str] = None  # Breakfast | Lunch | Dinner | Snack
 
 class ReviewUpdatePayload(BaseModel):
     dish_name: Optional[str] = None
@@ -36,6 +38,7 @@ class ReviewUpdatePayload(BaseModel):
     rating: Optional[float] = None
     sensory_notes: Optional[str] = None
     image_url: Optional[str] = None
+    meal_type: Optional[str] = None
 
 class LatLngPayload(BaseModel):
     lat: float
@@ -51,6 +54,7 @@ class DraftPayload(BaseModel):
     rating: Optional[float] = None
     sensory_notes: Optional[str] = None
     image_url: Optional[str] = None
+    meal_type: Optional[str] = None  # Breakfast | Lunch | Dinner | Snack
 
 class SavedLogPayload(BaseModel):
     user_id: str
@@ -73,12 +77,25 @@ class DraftUpdatePayload(BaseModel):
     rating: Optional[float] = None
     sensory_notes: Optional[str] = None
     image_url: Optional[str] = None
+    meal_type: Optional[str] = None
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @app.get("/catalog/health")
 def health_check():
     return {"status": "ok", "service": "catalog_service"}
+
+@app.get("/places/autocomplete")
+def venue_autocomplete(q: str, limit: int = 6):
+    """
+    Free Nominatim-backed venue autocomplete for the mobile app.
+    No API key required. Rate-limited on the client side (350 ms debounce).
+    Returns [{name, address, fullName}] — mirrors VenueSuggestion in the frontend.
+    """
+    if not q or len(q.strip()) < 3:
+        return {"suggestions": []}
+    results = search_venues_autocomplete(q.strip(), limit)
+    return {"suggestions": results}
 
 @app.post("/venues/nearby")
 def find_or_create_nearby_venue(payload: LatLngPayload, db: Session = Depends(get_db)):
@@ -151,6 +168,7 @@ def get_user_reviews(user_id: str, db: Session = Depends(get_db)):
             "rating": r.rating,
             "sensory_notes": r.comment,
             "image_url": media_url,
+            "meal_type": r.meal_type,
             "created_at": r.created_at.isoformat()
         })
 
@@ -229,7 +247,8 @@ async def create_review(payload: ReviewPayload, background_tasks: BackgroundTask
         dish_id=dish.id,
         venue_id=venue_id,
         rating=payload.rating,
-        comment=payload.sensory_notes
+        comment=payload.sensory_notes,
+        meal_type=payload.meal_type
     )
     db.add(review)
     db.commit()
@@ -309,6 +328,8 @@ def update_review(review_id: str, payload: ReviewUpdatePayload, db: Session = De
         review.rating = payload.rating
     if payload.sensory_notes is not None:
         review.comment = payload.sensory_notes
+    if payload.meal_type is not None:
+        review.meal_type = payload.meal_type
 
     # 4. Update Media
     if payload.image_url is not None:
@@ -354,7 +375,8 @@ def create_draft(payload: DraftPayload, db: Session = Depends(get_db)):
         is_restaurant=payload.is_restaurant,
         sensory_notes=payload.sensory_notes,
         rating=payload.rating,
-        image_url=payload.image_url
+        image_url=payload.image_url,
+        meal_type=payload.meal_type
     )
     db.add(draft)
     db.commit()
@@ -384,6 +406,7 @@ def get_user_drafts(user_id: str, db: Session = Depends(get_db)):
             "sensory_notes": d.sensory_notes,
             "rating": d.rating,
             "image_url": d.image_url,
+            "meal_type": d.meal_type,
             "created_at": d.created_at.isoformat(),
             "updated_at": d.updated_at.isoformat()
         })
@@ -420,6 +443,8 @@ def update_draft(draft_id: str, payload: DraftUpdatePayload, db: Session = Depen
         draft.rating = payload.rating
     if payload.image_url is not None:
         draft.image_url = payload.image_url
+    if payload.meal_type is not None:
+        draft.meal_type = payload.meal_type
 
     db.commit()
     db.refresh(draft)
@@ -492,7 +517,8 @@ async def publish_draft(draft_id: str, background_tasks: BackgroundTasks, db: Se
         dish_id=dish.id,
         venue_id=venue_id,
         rating=draft.rating,
-        comment=draft.sensory_notes
+        comment=draft.sensory_notes,
+        meal_type=draft.meal_type
     )
     db.add(review)
     db.commit()

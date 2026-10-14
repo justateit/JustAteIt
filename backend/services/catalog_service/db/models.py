@@ -50,6 +50,7 @@ class Review(Base):
     venue_id = Column(UUID(as_uuid=True), ForeignKey("venues.id", ondelete="SET NULL"), nullable=True)
     rating = Column(Float, nullable=False)
     comment = Column(Text, nullable=True)
+    meal_type = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     dish = relationship("Dish", back_populates="reviews")
@@ -69,6 +70,7 @@ class Draft(Base):
     sensory_notes = Column(Text, nullable=True)
     rating = Column(Float, nullable=True)
     image_url = Column(String, nullable=True)
+    meal_type = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
