@@ -5,18 +5,19 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import VenueAutocomplete from '@/components/VenueAutocomplete';
+import { detectMealType, MEAL_TYPES } from '@/utils/mealType';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ActivityIndicator,
   Animated,
   Dimensions,
   Image,
   Platform,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -111,6 +112,8 @@ export default function RecordExperience() {
   const [sensoryNotes, setSensoryNotes] = useState('');
   const [isRestaurant, setIsRestaurant] = useState(true);
   const [rating, setRating] = useState(0);
+  // Task#1056 — auto-detect meal type from local time; user may override
+  const [mealType, setMealType] = useState(() => detectMealType());
 
   const [uploading, setUploading] = useState(false);
   const [archiving, setArchiving] = useState(false);
@@ -133,6 +136,7 @@ export default function RecordExperience() {
       setIsRestaurant(draft.is_restaurant);
       setRating(draft.rating || 0);
       setImageUri(draft.image_url || null);
+      if (draft.meal_type) setMealType(draft.meal_type);
     });
   }, [draftId, user]);
 
@@ -155,7 +159,7 @@ export default function RecordExperience() {
 
   const handleUpload = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       quality: 1,
       exif: true,
@@ -184,19 +188,10 @@ export default function RecordExperience() {
 
       const formData = new FormData();
 
-      if (Platform.OS === 'web') {
-        // On web, fetch the blob URI and append as a real Blob
-        const response = await fetch(manipResult.uri);
-        const blob = await response.blob();
-        formData.append('file', new File([blob], 'upload.webp', { type: 'image/webp' }));
-      } else {
-        // React Native native format
-        formData.append('file', {
-          uri: manipResult.uri,
-          name: 'upload.webp',
-          type: 'image/webp',
-        });
-      }
+      // Convert local URI into a Blob/File compatible with Expo's modern WinterCG fetch/FormData
+      const imgFetch = await fetch(manipResult.uri);
+      const imgBlob = await imgFetch.blob();
+      formData.append('file', imgBlob, 'upload.webp');
 
       if (latitude != null && longitude != null) {
         formData.append('latitude', latitude.toString());
@@ -265,6 +260,7 @@ export default function RecordExperience() {
           sensory_notes: sensoryNotes.trim() || null,
           rating: rating,
           image_url: imageUri || null,
+          meal_type: mealType,
         });
         await publishDraft(draftId);
       } else {
@@ -277,6 +273,7 @@ export default function RecordExperience() {
           sensory_notes: sensoryNotes.trim() || null,
           rating: rating,
           image_url: imageUri || null,
+          meal_type: mealType,
         });
       }
       setToast({ message: 'Log archived', type: 'success' });
@@ -317,6 +314,7 @@ export default function RecordExperience() {
           sensory_notes: sensoryNotes.trim() || null,
           rating: rating || null,
           image_url: imageUri || null,
+          meal_type: mealType,
         });
       } else {
         await saveDraft(user.id, {
@@ -328,6 +326,7 @@ export default function RecordExperience() {
           sensory_notes: sensoryNotes.trim() || null,
           rating: rating || null,
           image_url: imageUri || null,
+          meal_type: mealType,
         });
       }
       setToast({ message: 'Draft saved', type: 'success' });
@@ -580,46 +579,63 @@ export default function RecordExperience() {
             </View>
           </AnimatedSection>
 
-          {/* Venue and City Inputs — hidden when Home Cooked */}
+          {/* Task#1056 — Meal Type Chip Selector */}
+          <AnimatedSection scrollY={scrollY} delay={300}>
+            <Text style={styles.sectionLabel}>MEAL TYPE</Text>
+            <View style={styles.mealTypeRow}>
+              {MEAL_TYPES.map((type) => {
+                const active = mealType === type;
+                return (
+                  <TouchableOpacity
+                    key={type}
+                    style={[
+                      styles.mealChip,
+                      active && styles.mealChipActive,
+                      {
+                        backgroundColor: active
+                          ? '#FF6B4A'
+                          : colorScheme === 'dark'
+                          ? 'rgba(60,60,60,0.7)'
+                          : 'rgba(255,255,255,0.7)',
+                        borderColor: active
+                          ? '#FF6B4A'
+                          : colorScheme === 'dark'
+                          ? 'rgba(100,100,100,0.5)'
+                          : 'rgba(200,200,200,0.8)',
+                      },
+                    ]}
+                    onPress={() => setMealType(type)}
+                    activeOpacity={0.75}
+                  >
+                    <Text
+                      style={[
+                        styles.mealChipText,
+                        { color: active ? '#FFF' : colorScheme === 'dark' ? '#CCC' : '#555' },
+                      ]}
+                    >
+                      {type}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </AnimatedSection>
+
+          {/* Task#1198 — Venue & City: OSM-powered free autocomplete */}
           {isRestaurant && (
             <AnimatedSection scrollY={scrollY} delay={320} style={{ zIndex: 999 }}>
               <View style={[styles.row, { zIndex: 999 }]}>
                 <View style={{ width: '100%', zIndex: 999 }}>
                   <Text style={styles.fieldLabel}>VENUE & CITY</Text>
-                  <View style={[styles.glassInputSmall, { padding: 0, overflow: 'visible', zIndex: 999, backgroundColor: colorScheme === 'dark' ? 'rgba(40, 40, 40, 0.65)' : 'rgba(255, 255, 255, 0.65)', borderColor: colorScheme === 'dark' ? 'rgba(80, 80, 80, 0.9)' : 'rgba(255, 255, 255, 0.9)' }]}>
-                    <GooglePlacesAutocomplete
-                      placeholder="Search for a restaurant..."
-                      onPress={(data, details = null) => {
-                        setVenue(data.structured_formatting?.main_text || data.description.split(',')[0]);
-                        setCity(data.structured_formatting?.secondary_text || data.description);
-                      }}
-                      query={{
-                        key: process.env.EXPO_PUBLIC_GOOGLE_API_KEY,
-                        language: 'en',
-                        types: 'establishment',
-                      }}
-                      styles={{
-                        container: { flex: 0 },
-                        textInput: [styles.input, { paddingHorizontal: 12, height: 44, color: Colors[colorScheme].text, backgroundColor: 'transparent' }],
-                        listView: {
-                          position: 'absolute',
-                          top: 45,
-                          backgroundColor: Colors[colorScheme].card,
-                          borderRadius: 8,
-                          elevation: 5,
-                          zIndex: 1000,
-                        },
-                        description: { color: Colors[colorScheme].text }
-                      }}
-                      textInputProps={{
-                        placeholderTextColor: colorScheme === 'dark' ? "rgba(255, 255, 255, 0.3)" : "rgba(60, 60, 67, 0.3)"
-                      }}
-                      requestUrl={{
-                        useOnWeb: true,
-                        url: 'http://localhost:8000/api/v1/places',
-                      }}
-                    />
-                  </View>
+                  <VenueAutocomplete
+                    placeholder="Search for a restaurant…"
+                    defaultValue={venue}
+                    onSelect={(suggestion) => {
+                      setVenue(suggestion.name);
+                      setCity(suggestion.address);
+                    }}
+                    containerStyle={{ zIndex: 999 }}
+                  />
                 </View>
               </View>
             </AnimatedSection>
@@ -859,6 +875,35 @@ const styles = StyleSheet.create({
   },
   toggleTextActive: {
     color: '#333',
+  },
+
+  // MEAL TYPE CHIPS
+  mealTypeRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 24,
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  mealChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  mealChipActive: {
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  mealChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.4,
   },
 
   // ROW INPUTS

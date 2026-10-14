@@ -5,6 +5,74 @@ from typing import List, Optional, Tuple
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 HEADERS = {"User-Agent": "JustAteIt-App/1.0 (dev@justateit.app)"}
 
+# ── Public free-tier autocomplete (Nominatim / OpenStreetMap) ─────────────────
+
+FOOD_CATEGORIES = {
+    "restaurant", "cafe", "bar", "pub", "fast_food", "food_court",
+    "ice_cream", "bakery", "bistro", "biergarten",
+}
+
+def search_venues_autocomplete(query: str, limit: int = 6) -> List[dict]:
+    """
+    Nominatim text-search for food venues.
+    Mirrors the VenueSuggestion shape expected by the React Native component:
+      { name, address, fullName }
+
+    Respects Nominatim's 1 req/sec policy — clients must debounce at ≥350 ms.
+    """
+    params = {
+        "q": query,
+        "format": "jsonv2",
+        "addressdetails": "1",
+        "limit": str(limit * 3),  # over-fetch, filter, then slice
+    }
+    try:
+        resp = requests.get(
+            "https://nominatim.openstreetmap.org/search",
+            params=params,
+            headers=HEADERS,
+            timeout=4,
+        )
+        if resp.status_code != 200:
+            print(f"\033[93m[NOMINATIM] HTTP {resp.status_code}\033[0m")
+            return []
+        items = resp.json()
+    except Exception as exc:
+        print(f"\033[91m[NOMINATIM] Autocomplete error: {exc}\033[0m")
+        return []
+
+    results = []
+    for item in items:
+        cls = (item.get("category") or item.get("class") or "").lower()
+        typ = (item.get("type") or "").lower()
+        is_food = (cls == "amenity" and typ in FOOD_CATEGORIES) or (typ in FOOD_CATEGORIES)
+        is_place = cls in {"building", "place", "shop", "tourism", "leisure"}
+        has_name = bool(item.get("name"))
+        if not is_food and not is_place and not has_name:
+            continue
+        name = item.get("name") or item.get("display_name", "").split(",")[0]
+        if not name:
+            continue
+        addr = item.get("address") or {}
+        city = (
+            addr.get("city") or addr.get("town") or addr.get("village")
+            or addr.get("suburb") or addr.get("county") or ""
+        )
+        road = addr.get("road") or ""
+        address = ", ".join(filter(None, [road, city])) or item.get("display_name", "")
+        results.append({
+            "name": name,
+            "address": address,
+            "fullName": item.get("display_name", ""),
+        })
+        if len(results) >= limit:
+            break
+
+    print(f"\033[92m[NOMINATIM] Autocomplete '{query}' -> {len(results)} result(s)\033[0m")
+    return results
+
+
+
 def _fetch_from_osm(lat: str, lon: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """Free OpenStreetMap fallback using Nominatim reverse geocode & Overpass nearby search."""
     try:

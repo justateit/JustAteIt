@@ -366,3 +366,19 @@ export async function deleteSavedLog(savedLogId) {
   if (!res.ok) throw new Error(`deleteSavedLog failed: ${res.status}`);
   return res.json();
 }
+
+/**
+ * Autocomplete venue search powered by OpenStreetMap Nominatim.
+ * Free, no API key required. Respects rate limit policy (callers should debounce >=350ms).
+ *
+ * @param {string} query - Text to search
+ * @param {number} [limit=6] - Maximum results
+ * @returns {Promise<{suggestions: Array<{name: string, address: string, fullName: string}>}>}
+ */
+export async function searchVenuesAutocomplete(query, limit = 6) {
+  const qs = new URLSearchParams({ q: query, limit: String(limit) });
+  const res = await fetch(`${BASE_URL}/api/v1/places/autocomplete?${qs}`);
+  if (!res.ok) throw new Error(`searchVenuesAutocomplete failed: ${res.status}`);
+  return res.json();
+}
+

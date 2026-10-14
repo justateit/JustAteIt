@@ -114,6 +114,14 @@ async def route_media(request: Request, path: str = ""):
     full_path = f"media/{path}" if path else "media"
     return await proxy_request(ROUTES["media"], full_path, request)
 
+@app.api_route("/api/v1/places", methods=["GET", "POST"])
+@app.api_route("/api/v1/places/{path:path}", methods=["GET", "POST"])
+async def route_places(request: Request, path: str = ""):
+    """Proxies Nominatim-backed venue autocomplete to the catalog service."""
+    full_path = f"places/{path}" if path else "places"
+    return await proxy_request(ROUTES["catalog"], full_path, request)
+
+
 @app.get("/")
 def health_check():
     return {"status": "ok", "service": "API Gateway"}

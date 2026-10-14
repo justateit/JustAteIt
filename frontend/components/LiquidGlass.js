@@ -61,7 +61,6 @@ export default function LiquidGlass({
                 <BlurView
                     intensity={Platform.OS === 'ios' ? intensity : Math.min(intensity, 40)}
                     tint={activeTint}
-                    experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
                     style={StyleSheet.absoluteFill}
                 />
 

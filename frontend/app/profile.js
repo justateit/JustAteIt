@@ -110,7 +110,6 @@ export default function App() {
                         <BlurView
                             intensity={Platform.OS === 'ios' ? 50 : 35}
                             tint="light"
-                            experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
                             style={StyleSheet.absoluteFill}
                         />
                         <LinearGradient
