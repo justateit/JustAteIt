@@ -160,13 +160,14 @@ export default function VenueAutocomplete({
     onSelect(item);
   };
 
-  // Sync defaultValue on prop change (e.g. draft loaded)
-  useEffect(() => {
-    if (defaultValue && defaultValue !== query) {
+  // Sync defaultValue when prop changes (e.g. draft loaded)
+  const [prevDefault, setPrevDefault] = useState(defaultValue);
+  if (defaultValue !== prevDefault) {
+    setPrevDefault(defaultValue);
+    if (defaultValue) {
       setQuery(defaultValue);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultValue]);
+  }
 
   // Cleanup timer on unmount
   useEffect(() => () => {

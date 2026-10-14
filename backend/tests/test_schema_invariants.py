@@ -264,7 +264,7 @@ def test_expected_columns(tables):
                    "base_acid", "base_umami", "base_sweet", "base_texture",
                    "created_at", "cuisine"},
         "reviews": {"id", "user_id", "dish_id", "venue_id", "rating",
-                    "comment", "created_at"},
+                    "comment", "created_at", "meal_type"},
         "media": {"id", "review_id", "media_url", "media_type", "created_at"},
         "flavor_audit_logs": {"id", "user_id", "review_id", "delta_spice",
                               "delta_acid", "delta_umami", "delta_sweet",
