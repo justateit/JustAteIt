@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme-context';
-import { getSavedLogs, saveLog } from '../utils/flavorProfileApi';
+import { deleteSavedLog, getSavedLogs, saveLog } from '../utils/flavorProfileApi';
 
 const { width } = Dimensions.get('window');
 const gap = width * 0.3
@@ -27,27 +27,32 @@ const DishCard = ({ id, title, restaurant, date, rating, image, location, tastin
         queryFn: () => getSavedLogs(user!.id).then((d: any) => d.saved_logs ?? []),
         enabled: !!user?.id,
     });
-    const isSaved =
-        justSaved || (savedData ?? []).some((s: any) => s.source_id === String(id));
+    const savedEntry = (savedData ?? []).find((s: any) => s.source_id === String(id));
+    const isSaved = justSaved || !!savedEntry;
 
     const handleSave = async () => {
-        if (!user?.id || saving || isSaved) return;
+        if (!user?.id || saving) return;
         setSaving(true);
         try {
-            await saveLog(user.id, {
-                sourceId: id,
-                dishName: title,
-                venueName: restaurant,
-                city: location,
-                // The card carries tags rather than a cuisine field; the first tag
-                // is the cuisine by convention in this data.
-                cuisine: tags?.[0] ?? null,
-                rating,
-                notes: tastingNotes,
-                imageUrl: typeof image === 'string' ? image : null,
-                tags,
-            });
-            setJustSaved(true);
+            if (isSaved) {
+                if (savedEntry) await deleteSavedLog(savedEntry.id);
+                setJustSaved(false);
+            } else {
+                await saveLog(user.id, {
+                    sourceId: id,
+                    dishName: title,
+                    venueName: restaurant,
+                    city: location,
+                    // The card carries tags rather than a cuisine field; the first tag
+                    // is the cuisine by convention in this data.
+                    cuisine: tags?.[0] ?? null,
+                    rating,
+                    notes: tastingNotes,
+                    imageUrl: typeof image === 'string' ? image : null,
+                    tags,
+                });
+                setJustSaved(true);
+            }
             // Refresh the Saved Logs page and every other card's saved state.
             queryClient.invalidateQueries({ queryKey: ['savedLogs', user.id] });
         } catch (err) {
@@ -136,9 +141,9 @@ const DishCard = ({ id, title, restaurant, date, rating, image, location, tastin
                             <TouchableOpacity
                                 style={[styles.saveBadge, isSaved && styles.saveBadgeSaved]}
                                 onPress={handleSave}
-                                disabled={saving || isSaved}
+                                disabled={saving}
                                 accessibilityRole="button"
-                                accessibilityLabel={isSaved ? `${title} is saved` : `Save ${title} to your saved logs`}
+                                accessibilityLabel={isSaved ? `Remove ${title} from your saved logs` : `Save ${title} to your saved logs`}
                             >
                                 {saving ? (
                                     <ActivityIndicator size="small" color="#FFFFFF" />
