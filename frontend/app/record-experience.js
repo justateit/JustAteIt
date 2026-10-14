@@ -1,22 +1,22 @@
 import AppToast from '@/components/AppToast';
 import LiquidGlass from '@/components/LiquidGlass';
+import VenueAutocomplete from '@/components/VenueAutocomplete';
+import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme-context';
+import { detectMealType, MEAL_TYPES } from '@/utils/mealType';
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import VenueAutocomplete from '@/components/VenueAutocomplete';
-import { detectMealType, MEAL_TYPES } from '@/utils/mealType';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Colors } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme-context';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ActivityIndicator,
   Animated,
   Dimensions,
   Image,
+  Modal,
   Platform,
   ScrollView,
   StatusBar,
@@ -26,9 +26,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getDrafts, getNearbyVenue, publishDraft, saveDraft, submitLog, updateDraft, upsertUser } from '../utils/flavorProfileApi';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
+const SCREEN_WIDTH = Dimensions.get('window').width;
 
 /**
  * Reusable wrapper that fades in + slides up when scrolled into the viewport,
@@ -122,6 +124,10 @@ export default function RecordExperience() {
   const [toast, setToast] = useState(null);
   const [imageUri, setImageUri] = useState(null);
   const [containerWidth, setContainerWidth] = useState(0);
+
+  // cuisine list + a fla for whether the picker is open
+  const [cuisineModalVisible, setCuisineModalVisible] = useState(false);
+  const CUISINES = ['Italian', 'American', 'Mexican', 'Japanese', 'Chinese', 'Indian', 'French', 'Thai', 'Korean', 'Mediterranean', 'Vietnamese', 'Other']
 
   useEffect(() => {
     if (!draftId || !user) return;
@@ -595,13 +601,13 @@ export default function RecordExperience() {
                         backgroundColor: active
                           ? '#FF6B4A'
                           : colorScheme === 'dark'
-                          ? 'rgba(60,60,60,0.7)'
-                          : 'rgba(255,255,255,0.7)',
+                            ? 'rgba(60,60,60,0.7)'
+                            : 'rgba(255,255,255,0.7)',
                         borderColor: active
                           ? '#FF6B4A'
                           : colorScheme === 'dark'
-                          ? 'rgba(100,100,100,0.5)'
-                          : 'rgba(200,200,200,0.8)',
+                            ? 'rgba(100,100,100,0.5)'
+                            : 'rgba(200,200,200,0.8)',
                       },
                     ]}
                     onPress={() => setMealType(type)}
@@ -645,15 +651,27 @@ export default function RecordExperience() {
           <AnimatedSection scrollY={scrollY} delay={360}>
             <View style={{ paddingHorizontal: 24, marginTop: 24 }}>
               <Text style={styles.fieldLabel}>CUISINE</Text>
-              <View style={styles.glassInputSmall}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Mexican, Japanese, Italian"
-                  placeholderTextColor="rgba(60, 60, 67, 0.3)"
-                  value={cuisine}
-                  onChangeText={setCuisine}
+              <TouchableOpacity
+                style={[
+                  styles.glassInputSmall,
+                  {
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                    backgroundColor: colorScheme === 'dark' ? 'rgba(40, 40, 40, 0.65)' : 'rgba(255, 255, 255, 0.65)',
+                    borderColor: colorScheme === 'dark' ? 'rgba(80, 80, 80, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+                  },
+                ]}
+                onPress={() => setCuisineModalVisible(true)}
+              >
+                <Text style={[styles.input, { color: cuisine ? Colors[colorScheme].text : (colorScheme === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(60,60,67,0.3)') }]}>
+                  {cuisine || 'Select a cuisine'}
+                </Text>
+                <Ionicons
+                  name="chevron-down"
+                  size={18}
+                  color={colorScheme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(60,60,67,0.5)'}
+                  style={{ marginRight: 12 }}
                 />
-              </View>
+              </TouchableOpacity>
             </View>
           </AnimatedSection>
 
@@ -753,6 +771,30 @@ export default function RecordExperience() {
       {/* Sits outside SafeAreaView so it floats over the form rather than
           shifting it, and above the ScrollView in the stacking order. */}
       <AppToast toast={toast} onDismiss={() => setToast(null)} />
+
+      <Modal transparent visible={cuisineModalVisible} animationType="fade">
+        <TouchableOpacity activeOpacity={1} style={styles.modalBackdrop} onPress={() => setCuisineModalVisible(false)}>
+          <LiquidGlass borderRadius={22} style={styles.cuisineGlass}>
+            <ScrollView>
+              {CUISINES.map(c => (
+                <TouchableOpacity key={c} onPress={() => { setCuisine(c); setCuisineModalVisible(false); }}>
+                  <Text
+                    style={[
+                      styles.cuisineOption,
+                      {
+                        color: colorScheme === 'dark' ? '#fff' : '#1a1a1a',
+                        borderBottomColor: colorScheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
+                      },
+                    ]}
+                  >
+                    {c}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </LiquidGlass>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -939,6 +981,30 @@ const styles = StyleSheet.create({
     color: '#333',
     paddingVertical: 12,
     paddingHorizontal: 12,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(26, 26, 26, 0.14)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cuisineGlass: {
+    width: SCREEN_WIDTH * 0.8,
+    maxHeight: SCREEN_HEIGHT * 0.6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.16,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  cuisineOption: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.06)',
   },
 
   // SENSORY NOTES (Glass Card)
