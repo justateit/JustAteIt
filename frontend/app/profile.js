@@ -1,11 +1,13 @@
 import HorizontalDishCard from '@/components/HorizontalDishCard';
 import { DiningFrequencyCard, LevelCard } from '@/components/ProfileCards';
+import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme-context';
 import { useUser } from '@clerk/clerk-expo';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
-import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
@@ -20,8 +22,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getLogs, getUser } from '../utils/flavorProfileApi';
-import { Colors } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme-context';
 
 export default function App() {
     const router = useRouter();
@@ -29,7 +29,7 @@ export default function App() {
     const { colorScheme } = useTheme();
 
     const [refreshing, setRefreshing] = useState(false);
-    
+
     const { data: dbUser } = useQuery({
         queryKey: ['dbUser', user?.id],
         queryFn: () => getUser(user.id),
@@ -46,8 +46,14 @@ export default function App() {
     // setActiveTab: the function thats called to change the value
     // useState('journal') sets the starting value to 'journal'  meaning when the page first loads, the journal tab will be selected by default
     const [activeTab, setActiveTab] = useState('journal');
+    // dayFilter: 'all' shows every log ever made, 'week' shows the last 7 days.
+    // the weekly view is this same Journal feed, filtered down by date.
+    const [dayFilter, setDayFilter] = useState('all');
 
     const logs = data ?? []; // use data if it exists, otherwise use empty array
+    const visibleLogs = dayFilter === 'week'
+        ? logs.filter((log) => log.created_at && Date.now() - new Date(log.created_at).getTime() <= 7 * 24 * 60 * 60 * 1000)
+        : logs;
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true); // spinner appears
@@ -155,28 +161,34 @@ export default function App() {
                     <>
                         {/* Info Cards — stacked */}
                         <View style={styles.cardsContainer}>
-                            <DiningFrequencyCard />
+                            <DiningFrequencyCard logs={logs} />
                             <LevelCard />
                         </View>
 
                         {/* The Journal Section */}
                         <View style={styles.journalHeader}>
                             <Text style={[styles.journalTitle, { color: Colors[colorScheme].text }]}>The Journal</Text>
-                            <TouchableOpacity>
+                            <View style={{ flexDirection: 'row', gap: 8 }}>
+                                <TouchableOpacity onPress={() => setDayFilter('week')}>
+                                    <Text style={{ fontWeight: dayFilter === 'week' ? '700' : '400', color: dayFilter === 'week' ? '#E86A33' : Colors[colorScheme].text }}>Week</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => setDayFilter('all')}>
+                                    <Text style={{ fontWeight: dayFilter === 'all' ? '700' : '400', color: dayFilter === 'all' ? '#E86A33' : Colors[colorScheme].text }}>All</Text>
+                                </TouchableOpacity>
                                 <Feather name="search" size={22} color={Colors[colorScheme].icon} />
-                            </TouchableOpacity>
+                            </View>
                         </View>
 
                         <View style={styles.journalFeedContainer}>
                             {logsLoading ? (
                                 <ActivityIndicator size="small" color="#E86A33" style={{ marginVertical: 40 }} />
-                            ) : logs.length === 0 ? (
+                            ) : visibleLogs.length === 0 ? (
                                 <View style={[styles.emptyJournalContainer, { backgroundColor: Colors[colorScheme].card }]}>
                                     <FontAwesome name="file-text-o" size={40} color={Colors[colorScheme].icon} />
-                                    <Text style={styles.emptyText}>No logs yet. Start by archiving an experience!</Text>
+                                    <Text style={styles.emptyText}>{dayFilter === 'week' ? "No meals logged this week yet." : "No logs yet. Start by archiving an experience!"}</Text>
                                 </View>
                             ) : (
-                                logs.map((item) => (
+                                visibleLogs.map((item) => (
 
                                     <HorizontalDishCard
                                         key={item.id}
@@ -474,7 +486,7 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontWeight: '500',
     },
-        myInsights: {
+    myInsights: {
         backgroundColor: '#E86A33',
         borderRadius: 16,
         padding: 20,

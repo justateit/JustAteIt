@@ -1,10 +1,12 @@
 import TopRatedSpotsCard from '@/components/TopRatedSpotsCard';
 import VenueCard from '@/components/VenueCard';
-import { exploreCities, topRatedSpots } from '@/data/mockdata';
+import { topRatedSpots } from '@/data/mockdata';
+import { getTopCities } from '@/utils/flavorProfileApi';
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import React from 'react';
-import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme-context';
 
@@ -13,6 +15,13 @@ interface Props {
 }
 const GlobalVenues = ({ onPress }: Props) => {
     const { colorScheme } = useTheme();
+
+    const { data, isLoading } = useQuery({
+        queryKey: ['topCities'],
+        queryFn: () => getTopCities(10),
+    });
+    const topCities = data?.cities ?? [];
+
     return (
         <ScrollView
             style={[styles.container, { backgroundColor: Colors[colorScheme].background }]}
@@ -29,14 +38,20 @@ const GlobalVenues = ({ onPress }: Props) => {
                 </TouchableOpacity>
                 <Text style={[styles.title, { color: Colors[colorScheme].text }]}>Global Venues</Text>
             </View>
-            <FlatList
-                data={exploreCities}
-                showsVerticalScrollIndicator={false}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <VenueCard {...item} />}
-                scrollEnabled={false}
-                contentContainerStyle={{ gap: 12 }}
-            />
+            {isLoading ? (
+                <ActivityIndicator style={{ marginVertical: 24 }} />
+            ) : topCities.length === 0 ? (
+                <Text style={{ color: Colors[colorScheme].icon, marginBottom: 12 }}>No venues logged anywhere yet.</Text>
+            ) : (
+                <FlatList
+                    data={topCities}
+                    showsVerticalScrollIndicator={false}
+                    keyExtractor={(item) => item.name}
+                    renderItem={({ item }) => <VenueCard {...item} />}
+                    scrollEnabled={false}
+                    contentContainerStyle={{ gap: 12 }}
+                />
+            )}
             <Text style={{ fontFamily: "LibreBaskerville", fontSize: 20, color: Colors[colorScheme].text, marginTop: 30, marginBottom: 20 }}>Top Rated Spots</Text>
             <TopRatedSpotsCard
                 spots={topRatedSpots}

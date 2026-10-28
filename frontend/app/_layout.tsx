@@ -75,6 +75,7 @@ function RootLayoutInner() {
                 <Stack.Screen name="reset-password" options={{ headerShown: false }} />
                 <Stack.Screen name="settings" options={{ headerShown: false }} />
                 <Stack.Screen name="authenticate" options={{ headerShown: false }} />
+                <Stack.Screen name="city/[id]" options={{ headerShown: false }} />
               </Stack>
               <StatusBar style={colorScheme === 'dark' ? "light" : "dark"} />
               <RootBottomNav />

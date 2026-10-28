@@ -3,9 +3,10 @@ import { Colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme-context';
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Animated, Modal, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getFlavorProfile, getLogs, getRecommendations } from '../../utils/flavorProfileApi';
@@ -74,13 +75,27 @@ const MyInsights = ({ onPress }: Props) => {
 
     const [aiInsightsEnabled, setAiInsightsEnabled] = useState(true);
 
+    // Restore the saved preference on load — otherwise this resets to "on"
+    // every time the app restarts, which defeats the point of a toggle.
+    useEffect(() => {
+        AsyncStorage.getItem('ai-insights-enabled').then((saved) => {
+            if (saved !== null) setAiInsightsEnabled(saved === 'true');
+        });
+    }, []);
+
+    const toggleAiInsights = () => {
+        const next = !aiInsightsEnabled;
+        setAiInsightsEnabled(next);
+        AsyncStorage.setItem('ai-insights-enabled', String(next));
+    };
+
     const { user } = useUser();
 
     // Fetch recommendations, logs, and flavor profile data
     const { data: recsData } = useQuery({
         queryKey: ['recommendations', user?.id],
         queryFn: () => getRecommendations(user!.id),
-        enabled: !!user?.id,
+        enabled: !!user?.id && aiInsightsEnabled,
     });
 
     const { data: logsData } = useQuery({
@@ -570,7 +585,7 @@ const MyInsights = ({ onPress }: Props) => {
                             <TouchableOpacity style=
                                 {{ width: '100%' }}
                                 onPress={() => {
-                                    setAiInsightsEnabled(!aiInsightsEnabled);
+                                    toggleAiInsights();
                                     closeModal();
                                 }}
                             >

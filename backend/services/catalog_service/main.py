@@ -4,6 +4,7 @@ import uuid
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 import httpx
 
@@ -132,6 +133,34 @@ def search_venues_by_cuisine(cities: str, cuisines: str, limit: int = 60):
     cuisine_list = [c.strip() for c in cuisines.split(",") if c.strip()]
     print(f"\033[96m[CATALOG] Searching {cuisine_list} restaurants in {city_list}\033[0m")
     return {"venues": find_restaurants(city_list, cuisine_list, limit)}
+
+@app.get("/venues/top-cities")
+def get_top_cities(limit: int = 10, db: Session = Depends(get_db)):
+    """
+    Real top cities for the Global Venues page — no curated/mock list.
+    Groups logged venues by Venue.vicinity (case/whitespace-insensitively,
+    so "Tokyo" and "TOKYO" count together) and ranks by total rating
+    points (sum of every review's rating in that city), descending — a
+    city needs both volume and good ratings to rank high; one lucky
+    5-star review can't outrank a city with many solid reviews.
+    """
+    key = func.upper(func.trim(models.Venue.vicinity))
+    review_count = func.count(models.Review.id)
+    rating_sum = func.sum(models.Review.rating)
+    rows = (
+        db.query(
+            func.max(models.Venue.vicinity).label("display_name"),
+            review_count.label("reviews_logged"),
+            rating_sum.label("rating_sum"),
+        )
+        .join(models.Review, models.Review.venue_id == models.Venue.id)
+        .filter(models.Venue.vicinity.isnot(None), models.Venue.vicinity != "")
+        .group_by(key)
+        .order_by(rating_sum.desc())
+        .limit(limit)
+        .all()
+    )
+    return {"cities": [{"name": r.display_name, "reviewsLogged": r.reviews_logged} for r in rows]}
 
 @app.get("/venues/{venue_id}/dishes")
 def get_venue_dishes(venue_id: str, db: Session = Depends(get_db)):

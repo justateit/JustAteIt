@@ -234,6 +234,29 @@ export async function getNearbyVenue(lat, lng) {
   return res.json();
 }
 
+/**
+ * Search Venues by city
+ * @param {string} city
+ */
+export async function searchVenuesByCity(city, cuisines) {
+  const qs = new URLSearchParams({ cities: city, cuisines: cuisines.join(',') });
+  const res = await fetch(`${BASE_URL}/api/v1/venues/search?${qs}`);
+  if (!res.ok) throw new Error(`searchVenuesByCity failed: ${res.status}`);
+  return res.json(); // { venues: [{name, city, cuisine, address, place_id }]}
+}
+
+/**
+ * Real top cities for the Global Venues page, ranked by distinct venues
+ * logged — no curated/mock list, purely derived from review data.
+ * @param {number} [limit]
+ */
+export async function getTopCities(limit = 10) {
+  const qs = new URLSearchParams({ limit: String(limit) });
+  const res = await fetch(`${BASE_URL}/api/v1/venues/top-cities?${qs}`);
+  if (!res.ok) throw new Error(`getTopCities failed: ${res.status}`);
+  return res.json(); // { cities: [{ name, reviewsLogged }] }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Users
 // ─────────────────────────────────────────────────────────────────────────────
