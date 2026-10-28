@@ -76,6 +76,9 @@ function RootLayoutInner() {
                 <Stack.Screen name="settings" options={{ headerShown: false }} />
                 <Stack.Screen name="authenticate" options={{ headerShown: false }} />
                 <Stack.Screen name="city/[id]" options={{ headerShown: false }} />
+                <Stack.Screen name="my_insights" options={{ headerShown: false }} />
+                <Stack.Screen name="my_logs" options={{ headerShown: false }} />
+                <Stack.Screen name="saved_drafts" options={{ headerShown: false }} />
               </Stack>
               <StatusBar style={colorScheme === 'dark' ? "light" : "dark"} />
               <RootBottomNav />

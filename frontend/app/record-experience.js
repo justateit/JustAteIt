@@ -110,6 +110,9 @@ export default function RecordExperience() {
   const [dish, setDish] = useState('');
   const [venue, setVenue] = useState('');
   const [city, setCity] = useState('');
+  // Places lookups hand back "<street>, <city>"; only the city belongs in
+  // this field, or the same city splits per street in the venue rankings.
+  const cityFromAddress = (value) => (value || '').split(',').pop().trim();
   const [cuisine, setCuisine] = useState('');
   const [sensoryNotes, setSensoryNotes] = useState('');
   const [isRestaurant, setIsRestaurant] = useState(true);
@@ -221,7 +224,7 @@ export default function RecordExperience() {
           const venueData = await getNearbyVenue(latitude, longitude);
           if (venueData.found) {
             setVenue(venueData.venue.name);
-            setCity(venueData.venue.vicinity || '');
+            setCity(cityFromAddress(venueData.venue.vicinity));
           }
         } catch (e) {
           console.warn('Nearby venue lookup failed:', e);
@@ -240,6 +243,12 @@ export default function RecordExperience() {
   const handleArchive = async () => {
     if (!dish.trim()) {
       setToast({ message: 'Add a dish name before archiving.', type: 'error' });
+      return;
+    }
+    // reviews.rating is constrained to 1-5 in the DB, so an unrated log
+    // would come back as an opaque 500 rather than something actionable.
+    if (rating < 1) {
+      setToast({ message: 'Tap a star to rate before archiving.', type: 'error' });
       return;
     }
     if (!user) {
@@ -638,7 +647,9 @@ export default function RecordExperience() {
                     defaultValue={venue}
                     onSelect={(suggestion) => {
                       setVenue(suggestion.name);
-                      setCity(suggestion.address);
+                      // Blank when the lookup resolved no city — better an
+                      // empty field the user fills in than a country.
+                      setCity(suggestion.city);
                     }}
                     containerStyle={{ zIndex: 999 }}
                   />

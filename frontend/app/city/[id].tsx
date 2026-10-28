@@ -1,20 +1,17 @@
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme-context';
-import { searchVenuesByCity } from '@/utils/flavorProfileApi';
+import { getVenuesInCity } from '@/utils/flavorProfileApi';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
-const CUISINES = ['Italian', 'Mexican', 'Japanese', 'Chinese', 'Indian', 'Thai', 'American', 'Mediterranean', 'Korean', 'Vietnamese', 'French'];
-
 interface Venue {
     name: string;
     city: string;
-    cuisine: string;
-    address: string;
-    place_id?: string;
+    avgRating: number | null;
+    reviewsLogged: number;
 }
 
 export default function CityPage() {
@@ -23,8 +20,8 @@ export default function CityPage() {
     const cityName = id ? decodeURIComponent(id) : undefined;
 
     const { data, isLoading } = useQuery<Venue[]>({
-        queryKey: ['citySearch', cityName],
-        queryFn: () => searchVenuesByCity(cityName!, CUISINES).then((d) => d.venues ?? []),
+        queryKey: ['venuesInCity', cityName],
+        queryFn: () => getVenuesInCity(cityName!).then((d) => d.venues ?? []),
         enabled: !!cityName,
     });
     const venues = data ?? [];
@@ -48,17 +45,14 @@ export default function CityPage() {
                 </Text>
             </View>
 
-            <Text style={{ fontWeight: '400', fontSize: 22, color: Colors[colorScheme].text, paddingHorizontal: 16, marginTop: 20, marginBottom: 12 }}>
-                Restaurants in {cityName}
-            </Text>
             {isLoading ? (
                 <ActivityIndicator style={{ marginTop: 16, marginBottom: 40 }} />
             ) : venues.length === 0 ? (
-                <Text style={{ padding: 16, color: Colors[colorScheme].icon }}>No venues found for this city yet.</Text>
+                <Text style={{ padding: 16, color: Colors[colorScheme].icon }}>No venues logged in this city yet.</Text>
             ) : (
-                venues.map((v: Venue) => (
+                venues.map((v: Venue, i: number) => (
                     <View
-                        key={v.place_id ?? v.name}
+                        key={v.name}
                         style={{
                             flexDirection: 'row',
                             alignItems: 'center',
@@ -66,6 +60,7 @@ export default function CityPage() {
                             borderRadius: 14,
                             padding: 14,
                             marginHorizontal: 16,
+                            marginTop: i === 0 ? 20 : 0,
                             marginBottom: 12,
                             shadowColor: '#000',
                             shadowOffset: { width: 0, height: 2 },
@@ -86,16 +81,18 @@ export default function CityPage() {
                                 {v.name}
                             </Text>
                             <Text style={{ fontSize: 12, color: Colors[colorScheme].icon, marginTop: 2 }} numberOfLines={1}>
-                                {v.address}
+                                {v.reviewsLogged} {v.reviewsLogged === 1 ? 'log' : 'logs'}
                             </Text>
                         </View>
-                        {!!v.cuisine && (
+                        {v.avgRating !== null && (
                             <View style={{
+                                flexDirection: 'row', alignItems: 'center', gap: 3,
                                 backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
                                 borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4, marginLeft: 8,
                             }}>
-                                <Text style={{ fontSize: 10, fontWeight: '700', letterSpacing: 0.4, color: Colors[colorScheme].icon }}>
-                                    {v.cuisine.toUpperCase()}
+                                <Ionicons name="star" size={11} color="#FF6B4A" />
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: Colors[colorScheme].text }}>
+                                    {v.avgRating.toFixed(1)}
                                 </Text>
                             </View>
                         )}

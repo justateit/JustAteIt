@@ -9,8 +9,8 @@ import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Animated, Modal, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getFlavorProfile, getLogs, getRecommendations } from '../../utils/flavorProfileApi';
-import { getLevelProgress } from '../../utils/levels';
+import { getFlavorProfile, getLogs, getRecommendations } from '../utils/flavorProfileApi';
+import { getLevelProgress } from '../utils/levels';
 
 
 interface Props {
