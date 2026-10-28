@@ -134,22 +134,29 @@ def search_venues_by_cuisine(cities: str, cuisines: str, limit: int = 60):
     print(f"\033[96m[CATALOG] Searching {cuisine_list} restaurants in {city_list}\033[0m")
     return {"venues": find_restaurants(city_list, cuisine_list, limit)}
 
+# Venue.vicinity holds a mix of bare cities ("Gilbert") and the
+# "<street>, <city>" shape that Google Places and Nominatim return
+# ("North Gilbert Road, Gilbert"). Everything after the last comma is the
+# city, so strip the rest before grouping — otherwise one city fragments
+# into a separate entry per street it was logged from.
+_CITY_FROM_VICINITY = func.trim(func.regexp_replace(models.Venue.vicinity, r'^.*,\s*', ''))
+
 @app.get("/venues/top-cities")
 def get_top_cities(limit: int = 10, db: Session = Depends(get_db)):
     """
     Real top cities for the Global Venues page — no curated/mock list.
-    Groups logged venues by Venue.vicinity (case/whitespace-insensitively,
-    so "Tokyo" and "TOKYO" count together) and ranks by total rating
-    points (sum of every review's rating in that city), descending — a
-    city needs both volume and good ratings to rank high; one lucky
-    5-star review can't outrank a city with many solid reviews.
+    Groups logged venues by city (case/whitespace-insensitively, so
+    "Tokyo" and "TOKYO" count together) and ranks by total rating points
+    (sum of every review's rating in that city), descending — a city
+    needs both volume and good ratings to rank high; one lucky 5-star
+    review can't outrank a city with many solid reviews.
     """
-    key = func.upper(func.trim(models.Venue.vicinity))
+    key = func.upper(_CITY_FROM_VICINITY)
     review_count = func.count(models.Review.id)
     rating_sum = func.sum(models.Review.rating)
     rows = (
         db.query(
-            func.max(models.Venue.vicinity).label("display_name"),
+            func.max(_CITY_FROM_VICINITY).label("display_name"),
             review_count.label("reviews_logged"),
             rating_sum.label("rating_sum"),
         )
@@ -161,6 +168,41 @@ def get_top_cities(limit: int = 10, db: Session = Depends(get_db)):
         .all()
     )
     return {"cities": [{"name": r.display_name, "reviewsLogged": r.reviews_logged} for r in rows]}
+
+@app.get("/venues/in-city")
+def get_venues_in_city(city: str, limit: int = 50, db: Session = Depends(get_db)):
+    """
+    Venues actually logged in a city, for the city detail page — matched
+    case/whitespace-insensitively against Venue.vicinity, same as
+    /venues/top-cities, so a city from that list always resolves here.
+    Ordered by review count so the most-logged spots surface first.
+    """
+    review_count = func.count(models.Review.id)
+    rows = (
+        db.query(
+            models.Venue.name.label("name"),
+            _CITY_FROM_VICINITY.label("city"),
+            func.avg(models.Review.rating).label("avg_rating"),
+            review_count.label("reviews_logged"),
+        )
+        .join(models.Review, models.Review.venue_id == models.Venue.id)
+        .filter(func.upper(_CITY_FROM_VICINITY) == city.strip().upper())
+        .group_by(models.Venue.id, models.Venue.name, models.Venue.vicinity)
+        .order_by(review_count.desc())
+        .limit(limit)
+        .all()
+    )
+    return {
+        "venues": [
+            {
+                "name": r.name,
+                "city": r.city,
+                "avgRating": round(float(r.avg_rating), 1) if r.avg_rating is not None else None,
+                "reviewsLogged": r.reviews_logged,
+            }
+            for r in rows
+        ]
+    }
 
 @app.get("/venues/{venue_id}/dishes")
 def get_venue_dishes(venue_id: str, db: Session = Depends(get_db)):

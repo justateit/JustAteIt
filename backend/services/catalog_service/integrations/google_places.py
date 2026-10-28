@@ -63,6 +63,10 @@ def search_venues_autocomplete(query: str, limit: int = 6) -> List[dict]:
         results.append({
             "name": name,
             "address": address,
+            # Returned separately so callers never have to parse it back out of
+            # `address` — which falls back to the full display_name (ending in a
+            # country) whenever Nominatim gives us no city at all.
+            "city": city,
             "fullName": item.get("display_name", ""),
         })
         if len(results) >= limit:
