@@ -9,7 +9,7 @@ import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View, Activit
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme-context';
 import { useMemo, useState } from 'react';
-import { deleteSavedLog, getSavedLogs } from '../../utils/flavorProfileApi';
+import { deleteSavedLog, getSavedLogs } from '../utils/flavorProfileApi';
 
 export default function HomeScreen() {
     const [fontsLoaded] = useFonts({

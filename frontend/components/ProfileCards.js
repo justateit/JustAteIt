@@ -14,23 +14,20 @@ import { getLevelProgress } from '../utils/levels';
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 const WEEKS = 7; // rows
 
-/** Generate mock heatmap data: 12 months × 7 rows */
-function generateHeatmap() {
-    const seed = [
-        [0, 2, 4, 3, 0, 1, 0],
-        [3, 4, 5, 4, 2, 3, 1],
-        [4, 5, 5, 3, 4, 2, 0],
-        [2, 3, 4, 5, 3, 4, 2],
-        [5, 4, 3, 2, 4, 5, 1],
-        [3, 2, 4, 3, 1, 2, 0],
-        [4, 5, 3, 4, 2, 3, 2],
-        [2, 3, 5, 4, 3, 2, 1],
-        [3, 4, 2, 3, 4, 5, 2],
-        [5, 3, 4, 2, 3, 4, 1],
-        [2, 4, 3, 5, 2, 3, 2],
-        [1, 2, 3, 2, 1, 0, 0],
-    ];
-    return seed;
+/** Buckets real logs into a 12-month × 7-week-of-month grid, by created_at,
+ * then scales counts into the 0-5 range heatColor() expects. */
+function buildHeatmap(logs) {
+    const grid = Array.from({ length: MONTHS.length }, () => Array(WEEKS).fill(0));
+    for (const log of logs) {
+        if (!log.created_at) continue;
+        const date = new Date(log.created_at);
+        if (isNaN(date.getTime())) continue;
+        const month = date.getMonth();
+        const week = Math.min(Math.floor((date.getDate() - 1) / 7), WEEKS - 1);
+        grid[month][week] += 1;
+    }
+    const max = Math.max(1, ...grid.flat());
+    return grid.map((col) => col.map((count) => Math.min(5, Math.round((count / max) * 5))));
 }
 
 /** Colour for a heat value 0-5 */
@@ -46,8 +43,8 @@ function heatColor(v) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Dining Frequency Heatmap
 // ─────────────────────────────────────────────────────────────────────────────
-export function DiningFrequencyCard() {
-    const data = useMemo(() => generateHeatmap(), []);
+export function DiningFrequencyCard({ logs = [] }) {
+    const data = useMemo(() => buildHeatmap(logs), [logs]);
     const GAP = 2;
     const COLS = 12;
     const [cellSize, setCellSize] = useState(10);
@@ -56,6 +53,20 @@ export function DiningFrequencyCard() {
         const gridWidth = e.nativeEvent.layout.width;
         const size = (gridWidth - GAP * (COLS - 1)) / COLS;
         setCellSize(Math.max(4, size));
+    }
+
+    if (logs.length === 0) {
+        return (
+            <LiquidGlass tint="dark" style={styles.glassCard} intensity={70} borderRadius={20}>
+                <View style={styles.cardInner}>
+                    <View style={styles.heatTitle}>
+                        <Ionicons name="flame-outline" size={14} color="#FF6B4A" />
+                        <Text style={styles.heatTitleText}>DINING FREQUENCY</Text>
+                    </View>
+                    <Text style={styles.heatEmptyText}>Log a meal to start tracking your dining frequency.</Text>
+                </View>
+            </LiquidGlass>
+        );
     }
 
     return (
@@ -379,6 +390,12 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: '700',
         letterSpacing: 1.2,
+    },
+    heatEmptyText: {
+        color: 'rgba(255,255,255,0.5)',
+        fontSize: 13,
+        paddingVertical: 24,
+        textAlign: 'center',
     },
     monthRow: {
         flexDirection: 'row',
