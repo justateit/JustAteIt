@@ -46,13 +46,15 @@ export default function App() {
     // setActiveTab: the function thats called to change the value
     // useState('journal') sets the starting value to 'journal'  meaning when the page first loads, the journal tab will be selected by default
     const [activeTab, setActiveTab] = useState('journal');
-    // dayFilter: 'all' shows every log ever made, 'week' shows the last 7 days.
-    // the weekly view is this same Journal feed, filtered down by date.
-    const [dayFilter, setDayFilter] = useState('all');
+    // weekStart: null shows every log ever made, a timestamp shows the 7 days
+    // before it. Stored rather than derived from Date.now() at render time,
+    // which is impure — the window is fixed when the filter is switched on.
+    const [weekStart, setWeekStart] = useState(null);
+    const showingWeek = weekStart !== null;
 
     const logs = data ?? []; // use data if it exists, otherwise use empty array
-    const visibleLogs = dayFilter === 'week'
-        ? logs.filter((log) => log.created_at && Date.now() - new Date(log.created_at).getTime() <= 7 * 24 * 60 * 60 * 1000)
+    const visibleLogs = showingWeek
+        ? logs.filter((log) => log.created_at && new Date(log.created_at).getTime() >= weekStart)
         : logs;
 
     const onRefresh = useCallback(async () => {
@@ -169,11 +171,11 @@ export default function App() {
                         <View style={styles.journalHeader}>
                             <Text style={[styles.journalTitle, { color: Colors[colorScheme].text }]}>The Journal</Text>
                             <View style={{ flexDirection: 'row', gap: 8 }}>
-                                <TouchableOpacity onPress={() => setDayFilter('week')}>
-                                    <Text style={{ fontWeight: dayFilter === 'week' ? '700' : '400', color: dayFilter === 'week' ? '#E86A33' : Colors[colorScheme].text }}>Week</Text>
+                                <TouchableOpacity onPress={() => setWeekStart(Date.now() - 7 * 24 * 60 * 60 * 1000)}>
+                                    <Text style={{ fontWeight: showingWeek ? '700' : '400', color: showingWeek ? '#E86A33' : Colors[colorScheme].text }}>Week</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity onPress={() => setDayFilter('all')}>
-                                    <Text style={{ fontWeight: dayFilter === 'all' ? '700' : '400', color: dayFilter === 'all' ? '#E86A33' : Colors[colorScheme].text }}>All</Text>
+                                <TouchableOpacity onPress={() => setWeekStart(null)}>
+                                    <Text style={{ fontWeight: showingWeek ? '400' : '700', color: showingWeek ? Colors[colorScheme].text : '#E86A33' }}>All</Text>
                                 </TouchableOpacity>
                                 <Feather name="search" size={22} color={Colors[colorScheme].icon} />
                             </View>
@@ -185,7 +187,7 @@ export default function App() {
                             ) : visibleLogs.length === 0 ? (
                                 <View style={[styles.emptyJournalContainer, { backgroundColor: Colors[colorScheme].card }]}>
                                     <FontAwesome name="file-text-o" size={40} color={Colors[colorScheme].icon} />
-                                    <Text style={styles.emptyText}>{dayFilter === 'week' ? "No meals logged this week yet." : "No logs yet. Start by archiving an experience!"}</Text>
+                                    <Text style={styles.emptyText}>{showingWeek ? "No meals logged this week yet." : "No logs yet. Start by archiving an experience!"}</Text>
                                 </View>
                             ) : (
                                 visibleLogs.map((item) => (
