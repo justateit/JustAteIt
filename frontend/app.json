@@ -28,9 +28,7 @@
     },
     "plugins": [
       "expo-router",
-      "expo-web-browser",
-      "expo-image",
-      "expo-status-bar"
+      "expo-web-browser"
     ]
   }
 }
