@@ -2,7 +2,7 @@ import BottomNav from '@/components/BottomNav';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ClerkLoaded, ClerkProvider } from '@clerk/clerk-expo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
