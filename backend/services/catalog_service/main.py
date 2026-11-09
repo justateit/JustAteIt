@@ -581,13 +581,13 @@ def get_user_interactions(user_id: str, limit: int = 100, db: Session = Depends(
 
 # ── Dynamic Recommendation Feed (Instagram-Style Algorithmic Ranking) ─────────
 
-async def fetch_user_palate(user_id: Optional[str]) -> List[float]:
+async def fetch_user_palate(user_id: Optional[str], db: Optional[Session] = None) -> List[float]:
     default_palate = [0.5, 0.5, 0.5, 0.5, 0.5]
     if not user_id:
         return default_palate
     user_svc_url = os.getenv("USER_SERVICE_URL", "http://localhost:8001")
     try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
+        async with httpx.AsyncClient(timeout=1.0) as client:
             resp = await client.get(f"{user_svc_url}/flavor-profiles/{user_id}")
             if resp.status_code == 200:
                 data = resp.json()
@@ -598,8 +598,22 @@ async def fetch_user_palate(user_id: Optional[str]) -> List[float]:
                     float(data.get("sweet", 0.5)),
                     float(data.get("texture", 0.5)),
                 ]
-    except Exception as e:
-        print(f"\033[93m[CATALOG] Could not fetch remote palate profile: {e}\033[0m")
+    except Exception:
+        pass
+
+    # Direct database fallback if User Service HTTP endpoint is unreachable
+    if db is not None:
+        try:
+            from sqlalchemy import text
+            row = db.execute(
+                text("SELECT spice, acid, umami, sweet, texture FROM flavor_profiles WHERE user_id = :uid"),
+                {"uid": user_id}
+            ).fetchone()
+            if row:
+                return [float(row[0]), float(row[1]), float(row[2]), float(row[3]), float(row[4])]
+        except Exception as db_err:
+            print(f"\033[93m[CATALOG] Direct flavor profile lookup failed: {db_err}\033[0m")
+
     return default_palate
 
 @app.get("/feed")
@@ -617,7 +631,7 @@ async def get_personalized_feed(
     dish ratings, and implicit telemetry feedback (dwells, saves, and skips).
     """
     # 1. User Palate Vector
-    user_palate = await fetch_user_palate(user_id)
+    user_palate = await fetch_user_palate(user_id, db=db)
 
     # 2. Telemetry Interaction Summary
     user_interactions_summary: Dict[str, Dict[str, Any]] = {}

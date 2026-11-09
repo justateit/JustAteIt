@@ -33,17 +33,24 @@ export default function HomeScreen() {
   const [feedDishes, setFeedDishes] = useState<any[]>(freshLogs);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingFeed, setIsLoadingFeed] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
   // Viewport dwell-time and impression telemetry tracker
   const { onViewableItemsChanged, viewabilityConfig } = useFeedTelemetry(user?.id);
 
-  const fetchFeed = useCallback(async () => {
+  const fetchFeed = useCallback(async (pageNum = 1, append = false) => {
     try {
-      setIsLoadingFeed(true);
+      if (pageNum === 1) {
+        setIsLoadingFeed(true);
+      } else {
+        setIsLoadingMore(true);
+      }
       const data = await getAlgorithmicFeed({
         userId: user?.id,
-        page: 1,
-        limit: 15,
+        page: pageNum,
+        limit: 30,
       });
 
       if (data?.feed && data.feed.length > 0) {
@@ -52,24 +59,43 @@ export default function HomeScreen() {
           ...item,
           image: item.image || freshLogs[idx % freshLogs.length]?.image,
         }));
-        setFeedDishes(mapped);
+        if (append) {
+          setFeedDishes((prev) => {
+            const existingIds = new Set(prev.map((d) => String(d.id)));
+            const newUnique = mapped.filter((d: any) => !existingIds.has(String(d.id)));
+            return [...prev, ...newUnique];
+          });
+        } else {
+          setFeedDishes(mapped);
+        }
+        setHasMore(data.has_more ?? false);
+        setPage(pageNum);
+      } else if (!append) {
+        setHasMore(false);
       }
     } catch (err) {
       console.warn('[HomeScreen] Could not load algorithmic feed, using fallback:', err);
     } finally {
       setIsLoadingFeed(false);
+      setIsLoadingMore(false);
       setIsRefreshing(false);
     }
   }, [user?.id]);
 
   useEffect(() => {
-    fetchFeed();
+    fetchFeed(1, false);
   }, [fetchFeed]);
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
-    fetchFeed();
+    fetchFeed(1, false);
   }, [fetchFeed]);
+
+  const handleLoadMore = useCallback(() => {
+    if (!isLoadingFeed && !isLoadingMore && hasMore) {
+      fetchFeed(page + 1, true);
+    }
+  }, [fetchFeed, hasMore, isLoadingFeed, isLoadingMore, page]);
 
   if (!fontsLoaded) return null;
 
@@ -135,16 +161,32 @@ export default function HomeScreen() {
           <ActivityIndicator size="small" color="#FF6B4A" />
         </View>
       ) : (
-        <FlatList
-          data={feedDishes}
-          showsVerticalScrollIndicator={false}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => <HorizontalDishCard {...item} />}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={viewabilityConfig}
-          scrollEnabled={false}
-          contentContainerStyle={{ gap: 12 }}
-        />
+        <>
+          <FlatList
+            data={feedDishes}
+            showsVerticalScrollIndicator={false}
+            keyExtractor={(item) => String(item.id)}
+            renderItem={({ item }) => <HorizontalDishCard {...item} />}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
+            scrollEnabled={false}
+            contentContainerStyle={{ gap: 12 }}
+          />
+          {hasMore ? (
+            <TouchableOpacity
+              style={styles.loadMoreButton}
+              onPress={handleLoadMore}
+              disabled={isLoadingMore}
+              activeOpacity={0.8}
+            >
+              {isLoadingMore ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.loadMoreText}>Load More Recommendations</Text>
+              )}
+            </TouchableOpacity>
+          ) : null}
+        </>
       )}
 
       {/* Explore Cities Section */}
@@ -190,5 +232,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     letterSpacing: 1,
+  },
+  loadMoreButton: {
+    marginTop: 16,
+    marginBottom: 8,
+    backgroundColor: '#FF6B4A',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  loadMoreText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });
