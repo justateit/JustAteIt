@@ -51,6 +51,7 @@ backend/aws-error.txt
 backend/*.jpg
 backend/*.png
 backend/test_upload.jpg
+backend/services/media_service/uploads/
 *.log
 __pycache__/
 *.pyc

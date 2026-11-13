@@ -1,6 +1,6 @@
 import os
 import httpx
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -48,9 +48,16 @@ async def proxy_request(service_url: str, path: str, request: Request):
              
              print(f"\033[92m[GATEWAY] {request.method} {path} returned status {response.status_code}\033[0m")
              
-             return JSONResponse(
-                 status_code=response.status_code, 
-                 content=response.json() if response.content else {"message": "Empty response"}
+             resp_content_type = response.headers.get("content-type", "")
+             if "application/json" in resp_content_type:
+                 return JSONResponse(
+                     status_code=response.status_code, 
+                     content=response.json() if response.content else {"message": "Empty response"}
+                 )
+             return Response(
+                 content=response.content,
+                 status_code=response.status_code,
+                 media_type=resp_content_type or "application/octet-stream",
              )
         except httpx.TimeoutException:
              print(f"\033[91m[GATEWAY TIMEOUT] {request.method} {url} timed out after 60s\033[0m")

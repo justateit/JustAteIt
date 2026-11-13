@@ -5,8 +5,16 @@ from typing import Optional
 
 import boto3
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.staticfiles import StaticFiles
 
 ALLOWED_CONTENT_TYPES = ("image/webp", "image/jpeg", "image/png", "image/jpg")
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+def is_local_storage_enabled() -> bool:
+    """Return True if local filesystem storage is explicitly enabled or AWS is bypassed."""
+    return os.getenv("USE_LOCAL_STORAGE", "").lower() in ("true", "1", "yes")
 
 
 class MediaConfigurationError(RuntimeError):
@@ -80,24 +88,20 @@ def build_public_url(config: dict, object_key: str) -> str:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("\033[96m[MEDIA] S3 Microservice Booting...\033[0m")
-    try:
-        config = get_s3_config()
-    except MediaConfigurationError as exc:
-        print(f"\033[91m[MEDIA ERROR] {exc}\033[0m")
+    if is_local_storage_enabled():
+        print("\033[92m[MEDIA] Local storage mode active: uploads saved to local disk.\033[0m")
     else:
+        print("\033[96m[MEDIA] S3 Microservice Booting...\033[0m")
         try:
-            get_s3_client(config).head_bucket(Bucket=config["bucket"])
-            print(
-                f"\033[92m[MEDIA] SUCCESS: Connected to S3 Bucket "
-                f"'{config['bucket']}'\033[0m"
-            )
-        except Exception as exc:
-            print(f"\033[91m[MEDIA ERROR] S3 Connection failed: {exc}\033[0m")
+            config = get_s3_config()
+            print(f"\033[92m[MEDIA] S3 Bucket configured: '{config['bucket']}' ({config['region']})\033[0m")
+        except MediaConfigurationError as exc:
+            print(f"\033[93m[MEDIA] Notice: {exc}\033[0m")
     yield
 
 
 app = FastAPI(title="Media Service", lifespan=lifespan)
+app.mount("/media/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 
 @app.post("/media/upload")
@@ -113,14 +117,37 @@ async def upload_media(file: UploadFile = File(...)):
         )
         raise HTTPException(status_code=400, detail="Invalid file type")
 
+    extension = file.filename.split(".")[-1]
+    unique_filename = f"{uuid.uuid4()}.{extension}"
+
+    # Handle local filesystem storage fallback
+    if is_local_storage_enabled():
+        try:
+            dest_path = os.path.join(UPLOAD_DIR, unique_filename)
+            await file.seek(0)
+            contents = await file.read()
+            with open(dest_path, "wb") as f:
+                f.write(contents)
+            base_url = os.getenv(
+                "LOCAL_MEDIA_BASE_URL",
+                "http://localhost:8000/api/v1/media/uploads"
+            )
+            local_url = f"{base_url.rstrip('/')}/{unique_filename}"
+            print(f"\033[92m[MEDIA] Local upload successful: {unique_filename}\033[0m")
+            return {
+                "success": True,
+                "url": local_url,
+                "type": file.content_type,
+            }
+        except Exception as exc:
+            print(f"\033[91m[MEDIA ERROR] Local upload failure: {exc}\033[0m")
+            raise HTTPException(status_code=500, detail="Failed to save image locally.")
+
     try:
         config = get_s3_config()
     except MediaConfigurationError as exc:
         print(f"\033[91m[MEDIA ERROR] {exc}\033[0m")
         raise HTTPException(status_code=503, detail=str(exc))
-
-    extension = file.filename.split(".")[-1]
-    unique_filename = f"{uuid.uuid4()}.{extension}"
 
     try:
         await file.seek(0)

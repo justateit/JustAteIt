@@ -10,7 +10,7 @@ from services.media_service import main as media_main
 
 client = TestClient(media_main.app)
 
-S3_ENV_VARS = ("S3_BUCKET", "S3_REGION", "S3_ENDPOINT_URL", "S3_PUBLIC_BASE_URL")
+S3_ENV_VARS = ("S3_BUCKET", "S3_REGION", "S3_ENDPOINT_URL", "S3_PUBLIC_BASE_URL", "USE_LOCAL_STORAGE")
 PNG_UPLOAD = {"file": ("photo.png", b"fake-image-bytes", "image/png")}
 
 
@@ -81,6 +81,15 @@ def test_config_optional_values_default_to_none(configured_env):
     config = media_main.get_s3_config()
     assert config["endpoint_url"] is None
     assert config["public_base_url"] is None
+
+
+def test_upload_local_storage(monkeypatch):
+    monkeypatch.setenv("USE_LOCAL_STORAGE", "true")
+    response = client.post("/media/upload", files=PNG_UPLOAD)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert "media/uploads" in body["url"]
 
 
 def test_upload_without_config_returns_clear_503():
