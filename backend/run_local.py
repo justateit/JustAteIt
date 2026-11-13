@@ -31,17 +31,19 @@ def main():
             cmd = [
                 sys.executable, "-m", "uvicorn",
                 app_target,
-                "--host", "127.0.0.1",
+                "--host", "0.0.0.0",
                 "--port", str(port),
                 "--log-level", "warning"
             ]
             p = subprocess.Popen(cmd, cwd=backend_dir)
             processes.append((name, p, port))
-            print(f"  ✓ {name:<18} running at http://127.0.0.1:{port}")
+            print(f"  ✓ {name:<18} running on port {port}")
             time.sleep(0.5)
 
         print("=" * 60)
-        print("🎉 All services live! Gateway reachable at http://localhost:8000")
+        print("🎉 All services live!")
+        print("  • Localhost: http://localhost:8000")
+        print("  • LAN / Phone: http://192.168.0.174:8000")
         print("Press Ctrl+C to stop all services.")
         print("=" * 60 + "\n")
 
