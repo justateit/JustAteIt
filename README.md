@@ -10,8 +10,12 @@ The project has transitioned from a monolithic local setup to a modern, cloud-na
 - **Microservices (FastAPI)**:
   - `api_gateway`: The unified entry point with 60s timeouts and robust proxying.
   - `user_service`: Manages flavor profiles and user metadata.
-  - `catalog_service`: Manages reviews, venues (via Google Places API), and dishes.
+  - `catalog_service`: Manages reviews, drafts, venues (via OpenStreetMap Nominatim & Google Places API), and dishes.
   - `media_service`: Handshakes with AWS S3 for secure image storage.
+- **Documentation & Sponsor Handoff**:
+  - [`docs/SETUP.md`](docs/SETUP.md): Step-by-step local setup, environment variables, simulator & Windows troubleshooting.
+  - [`docs/API_DOCS.md`](docs/API_DOCS.md): Full API & Data Layer documentation, Mermaid/ASCII diagrams, database schemas, and curl examples.
+  - [`docs/API_DOCUMENTATION.md`](docs/API_DOCUMENTATION.md): Endpoint and integration reference.
 - **Infrastructure** (defined in `infra/cloudformation/dev-backend.yml`):
   - **AWS ECS (Elastic Container Service) + Fargate**: Runs all four services as one serverless task launched on demand.
   - **AWS ECR (Elastic Container Registry)**: Private Docker registry with immutable, git-SHA-tagged images.

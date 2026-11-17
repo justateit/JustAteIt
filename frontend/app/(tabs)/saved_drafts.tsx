@@ -1,11 +1,12 @@
 import { getDrafts } from '@/utils/flavorProfileApi';
+import { SkeletonPlaceholder } from '@/components/SkeletonPlaceholder';
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 
 import React from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme-context';
 
@@ -39,7 +40,11 @@ const SavedDrafts = () => {
             </View>
 
             {isLoading ? (
-                <ActivityIndicator size="small" color="#E86A33" style={{ marginVertical: 40 }} />
+                <View style={{ gap: 12, paddingVertical: 10 }}>
+                    <SkeletonPlaceholder width="100%" height={75} borderRadius={16} />
+                    <SkeletonPlaceholder width="100%" height={75} borderRadius={16} />
+                    <SkeletonPlaceholder width="100%" height={75} borderRadius={16} />
+                </View>
             ) : drafts.length === 0 ? (
                 <Text style={{ textAlign: 'center', color: '#9FA1B7', paddingVertical: 40 }}>No saved drafts yet.</Text>
             ) : (

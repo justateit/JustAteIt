@@ -7,8 +7,14 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import VenueAutocomplete from '@/components/VenueAutocomplete';
 import { detectMealType, MEAL_TYPES } from '@/utils/mealType';
+import {
+  formatSensoryNotesWithFlavors,
+  parseFlavorsFromSensoryNotes,
+  suggestFlavors,
+  toggleFlavorTag,
+} from '@/utils/flavorProfiles';
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -114,6 +120,8 @@ export default function RecordExperience() {
   const [rating, setRating] = useState(0);
   // Task#1056 — auto-detect meal type from local time; user may override
   const [mealType, setMealType] = useState(() => detectMealType());
+  // Flavor Profile Tagging (v1)
+  const [selectedFlavors, setSelectedFlavors] = useState([]);
 
   const [uploading, setUploading] = useState(false);
   const [archiving, setArchiving] = useState(false);
@@ -122,6 +130,19 @@ export default function RecordExperience() {
   const [toast, setToast] = useState(null);
   const [imageUri, setImageUri] = useState(null);
   const [containerWidth, setContainerWidth] = useState(0);
+
+  // Dynamic flavor suggestions prioritized by cuisine & dish name
+  const availableFlavors = useMemo(() => {
+    return suggestFlavors(cuisine, dish);
+  }, [cuisine, dish]);
+
+  const handleToggleFlavor = (tag) => {
+    if (!selectedFlavors.includes(tag) && selectedFlavors.length >= 3) {
+      setToast({ message: 'You can select up to 3 flavor tags.', type: 'error' });
+      return;
+    }
+    setSelectedFlavors((prev) => toggleFlavorTag(prev, tag, 3));
+  };
 
   useEffect(() => {
     if (!draftId || !user) return;
@@ -132,7 +153,9 @@ export default function RecordExperience() {
       setVenue(draft.venue_name || '');
       setCity(draft.city || '');
       setCuisine(draft.cuisine || '');
-      setSensoryNotes(draft.sensory_notes || '');
+      const { flavorTags, cleanNotes } = parseFlavorsFromSensoryNotes(draft.sensory_notes);
+      setSelectedFlavors(flavorTags);
+      setSensoryNotes(cleanNotes || draft.sensory_notes || '');
       setIsRestaurant(draft.is_restaurant);
       setRating(draft.rating || 0);
       setImageUri(draft.image_url || null);
@@ -232,6 +255,7 @@ export default function RecordExperience() {
   };
 
   const handleArchive = async () => {
+    if (archiving || uploading || savingDraft) return;
     if (!dish.trim()) {
       setToast({ message: 'Add a dish name before archiving.', type: 'error' });
       return;
@@ -248,6 +272,8 @@ export default function RecordExperience() {
         avatar_url: user.imageUrl,
       });
 
+      const formattedSensoryNotes = formatSensoryNotesWithFlavors(sensoryNotes, selectedFlavors);
+
       if (draftId) {
         // Save the latest form state to the draft first, so publish
         // doesn't archive stale data from the last "Save Draft" press.
@@ -257,10 +283,11 @@ export default function RecordExperience() {
           city: city.trim() || null,
           cuisine: cuisine.trim() || null,
           is_restaurant: isRestaurant,
-          sensory_notes: sensoryNotes.trim() || null,
+          sensory_notes: formattedSensoryNotes || null,
           rating: rating,
           image_url: imageUri || null,
           meal_type: mealType,
+          flavor_tags: selectedFlavors,
         });
         await publishDraft(draftId);
       } else {
@@ -270,10 +297,11 @@ export default function RecordExperience() {
           city: city.trim() || null,
           cuisine: cuisine.trim() || null,
           is_restaurant: isRestaurant,
-          sensory_notes: sensoryNotes.trim() || null,
+          sensory_notes: formattedSensoryNotes || null,
           rating: rating,
           image_url: imageUri || null,
           meal_type: mealType,
+          flavor_tags: selectedFlavors,
         });
       }
       setToast({ message: 'Log archived', type: 'success' });
@@ -283,6 +311,7 @@ export default function RecordExperience() {
       setCity('');
       setCuisine('');
       setSensoryNotes('');
+      setSelectedFlavors([]);
       setRating(0);
       setImageUri(null);
     } catch (err) {
@@ -294,6 +323,7 @@ export default function RecordExperience() {
   };
 
   const handleSaveDraft = async () => {
+    if (archiving || uploading || savingDraft) return;
     if (!user) {
       setToast({ message: 'Sign in to save a draft.', type: 'error' });
       return;
@@ -304,6 +334,8 @@ export default function RecordExperience() {
         username: user.username || user.firstName || 'Foodie',
         avatar_url: user.imageUrl,
       });
+      const formattedSensoryNotes = formatSensoryNotesWithFlavors(sensoryNotes, selectedFlavors);
+
       if (draftId) {
         await updateDraft(draftId, {
           dish_name: dish.trim() || null,
@@ -311,10 +343,11 @@ export default function RecordExperience() {
           city: city.trim() || null,
           cuisine: cuisine.trim() || null,
           is_restaurant: isRestaurant,
-          sensory_notes: sensoryNotes.trim() || null,
+          sensory_notes: formattedSensoryNotes || null,
           rating: rating || null,
           image_url: imageUri || null,
           meal_type: mealType,
+          flavor_tags: selectedFlavors,
         });
       } else {
         await saveDraft(user.id, {
@@ -323,10 +356,11 @@ export default function RecordExperience() {
           city: city.trim() || null,
           cuisine: cuisine.trim() || null,
           is_restaurant: isRestaurant,
-          sensory_notes: sensoryNotes.trim() || null,
+          sensory_notes: formattedSensoryNotes || null,
           rating: rating || null,
           image_url: imageUri || null,
           meal_type: mealType,
+          flavor_tags: selectedFlavors,
         });
       }
       setToast({ message: 'Draft saved', type: 'success' });
@@ -488,8 +522,19 @@ export default function RecordExperience() {
           {/* Header */}
           <AnimatedSection scrollY={scrollY} delay={0}>
             <View style={styles.header}>
-              <TouchableOpacity style={styles.draftButton} onPress={handleSaveDraft} disabled={savingDraft}>
-                <Text style={styles.saveDraft}>SAVE DRAFT</Text>
+              <TouchableOpacity
+                style={[styles.draftButton, (savingDraft || archiving || uploading) && { opacity: 0.5 }]}
+                onPress={handleSaveDraft}
+                disabled={savingDraft || archiving || uploading}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {savingDraft && (
+                    <ActivityIndicator size="small" color="#FF6B4A" style={{ marginRight: 6 }} />
+                  )}
+                  <Text style={styles.saveDraft}>
+                    {savingDraft ? 'SAVING...' : 'SAVE DRAFT'}
+                  </Text>
+                </View>
               </TouchableOpacity>
             </View>
           </AnimatedSection>
@@ -657,6 +702,58 @@ export default function RecordExperience() {
             </View>
           </AnimatedSection>
 
+          {/* Flavor Profile Tagging (v1) */}
+          <AnimatedSection scrollY={scrollY} delay={380}>
+            <View style={{ paddingHorizontal: 24, marginTop: 24 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <Text style={styles.fieldLabel}>FLAVOR PROFILE (UP TO 3)</Text>
+                {selectedFlavors.length > 0 && (
+                  <Text style={{ fontSize: 11, color: '#FF6B4A', fontWeight: '600' }}>
+                    {selectedFlavors.length}/3 selected
+                  </Text>
+                )}
+              </View>
+              <View style={styles.flavorChipsRow}>
+                {availableFlavors.map((tag) => {
+                  const active = selectedFlavors.includes(tag);
+                  return (
+                    <TouchableOpacity
+                      key={tag}
+                      style={[
+                        styles.flavorChip,
+                        active && styles.flavorChipActive,
+                        {
+                          backgroundColor: active
+                            ? '#FF6B4A'
+                            : colorScheme === 'dark'
+                            ? 'rgba(60, 60, 60, 0.7)'
+                            : 'rgba(255, 255, 255, 0.7)',
+                          borderColor: active
+                            ? '#FF6B4A'
+                            : colorScheme === 'dark'
+                            ? 'rgba(100, 100, 100, 0.5)'
+                            : 'rgba(200, 200, 200, 0.8)',
+                        },
+                      ]}
+                      onPress={() => handleToggleFlavor(tag)}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.flavorChipText,
+                          active && { color: '#FFFFFF' },
+                          !active && { color: Colors[colorScheme].text },
+                        ]}
+                      >
+                        {tag}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </AnimatedSection>
+
           {/* Sensory Notes Glass Card */}
           <AnimatedSection scrollY={scrollY} delay={400}>
             <Text style={styles.sectionLabel}>SENSORY NOTES</Text>
@@ -725,22 +822,64 @@ export default function RecordExperience() {
           {/* Bottom Buttons */}
           <AnimatedSection scrollY={scrollY} delay={640}>
             <View style={styles.bottomButtons}>
-              <TouchableOpacity style={styles.discardButton}>
+              <TouchableOpacity
+                style={[styles.discardButton, (archiving || uploading || savingDraft) && { opacity: 0.5 }]}
+                disabled={archiving || uploading || savingDraft}
+                onPress={() => {
+                  setDish('');
+                  setVenue('');
+                  setCity('');
+                  setCuisine('');
+                  setSensoryNotes('');
+                  setRating(0);
+                  setImageUri(null);
+                }}
+              >
                 <Text style={styles.discardButtonText}>DISCARD</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.archiveButton, archiving && { opacity: 0.6 }]}
+                style={[
+                  styles.archiveButton,
+                  (archiving || uploading || savingDraft) && { opacity: 0.6 },
+                ]}
                 onPress={handleArchive}
-                disabled={archiving}
+                disabled={archiving || uploading || savingDraft}
+                activeOpacity={0.8}
               >
                 <LinearGradient
                   colors={colorScheme === 'dark' ? ['#444', '#222'] : ['#FFF', '#F0F0F0']}
                   style={[styles.archiveGradient, { borderColor: colorScheme === 'dark' ? '#555' : '#FFF' }]}
                 >
-                  <Text style={[styles.archiveButtonText, { color: colorScheme === 'dark' ? '#FFF' : '#333' }]}>
-                    {archiving ? 'SAVING...' : 'ARCHIVE LOG'}
-                  </Text>
+                  <View style={styles.buttonContentRow}>
+                    {archiving ? (
+                      <>
+                        <ActivityIndicator
+                          size="small"
+                          color={colorScheme === 'dark' ? '#FFF' : '#333'}
+                          style={{ marginRight: 8 }}
+                        />
+                        <Text style={[styles.archiveButtonText, { color: colorScheme === 'dark' ? '#FFF' : '#333' }]}>
+                          SAVING...
+                        </Text>
+                      </>
+                    ) : uploading ? (
+                      <>
+                        <ActivityIndicator
+                          size="small"
+                          color={colorScheme === 'dark' ? '#FFF' : '#333'}
+                          style={{ marginRight: 8 }}
+                        />
+                        <Text style={[styles.archiveButtonText, { color: colorScheme === 'dark' ? '#FFF' : '#333' }]}>
+                          UPLOADING...
+                        </Text>
+                      </>
+                    ) : (
+                      <Text style={[styles.archiveButtonText, { color: colorScheme === 'dark' ? '#FFF' : '#333' }]}>
+                        ARCHIVE LOG
+                      </Text>
+                    )}
+                  </View>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -906,6 +1045,34 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
 
+  // FLAVOR CHIPS
+  flavorChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  flavorChip: {
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  flavorChipActive: {
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  flavorChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+
   // ROW INPUTS
   row: {
     flexDirection: 'row',
@@ -1067,6 +1234,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#333',
     letterSpacing: 0.5,
+  },
+  buttonContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   imagePreviewContainer: {
     marginHorizontal: 24,

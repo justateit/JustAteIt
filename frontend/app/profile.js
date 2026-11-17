@@ -1,5 +1,6 @@
 import HorizontalDishCard from '@/components/HorizontalDishCard';
 import { DiningFrequencyCard, LevelCard } from '@/components/ProfileCards';
+import { DishCardSkeleton, StatSkeleton } from '@/components/SkeletonPlaceholder';
 import { useUser } from '@clerk/clerk-expo';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
@@ -8,7 +9,6 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useState } from 'react';
 import {
-    ActivityIndicator,
     Image,
     Platform,
     RefreshControl,
@@ -118,7 +118,11 @@ export default function App() {
                         />
                         <View style={styles.statsContainer}>
                             <View style={styles.statItem}>
-                                <Text style={[styles.statNumber, { color: Colors[colorScheme].text }]}>{logs.length}</Text>
+                                {logsLoading ? (
+                                    <StatSkeleton />
+                                ) : (
+                                    <Text style={[styles.statNumber, { color: Colors[colorScheme].text }]}>{logs.length}</Text>
+                                )}
                                 <Text style={[styles.statLabel, { color: colorScheme === 'dark' ? '#AAA' : '#777' }]}>DISHES</Text>
                             </View>
                             <View style={styles.statItem}>
@@ -169,7 +173,10 @@ export default function App() {
 
                         <View style={styles.journalFeedContainer}>
                             {logsLoading ? (
-                                <ActivityIndicator size="small" color="#E86A33" style={{ marginVertical: 40 }} />
+                                <View style={{ gap: 12, width: '100%' }}>
+                                    <DishCardSkeleton />
+                                    <DishCardSkeleton />
+                                </View>
                             ) : logs.length === 0 ? (
                                 <View style={[styles.emptyJournalContainer, { backgroundColor: Colors[colorScheme].card }]}>
                                     <FontAwesome name="file-text-o" size={40} color={Colors[colorScheme].icon} />

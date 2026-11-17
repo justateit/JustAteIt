@@ -2,8 +2,8 @@ import json
 import os
 import uuid
 from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, joinedload
 import httpx
 
@@ -30,6 +30,7 @@ class ReviewPayload(BaseModel):
     sensory_notes: Optional[str] = None
     image_url: Optional[str] = None
     meal_type: Optional[str] = None  # Breakfast | Lunch | Dinner | Snack
+    flavor_tags: Optional[List[str]] = None  # Spicy, Umami, Sweet, Tangy, etc.
 
 class ReviewUpdatePayload(BaseModel):
     dish_name: Optional[str] = None
@@ -39,6 +40,7 @@ class ReviewUpdatePayload(BaseModel):
     sensory_notes: Optional[str] = None
     image_url: Optional[str] = None
     meal_type: Optional[str] = None
+    flavor_tags: Optional[List[str]] = None
 
 class LatLngPayload(BaseModel):
     lat: float
@@ -55,6 +57,7 @@ class DraftPayload(BaseModel):
     sensory_notes: Optional[str] = None
     image_url: Optional[str] = None
     meal_type: Optional[str] = None  # Breakfast | Lunch | Dinner | Snack
+    flavor_tags: Optional[List[str]] = None
 
 class SavedLogPayload(BaseModel):
     user_id: str
@@ -78,6 +81,7 @@ class DraftUpdatePayload(BaseModel):
     sensory_notes: Optional[str] = None
     image_url: Optional[str] = None
     meal_type: Optional[str] = None
+    flavor_tags: Optional[List[str]] = None
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
@@ -85,12 +89,26 @@ class DraftUpdatePayload(BaseModel):
 def health_check():
     return {"status": "ok", "service": "catalog_service"}
 
-@app.get("/places/autocomplete")
-def venue_autocomplete(q: str, limit: int = 6):
+@app.get(
+    "/places/autocomplete",
+    summary="Free venue autocomplete (Nominatim/OSM)",
+    response_description="List of matching food venue suggestions",
+    tags=["places"],
+)
+def venue_autocomplete(
+    q: str = Query(..., description="Search query string (minimum 3 characters)", min_length=1),
+    limit: int = Query(6, description="Maximum number of venue suggestions to return", ge=1, le=20),
+):
     """
-    Free Nominatim-backed venue autocomplete for the mobile app.
-    No API key required. Rate-limited on the client side (350 ms debounce).
-    Returns [{name, address, fullName}] — mirrors VenueSuggestion in the frontend.
+    Free Nominatim-backed venue autocomplete for dining locations and food spots.
+
+    - **Zero Cost**: Backed by OpenStreetMap Nominatim search API (no Google API key required).
+    - **Category Filtering**: Over-fetches and restricts results to food-related categories (restaurant, cafe, bar, bakery, etc.).
+    - **Fair Use / Rate Limits**: OSM allows max 1 req/sec. Clients MUST debounce input queries by at least 350 ms.
+    - **Short Queries**: Queries with fewer than 3 trimmed characters return `{"suggestions": []}` immediately without hitting upstream.
+
+    Returns:
+        `{"suggestions": [{"name": str, "address": str, "fullName": str}]}`
     """
     if not q or len(q.strip()) < 3:
         return {"suggestions": []}

@@ -114,10 +114,16 @@ async def route_media(request: Request, path: str = ""):
     full_path = f"media/{path}" if path else "media"
     return await proxy_request(ROUTES["media"], full_path, request)
 
-@app.api_route("/api/v1/places", methods=["GET", "POST"])
-@app.api_route("/api/v1/places/{path:path}", methods=["GET", "POST"])
+@app.api_route("/api/v1/places", methods=["GET", "POST"], tags=["Places"])
+@app.api_route("/api/v1/places/{path:path}", methods=["GET", "POST"], tags=["Places"])
 async def route_places(request: Request, path: str = ""):
-    """Proxies Nominatim-backed venue autocomplete to the catalog service."""
+    """
+    Proxies venue search and autocomplete requests to the catalog service.
+
+    Endpoints include:
+      - GET /api/v1/places/autocomplete?q=<query>&limit=<limit>
+        Free Nominatim-backed venue autocomplete for dining and food venues.
+    """
     full_path = f"places/{path}" if path else "places"
     return await proxy_request(ROUTES["catalog"], full_path, request)
 

@@ -1,5 +1,6 @@
 import HorizontalDishCard from '@/components/HorizontalDishCard';
 import { SearchBar } from '@/components/SearchBar';
+import { DishCardSkeleton } from '@/components/SkeletonPlaceholder';
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -114,8 +115,9 @@ export default function HomeScreen() {
             </View>
 
             {isLoading ? (
-                <View style={styles.stateBox}>
-                    <ActivityIndicator size="small" color="#E86A33" />
+                <View style={{ gap: 12, paddingBottom: 20 }}>
+                    <DishCardSkeleton />
+                    <DishCardSkeleton />
                 </View>
             ) : visibleCards.length === 0 ? (
                 <View style={styles.stateBox}>

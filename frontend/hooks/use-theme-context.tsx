@@ -19,7 +19,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
     
     // Resolve the actual color scheme based on user preference or system
-    const colorScheme = themeMode === 'system' ? (nativeColorScheme ?? 'light') : themeMode;
+    const resolvedScheme: 'light' | 'dark' =
+        themeMode === 'system' ? (nativeColorScheme === 'dark' ? 'dark' : 'light') : themeMode;
+    const colorScheme = resolvedScheme;
 
     useEffect(() => {
         // Load saved preference

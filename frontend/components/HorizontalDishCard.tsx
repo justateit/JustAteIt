@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import VenueAutocomplete from '@/components/VenueAutocomplete';
+import { DEFAULT_FOOD_BLURHASH } from '@/components/SkeletonPlaceholder';
 import { Image } from 'expo-image';
 import React, { useState } from 'react';
 import {
@@ -178,9 +179,10 @@ const HorizontalDishCard = ({
                 <View style={[styles.cardContainer, { backgroundColor: Colors[colorScheme].card }]}>
                     <Image
                         source={typeof image === 'string' ? { uri: image } : image}
+                        placeholder={{ blurhash: DEFAULT_FOOD_BLURHASH }}
                         style={styles.cardImage}
                         contentFit="cover"
-                        transition={200}
+                        transition={250}
                     />
                     {/* Dark Overlay for text legibility */}
                     <View style={styles.cardOverlay} />
@@ -234,9 +236,10 @@ const HorizontalDishCard = ({
                         <View style={styles.modalImageContainer}>
                             <Image
                                 source={typeof image === 'string' ? { uri: image } : image}
+                                placeholder={{ blurhash: DEFAULT_FOOD_BLURHASH }}
                                 style={styles.modalImage}
                                 contentFit="cover"
-                                transition={200}
+                                transition={250}
                             />
                             <View style={styles.modalImageOverlay} />
 
