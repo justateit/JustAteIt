@@ -14,11 +14,36 @@ FOOD_CATEGORIES = {
 
 def search_venues_autocomplete(query: str, limit: int = 6) -> List[dict]:
     """
-    Nominatim text-search for food venues.
-    Mirrors the VenueSuggestion shape expected by the React Native component:
-      { name, address, fullName }
+    Search OpenStreetMap Nominatim for food-related venues matching a free-text query.
 
-    Respects Nominatim's 1 req/sec policy — clients must debounce at ≥350 ms.
+    Provides a zero-cost, privacy-friendly alternative to Google Places Autocomplete.
+    The response matches the VenueSuggestion schema required by the React Native frontend:
+      [
+        {
+          "name": "Primary venue name (e.g., 'Tartine Bakery')",
+          "address": "Parsed road and city/locality (e.g., 'Guerrero St, San Francisco')",
+          "fullName": "Full canonical address string from Nominatim"
+        },
+        ...
+      ]
+
+    Fair Use & Rate Limits:
+      - OSM Nominatim strictly enforces a 1 req/sec rate limit.
+      - Clients MUST debounce search input by at least 350 ms.
+      - Outgoing requests include an identifiable User-Agent header.
+
+    Category Filtering:
+      - Over-fetches up to `limit * 3` candidates.
+      - Retains venues matching food & beverage amenities (restaurant, cafe, bar,
+        bakery, fast_food, pub, ice_cream, bistro, etc.) or named place landmarks.
+      - Deduplicates and caps the final result set to `limit`.
+
+    Args:
+        query: Free-text search string entered by the user.
+        limit: Maximum number of venue suggestions to return (default 6).
+
+    Returns:
+        A list of venue suggestion dictionaries with keys: 'name', 'address', 'fullName'.
     """
     params = {
         "q": query,

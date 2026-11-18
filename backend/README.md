@@ -7,11 +7,21 @@ Docker Compose.
 | --- | --- | --- |
 | `api_gateway` | 8000 (published) | Routes `/api/v1/*` to the services below |
 | `services/user_service` | 8001 | Users and flavor profiles (PostgreSQL) |
-| `services/catalog_service` | 8002 | Venues, dishes, reviews (PostgreSQL + Google Places) |
+| `services/catalog_service` | 8002 | Venues, dishes, reviews (PostgreSQL + Nominatim / Google Places) |
 | `services/media_service` | 8003 | Image uploads to S3 |
 
 Health checks: gateway `GET /`, and `GET /users/health`, `GET /catalog/health`,
 `GET /media/health` on the respective services.
+
+## API Documentation
+
+For the complete, human-readable API reference with request/response schemas, curl examples, and integration guides, see:
+👉 **[`docs/API_DOCUMENTATION.md`](../docs/API_DOCUMENTATION.md)**
+
+### Key Highlights & Recent Additions
+- **Venue Autocomplete (`GET /api/v1/places/autocomplete`)**: Zero-cost, privacy-friendly text-search autocomplete powered by OpenStreetMap Nominatim for food venues (restaurants, cafes, bakeries, bars). Rate-limited via client-side debounce (≥350 ms).
+- **Meal Type Classification (`meal_type`)**: Added across `reviews` and `drafts` endpoints (`POST /reviews`, `GET /reviews/{user_id}`, `PUT /reviews/{review_id}`, `POST /drafts`, `GET /drafts/{user_id}`, `PUT /drafts/{draft_id}`). Supports `'Breakfast'`, `'Lunch'`, `'Dinner'`, and `'Snack'`.
+- **Interactive OpenAPI Documentation**: Available at `http://localhost:8000/docs` (Gateway) and `http://localhost:8002/docs` (Catalog Service).
 
 ## Configuration
 

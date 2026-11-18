@@ -3,8 +3,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import LiquidGlass from './LiquidGlass';
+import { SkeletonPlaceholder } from './SkeletonPlaceholder';
 import { getFlavorProfile } from '../utils/flavorProfileApi';
 import { getLevelProgress } from '../utils/levels';
 
@@ -314,9 +315,16 @@ export function TasteDNACard() {
                 </View>
 
                 {/* Personality label */}
-                {loading
-                    ? <ActivityIndicator size="small" color="#FF6B4A" style={{ marginTop: 10 }} />
-                    : <Text style={styles.dnaPersonality}>{personality}</Text>}
+                {loading ? (
+                    <SkeletonPlaceholder
+                        width={110}
+                        height={16}
+                        borderRadius={4}
+                        style={{ alignSelf: 'center', marginTop: 10 }}
+                    />
+                ) : (
+                    <Text style={styles.dnaPersonality}>{personality}</Text>
+                )}
             </View>
         </LiquidGlass>
     );

@@ -1,6 +1,7 @@
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { DEFAULT_FOOD_BLURHASH } from '@/components/SkeletonPlaceholder';
 import { Image } from 'expo-image';
 import React, { useState } from 'react';
 import { Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
@@ -68,9 +69,10 @@ const DishCard = ({ id, title, restaurant, date, rating, image, location, tastin
                 <View style={{ width: 190, height: 250, borderRadius: 12, overflow: 'hidden' }}>
                     <Image
                         source={typeof image === 'string' ? { uri: image } : image}
+                        placeholder={{ blurhash: DEFAULT_FOOD_BLURHASH }}
                         style={{ width: 190, height: 250, borderRadius: 12 }}
                         contentFit="cover"
-                        transition={200}
+                        transition={250}
                     />
                     {/* Dark Overlay */}
                     <View style={{
