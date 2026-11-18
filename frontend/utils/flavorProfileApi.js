@@ -234,6 +234,29 @@ export async function getNearbyVenue(lat, lng) {
   return res.json();
 }
 
+/**
+ * Real top cities for the Global Venues page, ranked by distinct venues
+ * logged — no curated/mock list, purely derived from review data.
+ * @param {number} [limit]
+ */
+export async function getTopCities(limit = 10) {
+  const qs = new URLSearchParams({ limit: String(limit) });
+  const res = await fetch(`${BASE_URL}/api/v1/venues/top-cities?${qs}`);
+  if (!res.ok) throw new Error(`getTopCities failed: ${res.status}`);
+  return res.json(); // { cities: [{ name, reviewsLogged }] }
+}
+
+/**
+ * Venues actually logged in a given city, for the city detail page.
+ * @param {string} city
+ */
+export async function getVenuesInCity(city) {
+  const qs = new URLSearchParams({ city });
+  const res = await fetch(`${BASE_URL}/api/v1/venues/in-city?${qs}`);
+  if (!res.ok) throw new Error(`getVenuesInCity failed: ${res.status}`);
+  return res.json(); // { venues: [{ name, city, avgRating, reviewsLogged }] }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Users
 // ─────────────────────────────────────────────────────────────────────────────
@@ -373,7 +396,7 @@ export async function deleteSavedLog(savedLogId) {
  *
  * @param {string} query - Text to search
  * @param {number} [limit=6] - Maximum results
- * @returns {Promise<{suggestions: Array<{name: string, address: string, fullName: string}>}>}
+ * @returns {Promise<{suggestions: Array<{name: string, address: string, city: string, fullName: string}>}>}
  */
 export async function searchVenuesAutocomplete(query, limit = 6) {
   const qs = new URLSearchParams({ q: query, limit: String(limit) });

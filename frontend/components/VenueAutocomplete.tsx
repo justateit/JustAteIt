@@ -29,6 +29,10 @@ export interface VenueSuggestion {
   name: string;
   /** Secondary address / city string */
   address: string;
+  /** City on its own — empty when Nominatim resolved none. Kept separate
+   *  because `address` falls back to the full display_name, whose trailing
+   *  segment is a country rather than a city. */
+  city: string;
   /** Raw Nominatim display_name */
   fullName: string;
 }
@@ -97,6 +101,7 @@ async function queryNominatim(text: string): Promise<VenueSuggestion[]> {
     suggestions.push({
       name: shortName,
       address,
+      city,
       fullName: item.display_name,
     });
     if (suggestions.length >= 6) break;
